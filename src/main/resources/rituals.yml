@@ -1,0 +1,45 @@
+# Ritual Creator. Values mirror the original RitualCreator.sk.
+time:
+  minutes: 15      # current value (changed by the clock in the GUI)
+  min: 1
+  max: 60
+rotation:
+  enabled: true
+  degrees-per-tick: 3.0
+  interval-ticks: 1
+entities:
+  text-mode: ARMOR_STAND   # ARMOR_STAND or TEXT_DISPLAY
+  display:
+    height: 1.5
+    glowing: true
+    transform: NONE        # ItemDisplay transform: NONE, GROUND, FIXED, GUI, HEAD ...
+    scale: 1.0
+    glow-color: ""         # optional hex outline colour
+  item-name:
+    height: 2.275
+  timer:
+    height: 2.0
+sounds:
+  start: {sound: "block.end_portal.spawn", volume: 1.0, pitch: 1.0}
+  complete: {sound: "entity.ender_dragon.death", volume: 1.0, pitch: 2.0}
+  stop: {sound: "entity.ender_dragon.death", volume: 0.75, pitch: 3.0}
+bossbar:
+  enabled: true
+  color: YELLOW            # the original used gold, which Adventure maps to yellow
+  style: PROGRESS
+  progress-mode: STATIC    # STATIC (original: always 100%) or COUNTDOWN
+  static-progress: 1.0
+cancel:
+  return-item-to-admin: false
+persistence:
+  enabled: true
+  on-restart: RESTORE      # RESTORE or CANCEL
+  cancel-drops-item: true  # with CANCEL: drop the item at the ritual spot
+  save-interval-seconds: 10
+particles:
+  enabled: true
+  interval-ticks: 10
+  layers:
+    outer-ring: {shape: ring, particle: DUST, color: "#ff5a00", size: 0.35, count: 40, step-degrees: 9.0, radius: 2.0, radius-jitter: 0.15, y-jitter: 0.05, height: 0.5, particles-min: 1, particles-max: 3}
+    inner-ring: {shape: ring, particle: DUST, color: "#ff5a00", size: 0.35, count: 28, step-degrees: 12.85, radius: 1.1, radius-jitter: 0.1, y-jitter: 0.05, height: 0.5, particles-min: 1, particles-max: 3}
+    sparks: {shape: scatter, particle: DUST, color: "#ffdc64", size: 0.2, count: 6, radius-min: 0.8, radius-max: 2.2, y-min: -0.1, y-max: 0.2, height: 0.5, particles-min: 1, particles-max: 1}

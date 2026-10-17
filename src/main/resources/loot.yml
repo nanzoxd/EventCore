@@ -1,0 +1,28 @@
+# Loot per crate tier. Edit in-game with /eventcore gui > loot tables.
+# Entry: material, name, lore, enchants, item-data (base64 stack, set by the GUI), amount-min/max, chance (0-100), commands ({player}).
+tiers:
+  iron:
+    entries:
+      coal: {material: COAL, amount-min: 8, amount-max: 24, chance: 80.0}
+      iron: {material: IRON_INGOT, amount-min: 4, amount-max: 12, chance: 70.0}
+      bread: {material: BREAD, amount-min: 6, amount-max: 16, chance: 60.0}
+      arrows: {material: ARROW, amount-min: 16, amount-max: 32, chance: 40.0}
+  gold:
+    entries:
+      gold: {material: GOLD_INGOT, amount-min: 6, amount-max: 16, chance: 80.0}
+      apples: {material: GOLDEN_APPLE, amount-min: 1, amount-max: 3, chance: 50.0}
+      xp: {material: EXPERIENCE_BOTTLE, amount-min: 8, amount-max: 24, chance: 60.0}
+      sword: {material: IRON_SWORD, name: "<g>drop blade</g>", enchants: {sharpness: 3, unbreaking: 2}, amount-min: 1, amount-max: 1, chance: 20.0}
+  diamond:
+    entries:
+      diamond: {material: DIAMOND, amount-min: 3, amount-max: 8, chance: 80.0}
+      gapple: {material: GOLDEN_APPLE, amount-min: 3, amount-max: 6, chance: 60.0}
+      pearls: {material: ENDER_PEARL, amount-min: 2, amount-max: 6, chance: 50.0}
+      chest: {material: DIAMOND_CHESTPLATE, enchants: {protection: 3, unbreaking: 3}, amount-min: 1, amount-max: 1, chance: 15.0}
+  netherite:
+    entries:
+      scrap: {material: NETHERITE_SCRAP, amount-min: 2, amount-max: 5, chance: 80.0}
+      ingot: {material: NETHERITE_INGOT, amount-min: 1, amount-max: 2, chance: 40.0}
+      egap: {material: ENCHANTED_GOLDEN_APPLE, amount-min: 1, amount-max: 2, chance: 35.0}
+      totem: {material: TOTEM_OF_UNDYING, amount-min: 1, amount-max: 1, chance: 25.0}
+      bonus-command: {chance: 10.0, commands: ["say {player} found a rare reward!"]}

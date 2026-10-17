@@ -1,0 +1,50 @@
+name: EventCore
+version: '${project.version}'
+main: com.eventcore.EventCorePlugin
+api-version: '1.21'
+folia-supported: true
+description: Scheduled server events, the Ritual Creator and airdrop crates.
+authors: [EventCore]
+
+commands:
+  eventcore:
+    description: EventCore admin command
+    usage: /<command> <start|force|rig|stop|list|reload|gui|schedule|airdrop>
+    aliases: [ec]
+  ritualcreator:
+    description: Open the Ritual Creator
+    usage: /<command>
+    aliases: [rcreator, creator]
+    permission: eventcore.ritual
+    permission-message: You do not have permission.
+
+permissions:
+  eventcore.admin:
+    description: All EventCore admin commands
+    default: op
+    children:
+      eventcore.start: true
+      eventcore.force: true
+      eventcore.rig: true
+      eventcore.stop: true
+      eventcore.list: true
+      eventcore.reload: true
+      eventcore.gui: true
+      eventcore.schedule: true
+      eventcore.airdrop: true
+      eventcore.ritual: true
+  eventcore.start: {default: op}
+  eventcore.force: {default: op}
+  eventcore.rig: {default: op}
+  eventcore.stop: {default: op}
+  eventcore.list: {default: op}
+  eventcore.reload: {default: op}
+  eventcore.gui: {default: op}
+  eventcore.schedule: {default: op}
+  eventcore.airdrop: {default: op}
+  eventcore.ritual:
+    description: Use the Ritual Creator
+    default: op
+  eventcore.bypass:
+    description: Bypass event restrictions (blocked commands, anonymous reveal)
+    default: op

@@ -1,0 +1,61 @@
+# Messages. Text supports MiniMessage, <g> (palette gradient) and {placeholders}.
+# A message may be a plain string or a section {text, sound: {sound, volume, pitch}}.
+prefix: "<g>eventcore</g> <dark_gray>|</dark_gray> "
+ritual-prefix: "<g>ritual</g> <dark_gray>|</dark_gray> "
+errors:
+  no-permission: "<red>you do not have permission.</red>"
+  player-only: "<red>this command can only be used by a player.</red>"
+  unknown-event: "<red>unknown event:</red> <gray>{input}</gray>"
+  unknown-tier: "<red>unknown crate tier:</red> <gray>{input}</gray>"
+  disabled: "<red>{event} is disabled.</red>"
+  already-running: "<red>that event is already running.</red>"
+  not-running: "<red>{event} is not running.</red>"
+  cooldown: "<red>{event} is on cooldown.</red>"
+  max-concurrent: "<red>too many events are running at once.</red>"
+  incompatible: "<red>that event cannot run together with a running event.</red>"
+  invalid-number: "<red>invalid number:</red> <gray>{input}</gray>"
+  nothing-to-start: "<red>no event could be started.</red>"
+command:
+  usage: "<g>/eventcore [start|force|rig|stop|list|reload|gui|schedule|airdrop]</g>"
+  started: "<g>started {event}.</g>"
+  force-started: "<g>force-started {event}.</g>"
+  rolled: "<g>started: {events}</g>"
+  rigged: "<g>{event} will be picked by the next random roll.</g>"
+  rig-list: "<g>rigged: {events}</g>"
+  rig-cleared: "<g>rigs cleared.</g>"
+  stopped: "<g>stopped {event}.</g>"
+  stopped-all: "<g>stopped {count} event(s).</g>"
+  nothing-running: "<red>no event is running.</red>"
+  reloaded: "<g>configuration reloaded.</g>"
+  list-header: "<g>events:</g>"
+  list-line: "<white>{event}</white> <dark_gray>({id})</dark_gray> <gray>{state} | {minutes}m | aliases: {aliases}</gray>"
+  schedule-header: "<g>next scheduled starts ({zone}):</g>"
+  schedule-line: "<white>{event}</white> <gray>{at} (in {in})</gray>"
+  schedule-none: "<gray>nothing is scheduled.</gray>"
+  airdrop-spawned: "<g>dropping a {tier} crate.</g>"
+scheduler:
+  warning: "<g>{event} starts in {time}!</g>"
+events:
+  shield-blocked: "<red>shields are disabled right now.</red>"
+  invisibility-blocked: "<red>invisibility is disabled right now.</red>"
+  command-blocked: "<red>{command} is blocked during this event.</red>"
+gui:
+  invalid: "<red>invalid value:</red> <gray>{reason}</gray>"
+  prompt-edit: "<g>type a new value for {path} in chat</g> <gray>(current: {value}, type cancel to abort)</gray>"
+  prompt-add: "<g>type an entry to add to {path} in chat</g> <gray>(type cancel to abort)</gray>"
+  prompt-simple: "<g>type the {what} in chat</g> <gray>(type cancel to abort)</gray>"
+  loot-need-item: "<red>click this slot while holding an item on your cursor.</red>"
+ritual:
+  no-active: "<red>there are no active rituals</red>"
+  wait-active: "<red>please wait for the current active ritual to end</red>"
+  broadcast: "<gray>a</gray> <g>ritual</g> <gray>was initiated by</gray> <green>{player}</green><gray>. location: {world} [{x}, {y}, {z}]</gray>"
+  start-title: {title: "<g>{item} ritual started</g>", subtitle: "<g>defend the piece while it charges!</g>"}
+  announce-title: {title: "<g>{item} ritual</g>", subtitle: "<gray>location: {world} [{x}, {y}, {z}]</gray>"}
+  complete-title: {title: "<g>ritual complete</g>", subtitle: "<gray>heavy piece successfully crafted</gray>"}
+  stopped-title: {title: "<g>ritual stopped</g>", subtitle: ""}
+  stopped-broadcast: "<red>all rituals ended</red>"
+  bossbar-title: "<g>{item} ritual</g> <gray>|</gray> <g>{world} [{x}, {y}, {z}]</g>"
+  name-text: "{item_display}"
+  unnamed-format: "<gold>{item}</gold>"
+  timer-text: "<red>({time} left)</red>"
+  reload-warning: "<red>warning: reloading while a ritual is active may cause issues (the ritual keeps running)</red>"

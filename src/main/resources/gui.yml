@@ -1,0 +1,39 @@
+# GUI layouts. Names/lore support <g>, MiniMessage and {placeholders}.
+ritual-main:
+  title: "<g>ritual creator</g>"
+  rows: 3
+  items:
+    cancel: {slot: 10, material: RED_CONCRETE, name: "<red>cancel rituals</red>", lore: ["<gray>click to cancel all rituals</gray>"]}
+    creation: {slot: 13, material: PLAYER_HEAD, name: "<g>ritual creation</g>", lore: ["<gray>click to open the creator gui</gray>"]}
+    submit: {slot: 16, material: GREEN_CONCRETE, name: "<green>ritual submitter</green>", lore: ["<gray>click to finish all active rituals</gray>"]}
+    time:
+      slot: 4
+      material: CLOCK
+      name: "<gold>ritual time: <yellow>{minutes} minutes</yellow></gold>"
+      lore: ["<gray>left click to <green>+1 minute</green></gray>", "<gray>right click to <red>-1 minute</red></gray>"]
+ritual-select:
+  title: "<g>please select an item</g>"
+  rows: 3
+  input-slot: 13
+  filler: {material: BLACK_STAINED_GLASS_PANE, name: " "}
+admin-main:
+  title: "<g>eventcore admin</g>"
+  rows: 3
+  items:
+    events: {slot: 10, action: browse, file: events, path: events, material: NETHER_STAR, name: "<g>events</g>", lore: ["<gray>toggles, durations, messages, sounds, aliases</gray>"]}
+    schedule: {slot: 11, action: browse, file: events, path: scheduler, material: CLOCK, name: "<g>schedule</g>", lore: ["<gray>warnings and warning sound (per-event times are inside each event)</gray>"]}
+    general: {slot: 12, action: browse, file: config, path: "", material: COMPARATOR, name: "<g>general</g>", lore: ["<gray>palette, timezone, limits, style</gray>"]}
+    messages: {slot: 13, action: browse, file: messages, path: "", material: BOOK, name: "<g>messages</g>", lore: ["<gray>every chat line, title and prompt</gray>"]}
+    ritual: {slot: 14, action: browse, file: rituals, path: "", material: ENDER_EYE, name: "<g>ritual creator</g>", lore: ["<gray>time, entities, sounds, particle layers</gray>"]}
+    airdrop: {slot: 15, action: browse, file: events, path: events.airdrop, material: SHULKER_BOX, name: "<g>airdrop and crates</g>", lore: ["<gray>tiers, shulker hp, falling, sounds</gray>"]}
+    loot: {slot: 16, action: loot, material: CHEST, name: "<g>loot tables</g>", lore: ["<gray>edit crate loot in-game</gray>"]}
+    commands: {slot: 20, action: browse, file: events, path: events.locator_bar, material: COMMAND_BLOCK, name: "<g>locator bar and blocked commands</g>", lore: ["<gray>blocked command list and aliases</gray>"]}
+    gui: {slot: 22, action: browse, file: gui, path: "", material: PAINTING, name: "<g>gui layout</g>", lore: ["<gray>items, slots and names</gray>"]}
+    reload: {slot: 24, action: reload, material: LIME_DYE, name: "<g>reload from disk</g>", lore: ["<gray>re-read every file</gray>"]}
+admin-browser:
+  nav:
+    prev: {slot: 45, material: ARROW, name: "<white>previous page</white>"}
+    up: {slot: 48, material: BARRIER, name: "<white>back</white>"}
+    home: {slot: 49, material: COMPASS, name: "<white>main menu</white>"}
+    reload: {slot: 50, material: LIME_DYE, name: "<white>reload from disk</white>"}
+    next: {slot: 53, material: ARROW, name: "<white>next page</white>"}

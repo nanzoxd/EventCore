@@ -1,0 +1,486 @@
+# Events. Every event has the same structure; "settings" holds event-specific options.
+# Placeholders: {event} {description} {minutes} {time}  (airdrop adds {code} {status} {crates})
+scheduler:
+  enabled: true
+  warnings: [300, 60, 10]    # seconds before a scheduled start
+  warning-sound: {sound: "block.note_block.pling", volume: 0.8, pitch: 1.2}
+events:
+  vulnerable:
+    enabled: true
+    display-name: "vulnerable"
+    description: "everyone's max health is reduced"
+    color: "#ff6666"
+    aliases: [vuln, frail, halfhearts]
+    duration-minutes: 30
+    cooldown-minutes: 0
+    bossbar:
+      enabled: true
+      text: "<g>{event}</g> <dark_gray>|</dark_gray> <g>{time}</g>"
+      color: RED
+      style: PROGRESS
+      countdown: true
+    sounds:
+      start: {sound: "entity.wither.spawn", volume: 0.8, pitch: 1.0}
+      end: {sound: "entity.player.levelup", volume: 0.8, pitch: 1.0}
+    titles:
+      start: {title: "<g>{event}</g>", subtitle: "<g>{description}</g>"}
+      end: {title: "<g>{event} ended</g>", subtitle: ""}
+    messages:
+      start:
+        text: "<g>{event} has started for {minutes} minutes: {description}</g>"
+        sound: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
+      end:
+        text: "<g>{event} has ended.</g>"
+        sound: {sound: "block.note_block.bass", volume: 0.6, pitch: 1.0}
+    start-animation:
+      enabled: true
+      duration-ticks: 40
+      interval-ticks: 5
+      layers:
+        ring: {shape: ring, particle: DUST, color: "#ff6666", size: 1.0, count: 36, radius: 2.5, radius-jitter: 0.1, y-jitter: 0.05, height: 1.0, particles-min: 1, particles-max: 1, spin: 10.0}
+        burst: {shape: burst, particle: DUST, color: "#ff6666", size: 0.8, count: 20, radius-min: 0.5, radius-max: 2.0, height: 1.0, particles-min: 1, particles-max: 1}
+    aura:
+      enabled: false
+      interval-ticks: 10
+      layers:
+        helix: {shape: helix, particle: DUST, color: "#ff6666", size: 0.6, count: 16, radius: 0.8, height: 0.1, rise: 2.0, turns: 2.0, spin: 20.0, particles-min: 1, particles-max: 1}
+    schedule:
+      mode: off            # off | times | interval
+      times: ["19:00"]     # "19:00" or "SAT 20:00"
+      days: [ALL]          # ALL or MONDAY, TUESDAY ...
+      interval-minutes: 180
+    settings:
+      hearts: 7.5          # 7.5 hearts = 15 hp
+  shieldless:
+    enabled: true
+    display-name: "shieldless"
+    description: "players cannot use shields"
+    color: "#ffbd55"
+    aliases: [shield, shields, noshield]
+    duration-minutes: 30
+    cooldown-minutes: 0
+    bossbar:
+      enabled: true
+      text: "<g>{event}</g> <dark_gray>|</dark_gray> <g>{time}</g>"
+      color: YELLOW
+      style: PROGRESS
+      countdown: true
+    sounds:
+      start: {sound: "item.shield.break", volume: 0.8, pitch: 1.0}
+      end: {sound: "entity.player.levelup", volume: 0.8, pitch: 1.0}
+    titles:
+      start: {title: "<g>{event}</g>", subtitle: "<g>{description}</g>"}
+      end: {title: "<g>{event} ended</g>", subtitle: ""}
+    messages:
+      start:
+        text: "<g>{event} has started for {minutes} minutes: {description}</g>"
+        sound: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
+      end:
+        text: "<g>{event} has ended.</g>"
+        sound: {sound: "block.note_block.bass", volume: 0.6, pitch: 1.0}
+    start-animation:
+      enabled: true
+      duration-ticks: 40
+      interval-ticks: 5
+      layers:
+        ring: {shape: ring, particle: DUST, color: "#ffbd55", size: 1.0, count: 36, radius: 2.5, radius-jitter: 0.1, y-jitter: 0.05, height: 1.0, particles-min: 1, particles-max: 1, spin: 10.0}
+        burst: {shape: burst, particle: DUST, color: "#ffbd55", size: 0.8, count: 20, radius-min: 0.5, radius-max: 2.0, height: 1.0, particles-min: 1, particles-max: 1}
+    aura:
+      enabled: false
+      interval-ticks: 10
+      layers:
+        helix: {shape: helix, particle: DUST, color: "#ffbd55", size: 0.6, count: 16, radius: 0.8, height: 0.1, rise: 2.0, turns: 2.0, spin: 20.0, particles-min: 1, particles-max: 1}
+    schedule:
+      mode: off            # off | times | interval
+      times: ["19:00"]     # "19:00" or "SAT 20:00"
+      days: [ALL]          # ALL or MONDAY, TUESDAY ...
+      interval-minutes: 180
+    settings:
+      block-raising: true
+      block-damage-blocking: true
+      block-crafting: true
+      cooldown-ticks: 60
+  golden_trees:
+    enabled: true
+    display-name: "golden trees"
+    description: "leaves drop golden apples instead of apples"
+    color: "#ffff66"
+    aliases: [goldentrees, golden_trees, golden, trees, apples]
+    duration-minutes: 30
+    cooldown-minutes: 0
+    bossbar:
+      enabled: true
+      text: "<g>{event}</g> <dark_gray>|</dark_gray> <g>{time}</g>"
+      color: YELLOW
+      style: PROGRESS
+      countdown: true
+    sounds:
+      start: {sound: "entity.experience_orb.pickup", volume: 0.8, pitch: 1.0}
+      end: {sound: "entity.player.levelup", volume: 0.8, pitch: 1.0}
+    titles:
+      start: {title: "<g>{event}</g>", subtitle: "<g>{description}</g>"}
+      end: {title: "<g>{event} ended</g>", subtitle: ""}
+    messages:
+      start:
+        text: "<g>{event} has started for {minutes} minutes: {description}</g>"
+        sound: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
+      end:
+        text: "<g>{event} has ended.</g>"
+        sound: {sound: "block.note_block.bass", volume: 0.6, pitch: 1.0}
+    start-animation:
+      enabled: true
+      duration-ticks: 40
+      interval-ticks: 5
+      layers:
+        ring: {shape: ring, particle: DUST, color: "#ffff66", size: 1.0, count: 36, radius: 2.5, radius-jitter: 0.1, y-jitter: 0.05, height: 1.0, particles-min: 1, particles-max: 1, spin: 10.0}
+        burst: {shape: burst, particle: DUST, color: "#ffff66", size: 0.8, count: 20, radius-min: 0.5, radius-max: 2.0, height: 1.0, particles-min: 1, particles-max: 1}
+    aura:
+      enabled: false
+      interval-ticks: 10
+      layers:
+        helix: {shape: helix, particle: DUST, color: "#ffff66", size: 0.6, count: 16, radius: 0.8, height: 0.1, rise: 2.0, turns: 2.0, spin: 20.0, particles-min: 1, particles-max: 1}
+    schedule:
+      mode: off            # off | times | interval
+      times: ["19:00"]     # "19:00" or "SAT 20:00"
+      days: [ALL]          # ALL or MONDAY, TUESDAY ...
+      interval-minutes: 180
+    settings:
+      drop-item: GOLDEN_APPLE
+      replace-apples: true
+      bonus-chance: 0.0    # percent chance that ANY leaf drops the item as well
+      amount-min: 1
+      amount-max: 1
+      block-swap:          # optional client-side visual swap (never changes the world)
+        enabled: false
+        from: [OAK_LEAVES, DARK_OAK_LEAVES]
+        to: FLOWERING_AZALEA_LEAVES
+        radius: 8
+        interval-seconds: 5
+  anonymous:
+    enabled: true
+    display-name: "anonymous"
+    description: "everyone shares the same name"
+    color: "#9de24f"
+    aliases: [anon, anonym, hidden]
+    duration-minutes: 30
+    cooldown-minutes: 0
+    bossbar:
+      enabled: true
+      text: "<g>{event}</g> <dark_gray>|</dark_gray> <g>{time}</g>"
+      color: GREEN
+      style: PROGRESS
+      countdown: true
+    sounds:
+      start: {sound: "entity.enderman.teleport", volume: 0.8, pitch: 1.0}
+      end: {sound: "entity.player.levelup", volume: 0.8, pitch: 1.0}
+    titles:
+      start: {title: "<g>{event}</g>", subtitle: "<g>{description}</g>"}
+      end: {title: "<g>{event} ended</g>", subtitle: ""}
+    messages:
+      start:
+        text: "<g>{event} has started for {minutes} minutes: {description}</g>"
+        sound: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
+      end:
+        text: "<g>{event} has ended.</g>"
+        sound: {sound: "block.note_block.bass", volume: 0.6, pitch: 1.0}
+    start-animation:
+      enabled: true
+      duration-ticks: 40
+      interval-ticks: 5
+      layers:
+        ring: {shape: ring, particle: DUST, color: "#9de24f", size: 1.0, count: 36, radius: 2.5, radius-jitter: 0.1, y-jitter: 0.05, height: 1.0, particles-min: 1, particles-max: 1, spin: 10.0}
+        burst: {shape: burst, particle: DUST, color: "#9de24f", size: 0.8, count: 20, radius-min: 0.5, radius-max: 2.0, height: 1.0, particles-min: 1, particles-max: 1}
+    aura:
+      enabled: false
+      interval-ticks: 10
+      layers:
+        helix: {shape: helix, particle: DUST, color: "#9de24f", size: 0.6, count: 16, radius: 0.8, height: 0.1, rise: 2.0, turns: 2.0, spin: 20.0, particles-min: 1, particles-max: 1}
+    schedule:
+      mode: off            # off | times | interval
+      times: ["19:00"]     # "19:00" or "SAT 20:00"
+      days: [ALL]          # ALL or MONDAY, TUESDAY ...
+      interval-minutes: 180
+    settings:
+      name: "Anonymous"
+      chat-format: "<gray>{name}</gray> <dark_gray>»</dark_gray> "
+      hide-join-quit: true
+      hide-death-messages: true
+      hide-advancements: true
+      tablist-mode: ANON   # ANON, BLANK or OFF
+      reveal-to-admins: true   # players with eventcore.bypass see the real name in brackets
+  glow:
+    enabled: true
+    display-name: "glow"
+    description: "everyone glows"
+    color: "#87cefa"
+    aliases: [glowing]
+    duration-minutes: 30
+    cooldown-minutes: 0
+    bossbar:
+      enabled: true
+      text: "<g>{event}</g> <dark_gray>|</dark_gray> <g>{time}</g>"
+      color: BLUE
+      style: PROGRESS
+      countdown: true
+    sounds:
+      start: {sound: "block.beacon.activate", volume: 0.8, pitch: 1.0}
+      end: {sound: "block.beacon.deactivate", volume: 0.8, pitch: 1.0}
+    titles:
+      start: {title: "<g>{event}</g>", subtitle: "<g>{description}</g>"}
+      end: {title: "<g>{event} ended</g>", subtitle: ""}
+    messages:
+      start:
+        text: "<g>{event} has started for {minutes} minutes: {description}</g>"
+        sound: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
+      end:
+        text: "<g>{event} has ended.</g>"
+        sound: {sound: "block.note_block.bass", volume: 0.6, pitch: 1.0}
+    start-animation:
+      enabled: true
+      duration-ticks: 40
+      interval-ticks: 5
+      layers:
+        ring: {shape: ring, particle: DUST, color: "#87cefa", size: 1.0, count: 36, radius: 2.5, radius-jitter: 0.1, y-jitter: 0.05, height: 1.0, particles-min: 1, particles-max: 1, spin: 10.0}
+        burst: {shape: burst, particle: DUST, color: "#87cefa", size: 0.8, count: 20, radius-min: 0.5, radius-max: 2.0, height: 1.0, particles-min: 1, particles-max: 1}
+    aura:
+      enabled: false
+      interval-ticks: 10
+      layers:
+        helix: {shape: helix, particle: DUST, color: "#87cefa", size: 0.6, count: 16, radius: 0.8, height: 0.1, rise: 2.0, turns: 2.0, spin: 20.0, particles-min: 1, particles-max: 1}
+    schedule:
+      mode: off            # off | times | interval
+      times: ["19:00"]     # "19:00" or "SAT 20:00"
+      days: [ALL]          # ALL or MONDAY, TUESDAY ...
+      interval-minutes: 180
+    settings: {}           # outline colours come from the palette
+  locator_bar:
+    enabled: true
+    display-name: "locator bar"
+    description: "the locator bar is on, invisibility is disabled"
+    color: "#87cefa"
+    aliases: [locator, locatorbar, bar]
+    duration-minutes: 60
+    cooldown-minutes: 0
+    bossbar:
+      enabled: true
+      text: "<g>{event}</g> <dark_gray>|</dark_gray> <g>{time}</g>"
+      color: BLUE
+      style: PROGRESS
+      countdown: true
+    sounds:
+      start: {sound: "block.beacon.power_select", volume: 0.8, pitch: 1.0}
+      end: {sound: "block.beacon.deactivate", volume: 0.8, pitch: 1.0}
+    titles:
+      start: {title: "<g>{event}</g>", subtitle: "<g>{description}</g>"}
+      end: {title: "<g>{event} ended</g>", subtitle: ""}
+    messages:
+      start:
+        text: "<g>{event} has started for {minutes} minutes: {description}</g>"
+        sound: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
+      end:
+        text: "<g>{event} has ended.</g>"
+        sound: {sound: "block.note_block.bass", volume: 0.6, pitch: 1.0}
+    start-animation:
+      enabled: true
+      duration-ticks: 40
+      interval-ticks: 5
+      layers:
+        ring: {shape: ring, particle: DUST, color: "#87cefa", size: 1.0, count: 36, radius: 2.5, radius-jitter: 0.1, y-jitter: 0.05, height: 1.0, particles-min: 1, particles-max: 1, spin: 10.0}
+        burst: {shape: burst, particle: DUST, color: "#87cefa", size: 0.8, count: 20, radius-min: 0.5, radius-max: 2.0, height: 1.0, particles-min: 1, particles-max: 1}
+    aura:
+      enabled: false
+      interval-ticks: 10
+      layers:
+        helix: {shape: helix, particle: DUST, color: "#87cefa", size: 0.6, count: 16, radius: 0.8, height: 0.1, rise: 2.0, turns: 2.0, spin: 20.0, particles-min: 1, particles-max: 1}
+    schedule:
+      mode: off            # off | times | interval
+      times: ["19:00"]     # "19:00" or "SAT 20:00"
+      days: [ALL]          # ALL or MONDAY, TUESDAY ...
+      interval-minutes: 180
+    settings:
+      worlds: []             # empty = all worlds
+      block-invisibility: true
+      blocked-causes: [POTION_DRINK, POTION_SPLASH, POTION_EFFECT_CLOUD, AREA_EFFECT_CLOUD, ARROW, BEACON, FOOD, PLUGIN]
+      sweep-seconds: 5
+      blocked-commands:
+        - "team home"
+        - "team warp"
+        - "team echest"
+      command-aliases:       # extra aliases of the first word (server aliases are detected automatically)
+        team: [t]
+  airdrop:
+    enabled: true
+    display-name: "airdrop"
+    description: "loot crates fall from the sky"
+    color: "#ffbd55"
+    aliases: [drop, airdrops, crate, crates]
+    duration-minutes: 20
+    cooldown-minutes: 0
+    bossbar:
+      enabled: true
+      text: "<g>{event}</g> <dark_gray>|</dark_gray> <g>{time}</g>"
+      color: PURPLE
+      style: PROGRESS
+      countdown: true
+    sounds:
+      start: {sound: "entity.ender_dragon.growl", volume: 0.8, pitch: 1.0}
+      end: {sound: "entity.player.levelup", volume: 0.8, pitch: 1.0}
+    titles:
+      start: {title: "<g>{event}</g>", subtitle: "<g>{description}</g>"}
+      end: {title: "<g>{event} ended</g>", subtitle: ""}
+    messages:
+      start:
+        text: "<g>{event} has started for {minutes} minutes: {description}</g>"
+        sound: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
+      end:
+        text: "<g>{event} has ended.</g>"
+        sound: {sound: "block.note_block.bass", volume: 0.6, pitch: 1.0}
+    start-animation:
+      enabled: true
+      duration-ticks: 40
+      interval-ticks: 5
+      layers:
+        ring: {shape: ring, particle: DUST, color: "#ffbd55", size: 1.0, count: 36, radius: 2.5, radius-jitter: 0.1, y-jitter: 0.05, height: 1.0, particles-min: 1, particles-max: 1, spin: 10.0}
+        burst: {shape: burst, particle: DUST, color: "#ffbd55", size: 0.8, count: 20, radius-min: 0.5, radius-max: 2.0, height: 1.0, particles-min: 1, particles-max: 1}
+    aura:
+      enabled: false
+      interval-ticks: 10
+      layers:
+        helix: {shape: helix, particle: DUST, color: "#ffbd55", size: 0.6, count: 16, radius: 0.8, height: 0.1, rise: 2.0, turns: 2.0, spin: 20.0, particles-min: 1, particles-max: 1}
+    schedule:
+      mode: off            # off | times | interval
+      times: ["19:00"]     # "19:00" or "SAT 20:00"
+      days: [ALL]          # ALL or MONDAY, TUESDAY ...
+      interval-minutes: 180
+    settings:
+      code:
+        length: 6
+        charset: "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+        show-bossbar: true
+        show-actionbar: true
+        actionbar-seconds: 30
+        show-title: true
+        title: {title: "<g>airdrop code</g>", subtitle: "<white>{code}</white>"}
+        actionbar: "<g>airdrop code:</g> <white>{code}</white>"
+        chat:
+          text: "<g>airdrop incoming! code:</g> <white>{code}</white>"
+          sound: {sound: "entity.firework_rocket.launch", volume: 0.8, pitch: 1.0}
+      bossbar-text: "airdrop code {code} | {status}"
+      bossbar-scroll: {enabled: true, always-scroll: true, width: 34, speed-ticks: 3, gradient-speed: 0.04}
+      status:
+        waiting: "next drop in {seconds}s"
+        falling: "loot is dropping"
+        landed: "loot is ready"
+        done: "all loot claimed"
+      spawn:
+        first-delay-seconds: 20
+        interval-seconds: 120
+        max-crates: 5
+        stop-spawning-seconds-before-end: 60
+        mode: AROUND_PLAYER    # AROUND_PLAYER or AREA
+        worlds: []
+        min-distance: 30.0
+        max-distance: 120.0
+        area: {world: "world", center-x: 0.0, center-z: 0.0, radius: 500.0}
+        avoid-liquids: true
+        max-attempts: 8
+      fall:
+        height: 70.0
+        time-seconds: 8.0
+        easing: LINEAR         # LINEAR or EASE_IN
+        sound: {sound: "item.elytra.flying", volume: 1.0, pitch: 0.5}
+        sound-interval-ticks: 10
+        trail: {shape: scatter, particle: CLOUD, count: 6, radius-min: 0.0, radius-max: 0.5, y-min: 0.0, y-max: 0.8, particles-min: 1, particles-max: 1}
+        hologram-offset: 2.0
+      land:
+        sound: {sound: "entity.generic.explode", volume: 1.0, pitch: 0.8}
+        shockwave:
+          enabled: true
+          ticks: 12
+          radius-start: 0.5
+          radius-end: 7.0
+          layer: {shape: ring, particle: CLOUD, count: 40, height: 0.2, particles-min: 1, particles-max: 1}
+        title: {title: "<g>airdrop landed</g>", subtitle: "<gray>{world} [{x}, {y}, {z}]</gray>"}
+        chat:
+          text: "{tier} <g>crate landed at {world} [{x}, {y}, {z}] (code {code})</g>"
+          sound: {sound: "block.note_block.bell", volume: 0.8, pitch: 1.0}
+        broadcast-title: true
+        lock-seconds: 3
+        expire-seconds: 600
+      hit:
+        damage-per-hit: 1
+        sound: {sound: "block.anvil.hit", volume: 0.6, pitch: 1.6}
+        actionbar: "<g>{bar}</g> <gray>{hp}/{max}</gray>"
+      open:
+        sound: {sound: "block.shulker_box.open", volume: 1.0, pitch: 1.0}
+        chat:
+          text: "<g>{player} opened a</g> {tier} <g>crate (code {code})</g>"
+          sound: {sound: "entity.player.levelup", volume: 0.8, pitch: 1.2}
+        particles:
+          burst: {shape: burst, particle: DUST, color: "#ffffff", size: 1.0, count: 30, radius-min: 0.5, radius-max: 2.0, height: 0.8, particles-min: 1, particles-max: 1}
+      messages:
+        show-still-falling: true
+        still-falling: "<red>this crate is still falling!</red>"
+        locked: "<red>this crate is locked for {seconds}s</red>"
+      hologram:
+        enabled: true
+        falling: "{tier} <gray>#{code}</gray><newline><g>lands in {time}s</g>"
+        locked: "{tier} <gray>#{code}</gray><newline><red>locked ({seconds}s)</red>"
+        ready: "{tier} <gray>#{code}</gray><newline><g>{bar}</g> <gray>{hp}/{max}</gray>"
+      tiers:
+        iron:
+          display-name: "iron"
+          rarity: "common"
+          weight: 55.0
+          health: 8
+          shulker-color: LIGHT_GRAY
+          gradient: ["#d0d4d9", "#8e969e"]
+          trail: {shape: scatter, particle: DUST, color: "#c0c4c8", size: 1.0, count: 8, radius-min: 0.0, radius-max: 0.6, y-min: 0.0, y-max: 0.8, particles-min: 1, particles-max: 2}
+          land-particles:
+            ring: {shape: ring, particle: DUST, color: "#c0c4c8", size: 1.2, count: 30, radius: 2.0, height: 0.3, particles-min: 1, particles-max: 1}
+          sounds:
+            land: {sound: "entity.generic.explode", volume: 1.0, pitch: 1.0}
+            hit: {sound: "block.anvil.hit", volume: 0.6, pitch: 1.8}
+            open: {sound: "block.shulker_box.open", volume: 1.0, pitch: 1.0}
+        gold:
+          display-name: "gold"
+          rarity: "uncommon"
+          weight: 28.0
+          health: 12
+          shulker-color: YELLOW
+          gradient: ["#ffe066", "#ffa800"]
+          trail: {shape: scatter, particle: DUST, color: "#ffcc33", size: 1.0, count: 8, radius-min: 0.0, radius-max: 0.6, y-min: 0.0, y-max: 0.8, particles-min: 1, particles-max: 2}
+          land-particles:
+            ring: {shape: ring, particle: DUST, color: "#ffcc33", size: 1.2, count: 30, radius: 2.0, height: 0.3, particles-min: 1, particles-max: 1}
+          sounds:
+            land: {sound: "entity.generic.explode", volume: 1.0, pitch: 0.9}
+            hit: {sound: "block.anvil.hit", volume: 0.6, pitch: 1.5}
+            open: {sound: "block.shulker_box.open", volume: 1.0, pitch: 1.0}
+        diamond:
+          display-name: "diamond"
+          rarity: "rare"
+          weight: 13.0
+          health: 18
+          shulker-color: LIGHT_BLUE
+          gradient: ["#7ef6ff", "#2bb6e6"]
+          trail: {shape: scatter, particle: DUST, color: "#55e0ff", size: 1.0, count: 8, radius-min: 0.0, radius-max: 0.6, y-min: 0.0, y-max: 0.8, particles-min: 1, particles-max: 2}
+          land-particles:
+            ring: {shape: ring, particle: DUST, color: "#55e0ff", size: 1.2, count: 30, radius: 2.0, height: 0.3, particles-min: 1, particles-max: 1}
+          sounds:
+            land: {sound: "entity.generic.explode", volume: 1.0, pitch: 0.8}
+            hit: {sound: "block.anvil.hit", volume: 0.6, pitch: 1.2}
+            open: {sound: "block.shulker_box.open", volume: 1.0, pitch: 1.0}
+        netherite:
+          display-name: "netherite"
+          rarity: "legendary"
+          weight: 4.0
+          health: 28
+          shulker-color: BLACK
+          gradient: ["#6b4f5e", "#2b1b24"]
+          trail: {shape: scatter, particle: DUST, color: "#7a3a4a", size: 1.0, count: 8, radius-min: 0.0, radius-max: 0.6, y-min: 0.0, y-max: 0.8, particles-min: 1, particles-max: 2}
+          land-particles:
+            ring: {shape: ring, particle: DUST, color: "#7a3a4a", size: 1.2, count: 30, radius: 2.0, height: 0.3, particles-min: 1, particles-max: 1}
+          sounds:
+            land: {sound: "entity.generic.explode", volume: 1.0, pitch: 0.6}
+            hit: {sound: "block.anvil.hit", volume: 0.6, pitch: 0.9}
+            open: {sound: "block.shulker_box.open", volume: 1.0, pitch: 1.0}

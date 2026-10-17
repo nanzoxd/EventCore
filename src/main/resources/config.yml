@@ -1,0 +1,27 @@
+# EventCore main configuration. Everything here is also editable in-game: /eventcore gui
+# Gradient palette used by the <g> tag in every message, title and bossbar.
+palette:
+  - "#ff6666"
+  - "#ffbd55"
+  - "#ffff66"
+  - "#9de24f"
+  - "#87cefa"
+style:
+  small-caps: true      # convert template text to small caps (placeholder values are left alone)
+  strip-bold: true      # never render bold
+  title-times:          # ticks
+    fade-in: 10
+    stay: 70
+    fade-out: 20
+# Timezone for scheduled events (IANA name, e.g. Europe/Berlin, America/New_York)
+timezone: "UTC"
+max-concurrent-events: 2
+# Groups of events that can never run together (ids or aliases)
+incompatible-events:
+  - [anonymous, glow]
+sounds:
+  # default sound for chat broadcasts (a message can override it with its own sound section)
+  broadcast: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
+particles:
+  compute-async: false  # compute particle offsets off-thread (spawn is always on the region thread)
+  force: false          # show particles to players beyond normal range

@@ -20,6 +20,15 @@ to template text (switch: `style.small-caps`). Missing keys are added from the d
 /ritualcreator (/rcreator, /creator)                         (eventcore.ritual)
 eventcore.bypass skips blocked commands during Locator Bar and shows real names to admins during Anonymous.
 
+## Discord notifications
+In config.yml set `discord.enabled: true` and paste your webhook URL under `discord.webhook-url`.
+Sent for: event start/end, scheduled start warnings, lootdrop landed/opened, ritual start/complete/stop.
+Each toggle, colour, the ping (`discord.mention`) and the server name are configurable.
+
+## Loot editing
+`/eventcore airdrop loot [tier]` opens the loot editor. Admins (eventcore.gui) can also **sneak + click a crate**, falling
+or landed, to open the editor for that crate's tier. Add items by clicking the green slot with an item on your cursor.
+
 ## Notes on behaviour
 * `rig` queues an event: the next `/eventcore start <count>` roll (or random pick) takes rigged events first.
 * The airdrop code is displayed (bossbar, actionbar, title, chat) and on the crate hologram; it is not an input.
@@ -28,8 +37,11 @@ eventcore.bypass skips blocked commands during Locator Bar and shows real names 
 * Reloading while a ritual runs keeps it running and warns admins, like the original script.
 * `/eventcore gui` lists every key of every file with a widget for its type, so every setting is editable in-game.
 
+## Updating
+Delete the old `plugins/EventCore/` config files (config, events, messages, gui) once so the new defaults are written.
+
 ## Known limits
-* Anonymous skin hiding is not implemented (needs a packet library).
+* Anonymous skin uses Paper's profile API with the texture link in events.yml (settings.skin.url); check that skin loads on your server.
 * Scoreboard teams (glow colours, hidden nametags) are limited on Folia; failures are logged once.
 * This source was written without access to a compiler or Paper API in the authoring environment: it has not been
   built or run. Expect to fix a few compile errors on the first `mvn package`.

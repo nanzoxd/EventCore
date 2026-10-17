@@ -28,7 +28,6 @@ import java.util.*;
  * The gamerule is written through the string API so the plugin still loads on servers that predate it.
  */
 public final class LocatorBarEvent extends GameEvent {
-    private final Map<String, String> originals = new HashMap<>();
     private long lastSweep;
 
     public LocatorBarEvent(EventCorePlugin pl) { super(pl, "locator_bar"); }
@@ -38,25 +37,42 @@ public final class LocatorBarEvent extends GameEvent {
         return l.isEmpty() || l.contains(w.getName());
     }
 
+    private final Map<String, Boolean> savedRule = new HashMap<>();
+
+    /** Typed gamerule first (works across renames), then the old/new string names as fallback. */
+    private Boolean getRule(World w) {
+        try { Boolean v = w.getGameRuleValue(org.bukkit.GameRule.LOCATOR_BAR); if (v != null) return v; } catch (Throwable ignored) { }
+        for (String n : new String[]{"locatorBar", "locator_bar"}) {
+            try { String v = w.getGameRuleValue(n); if (v != null) return Boolean.parseBoolean(v); } catch (Throwable ignored) { }
+        }
+        return null;
+    }
+
+    private boolean setRule(World w, boolean value) {
+        try { if (w.setGameRule(org.bukkit.GameRule.LOCATOR_BAR, value)) return true; } catch (Throwable ignored) { }
+        for (String n : new String[]{"locatorBar", "locator_bar"}) {
+            try { if (w.setGameRuleValue(n, String.valueOf(value))) return true; } catch (Throwable ignored) { }
+        }
+        return false;
+    }
+
     @Override public void onStart(ActiveEvent ae) {
-        originals.clear();
+        savedRule.clear();
         for (World w : Bukkit.getWorlds()) {
             if (!worldAllowed(w)) continue;
-            try {
-                String old = w.getGameRuleValue("locatorBar");
-                if (old == null) { pl.getLogger().warning("This server has no locatorBar gamerule (needs 1.21.6+)."); return; }
-                originals.put(w.getName(), old);
-                w.setGameRuleValue("locatorBar", "true");
-            } catch (Throwable t) { pl.getLogger().warning("locatorBar gamerule failed: " + t.getMessage()); }
+            Boolean old = getRule(w);
+            if (old == null) { pl.getLogger().warning("Locator bar: this server has no locator bar gamerule (needs 1.21.6+); world " + w.getName()); continue; }
+            savedRule.put(w.getName(), old);
+            if (!setRule(w, true)) pl.getLogger().warning("Locator bar: could not enable the gamerule in " + w.getName());
         }
     }
 
     @Override public void onStop(ActiveEvent ae) {
-        for (Map.Entry<String, String> e : originals.entrySet()) {
+        for (Map.Entry<String, Boolean> e : savedRule.entrySet()) {
             World w = Bukkit.getWorld(e.getKey());
-            if (w != null) { try { w.setGameRuleValue("locatorBar", e.getValue()); } catch (Throwable ignored) { } }
+            if (w != null) setRule(w, e.getValue());
         }
-        originals.clear();
+        savedRule.clear();
     }
 
     @Override protected void doApply(Player p) { p.removePotionEffect(PotionEffectType.INVISIBILITY); }

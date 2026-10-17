@@ -92,6 +92,7 @@ public final class EventManager implements Listener {
         ConfigurationSection s = ae.ev.sec();
         Map<String, Object> m = Text.ph(
                 "event", pl.text.sc(ae.ev.displayName()),
+                "event_name", Util.title(ae.ev.displayName()),
                 "description", pl.text.sc(s.getString("description", "")),
                 "minutes", ae.totalSec / 60,
                 "time", Util.mmss(ae.secondsLeft()),
@@ -140,6 +141,7 @@ public final class EventManager implements Listener {
         pl.fx.playAll(s.getConfigurationSection("sounds.start"));
         pl.fx.title(Bukkit.getServer(), s.getConfigurationSection("titles.start"), ph);
         pl.fx.broadcast(s, "messages.start", ph, pl.cfg.messages().getString("prefix", ""));
+        pl.discord.eventStarted(Util.title(ev.displayName()), s.getString("description", ""), minutes);
 
         ConfigurationSection anim = s.getConfigurationSection("start-animation");
         if (anim != null && anim.getBoolean("enabled", true))

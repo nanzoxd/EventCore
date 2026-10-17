@@ -1,11 +1,21 @@
 # EventCore main configuration. Everything here is also editable in-game: /eventcore gui
 # Gradient palette used by the <g> tag in every message, title and bossbar.
-palette:
-  - "#ff6666"
-  - "#ffbd55"
-  - "#ffff66"
-  - "#9de24f"
-  - "#87cefa"
+palette:            # gold palette
+  - "#d8b04a"
+  - "#e8c670"
+  - "#f1d58f"
+  - "#f7e2ad"
+  - "#fff0cc"
+# Bossbars use this gradient (<bb> tag): "Lootdrop Falling | 10 20 30"
+bossbar-gradient: ["#2FD0CD", "#C5F2F1", "#2FD0CD"]
+# GUI colours (same theme as the Teams plugin)
+theme:
+  main: "#F47F6A"
+  soft: "#FAB2A0"
+  good: "#2EFF2E"
+  bad: "#FF2E4A"
+  warn: "#FFFF5C"
+  info: "#00C3FF"
 style:
   small-caps: true      # convert template text to small caps (placeholder values are left alone)
   strip-bold: true      # never render bold
@@ -25,3 +35,25 @@ sounds:
 particles:
   compute-async: false  # compute particle offsets off-thread (spawn is always on the region thread)
   force: false          # show particles to players beyond normal range
+# Discord webhook notifications (mini events, lootdrops, rituals). Set enabled: true and paste the webhook URL.
+discord:
+  enabled: false
+  webhook-url: ""
+  username: "EventCore"
+  avatar-url: ""
+  server-name: "My Server"
+  mention: ""              # pinged on event start / lootdrop landed / ritual start, e.g. "<@&123456789>" or "@everyone"
+  notify:
+    event-start: true
+    schedule-warning: true
+    airdrop-landed: true
+    airdrop-opened: true
+    ritual-start: true
+    ritual-complete: true
+    ritual-stop: true
+  colors:
+    start: "#2EFF2E"
+    end: "#FF2E4A"
+    warn: "#FFFF5C"
+    airdrop: "#d8b04a"
+    ritual: "#F47F6A"

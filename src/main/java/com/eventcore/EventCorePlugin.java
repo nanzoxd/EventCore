@@ -24,6 +24,7 @@ public final class EventCorePlugin extends JavaPlugin {
     public Text text;
     public Sched sched;
     public Fx fx;
+    public DiscordHook discord;
     public BossBars bars;
     public ParticleEngine particles;
     public TeamService teams;
@@ -44,6 +45,7 @@ public final class EventCorePlugin extends JavaPlugin {
         text = new Text(this);
         sched = new Sched(this);
         fx = new Fx(this);
+        discord = new DiscordHook(this);
         bars = new BossBars(this);
         particles = new ParticleEngine(this);
         teams = new TeamService(this);

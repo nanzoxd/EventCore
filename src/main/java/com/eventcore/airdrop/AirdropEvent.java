@@ -34,8 +34,6 @@ public final class AirdropEvent extends GameEvent {
     private volatile int spawned;
     private volatile long nextDropAt;
     private long startedAt;
-    private double phase = -1;
-    private int scrollPos;
     private ScheduledTask barTask;
 
     public AirdropEvent(EventCorePlugin pl) { super(pl, "airdrop"); }
@@ -64,7 +62,7 @@ public final class AirdropEvent extends GameEvent {
         ConfigurationSection t = tierSec(id);
         String n = t == null ? id : t.getString("display-name", id);
         List<String> g = t == null ? List.of() : t.getStringList("gradient");
-        return pl.text.gradient(pl.text.sc(n), g.isEmpty() ? pl.text.palette() : g, 0);
+        return pl.text.gradient(com.eventcore.util.Util.title(n), g.isEmpty() ? pl.text.palette() : g, 0);
     }
 
     /** Tier value, falling back to the event-wide default at the same relative path. */
@@ -90,22 +88,32 @@ public final class AirdropEvent extends GameEvent {
     @Override public boolean ownsBarTitle() { return true; }
 
     @Override public Map<String, Object> extra(ActiveEvent ae) {
-        return Text.ph("code", code, "status", status(), "crates", crates.size());
+        return Text.ph("code", code, "status", status(), "coords", coords(), "crates", crates.size());
+    }
+
+    /** The crate the bossbar talks about: a falling one first, otherwise any unopened one. */
+    public AirdropCrate focus() {
+        AirdropCrate other = null;
+        for (AirdropCrate c : crates.values()) {
+            if (c.state == State.FALLING) return c;
+            if (c.state != State.OPENED) other = c;
+        }
+        return other;
     }
 
     private String status() {
         ConfigurationSection st = settings().getConfigurationSection("status");
-        boolean falling = false, ready = false;
-        for (AirdropCrate c : crates.values()) {
-            if (c.state == State.FALLING) falling = true;
-            else if (c.state != State.OPENED) ready = true;
-        }
-        String key = falling ? "falling" : ready ? "landed" : "waiting";
+        AirdropCrate f = focus();
         int max = settings().getInt("spawn.max-crates", 5);
-        if (!falling && !ready && spawned >= max && max > 0) key = "done";
-        String tpl = st == null ? key : st.getString(key, key);
-        int secs = (int) Math.max(0, (nextDropAt - System.currentTimeMillis()) / 1000);
-        return pl.text.expand(tpl, Text.ph("seconds", secs));
+        String key = f == null ? ((max > 0 && spawned >= max) ? "done" : "waiting") : f.state == State.FALLING ? "falling" : "landed";
+        return st == null ? key : st.getString(key, key);
+    }
+
+    private String coords() {
+        AirdropCrate f = focus();
+        if (f != null) return f.coords();
+        long secs = Math.max(0, (nextDropAt - System.currentTimeMillis()) / 1000);
+        return secs + "s";
     }
 
     @Override public void onStart(ActiveEvent ae) {
@@ -113,13 +121,7 @@ public final class AirdropEvent extends GameEvent {
         spawned = 0;
         startedAt = System.currentTimeMillis();
         nextDropAt = startedAt + settings().getInt("spawn.first-delay-seconds", 20) * 1000L;
-        ConfigurationSection c = settings().getConfigurationSection("code");
-        Map<String, Object> ph = Text.ph("code", code);
-        if (c != null) {
-            if (c.getBoolean("show-title", true)) pl.fx.title(Bukkit.getServer(), c.getConfigurationSection("title"), ph);
-            if (c.contains("chat")) pl.fx.broadcast(c, "chat", ph, pl.cfg.messages().getString("prefix", ""));
-        }
-        int period = Math.max(1, settings().getInt("bossbar-scroll.speed-ticks", 3));
+        int period = Math.max(1, settings().getInt("bossbar-update-ticks", 5));
         barTask = pl.sched.globalTimer(t -> animateBar(ae, t), 1, period);
     }
 
@@ -130,11 +132,6 @@ public final class AirdropEvent extends GameEvent {
 
     @Override public void onSecond(ActiveEvent ae, int left) {
         long now = System.currentTimeMillis();
-        ConfigurationSection c = settings().getConfigurationSection("code");
-        if (c != null && c.getBoolean("show-actionbar", true) && now - startedAt < c.getInt("actionbar-seconds", 30) * 1000L) {
-            var comp = pl.text.render(c.getString("actionbar", "<g>airdrop code: {code}</g>"), Text.ph("code", code));
-            for (Player p : Bukkit.getOnlinePlayers()) p.sendActionBar(comp);
-        }
         int max = settings().getInt("spawn.max-crates", 5);
         int stopBefore = settings().getInt("spawn.stop-spawning-seconds-before-end", 60);
         if (now >= nextDropAt && (max <= 0 || spawned < max) && left > stopBefore) {
@@ -144,25 +141,16 @@ public final class AirdropEvent extends GameEvent {
         }
     }
 
-    /** Scrolling / gradient-shifting bossbar text. Runs on the global scheduler. */
+    /** Simple bossbar: "Lootdrop Falling | 10 20 30" in the bossbar gradient; the bar fills as the crate falls. */
     private void animateBar(ActiveEvent ae, ScheduledTask t) {
-        if (ae.bar == null || !isActiveAe(ae)) { if (!isActiveAe(ae)) t.cancel(); return; }
-        ConfigurationSection sc = settings().getConfigurationSection("bossbar-scroll");
-        String plain = pl.text.expand(settings().getString("bossbar-text", "airdrop code {code} | {status}"),
-                Text.ph("code", code, "status", status(), "crates", crates.size()));
-        if (sc != null && sc.getBoolean("enabled", true)) {
-            int width = Math.max(8, sc.getInt("width", 34));
-            String loop = plain + "     ";
-            if (plain.length() > width || sc.getBoolean("always-scroll", true)) {
-                scrollPos = (scrollPos + 1) % loop.length();
-                StringBuilder b = new StringBuilder();
-                for (int i = 0; i < width; i++) b.append(loop.charAt((scrollPos + i) % loop.length()));
-                plain = b.toString();
-            }
-            phase += sc.getDouble("gradient-speed", 0.04);
-            if (phase > 1) phase = -1;
-        }
-        ae.bar.name(pl.text.paletteGradient(plain, phase));
+        if (!isActiveAe(ae)) { t.cancel(); return; }
+        if (ae.bar == null) return;
+        String plain = pl.text.expandPlain(settings().getString("bossbar-text", "Lootdrop {status} | {coords}"),
+                Text.ph("code", code, "status", status(), "coords", coords(), "crates", crates.size()));
+        ae.bar.name(pl.text.bossbar(plain));
+        AirdropCrate f = focus();
+        ae.bar.progress(f != null && f.state == State.FALLING ? com.eventcore.util.BossBars.clamp(f.fallProgress())
+                : com.eventcore.util.BossBars.clamp(ae.secondsLeft() / (double) Math.max(1, ae.totalSec)));
     }
 
     private boolean isActiveAe(ActiveEvent ae) { return pl.events.active(id()) == ae; }
@@ -176,7 +164,10 @@ public final class AirdropEvent extends GameEvent {
             ConfigurationSection a = sp.getConfigurationSection("area");
             World w = a == null ? null : Bukkit.getWorld(a.getString("world", "world"));
             if (w == null || a == null) return;
-            attempt(w, a.getDouble("center-x"), a.getDouble("center-z"), 0, a.getDouble("radius", 500), tier, 0);
+            double cx = a.getDouble("center-x"), cz = a.getDouble("center-z");
+            if (a.getBoolean("use-world-spawn", true)) { Location sp0 = w.getSpawnLocation(); cx = sp0.getX(); cz = sp0.getZ(); }
+            // half-size blocks to each side of the centre: a square of 2*half-size, picked uniformly
+            attempt(w, cx, cz, 0, a.getDouble("half-size", 4000), tier, 0, true);
             return;
         }
         List<Player> candidates = new ArrayList<>();
@@ -187,21 +178,22 @@ public final class AirdropEvent extends GameEvent {
         Player p = candidates.get(ThreadLocalRandom.current().nextInt(candidates.size()));
         pl.sched.entity(p, () -> {
             Location l = p.getLocation();
-            attempt(l.getWorld(), l.getX(), l.getZ(), sp.getDouble("min-distance", 30), sp.getDouble("max-distance", 120), tier, 0);
+            attempt(l.getWorld(), l.getX(), l.getZ(), sp.getDouble("min-distance", 30), sp.getDouble("max-distance", 120), tier, 0, false);
         });
     }
 
-    private void attempt(World w, double cx, double cz, double minD, double maxD, String tier, int tries) {
+    private void attempt(World w, double cx, double cz, double minD, double maxD, String tier, int tries, boolean square) {
         if (tries >= settings().getInt("spawn.max-attempts", 8)) return;
         ThreadLocalRandom r = ThreadLocalRandom.current();
         double ang = r.nextDouble(Math.PI * 2);
         double dist = maxD <= minD ? minD : r.nextDouble(minD, maxD);
-        final int x = (int) Math.floor(cx + Math.cos(ang) * dist), z = (int) Math.floor(cz + Math.sin(ang) * dist);
+        final int x = square ? (int) Math.floor(cx + r.nextDouble(-maxD, maxD)) : (int) Math.floor(cx + Math.cos(ang) * dist);
+        final int z = square ? (int) Math.floor(cz + r.nextDouble(-maxD, maxD)) : (int) Math.floor(cz + Math.sin(ang) * dist);
         w.getChunkAtAsync(x >> 4, z >> 4).thenAccept(ch -> pl.sched.region(new Location(w, x, 64, z), () -> {
             int y = w.getHighestBlockYAt(x, z, HeightMap.MOTION_BLOCKING_NO_LEAVES);
             Block b = w.getBlockAt(x, y, z);
             if (settings().getBoolean("spawn.avoid-liquids", true) && b.isLiquid()) {
-                attempt(w, cx, cz, minD, maxD, tier, tries + 1);
+                attempt(w, cx, cz, minD, maxD, tier, tries + 1, square);
                 return;
             }
             spawnCrate(tier, new Location(w, x + 0.5, y + 1, z + 0.5));
@@ -235,24 +227,38 @@ public final class AirdropEvent extends GameEvent {
     }
 
     // ---------- listeners ----------
+    /** Admins (eventcore.gui) who sneak and click a crate, falling or landed, open that tier's loot editor. */
+    private boolean openEditor(Player p, AirdropCrate c) {
+        if (!p.isSneaking() || !p.hasPermission("eventcore.gui")) return false;
+        pl.sched.entity(p, () -> pl.lootGui.openEntries(p, c.tier(), 0));
+        return true;
+    }
+
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onAttack(PrePlayerAttackEntityEvent e) {
         AirdropCrate c = crates.get(e.getAttacked().getUniqueId());
         if (c == null) return;
         e.setCancelled(true);
+        if (openEditor(e.getPlayer(), c)) return;
         c.hit(e.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onInteract(PlayerInteractEntityEvent e) {
+        if (e.getRightClicked().getPersistentDataContainer().has(AirdropCrate.CHUTE, org.bukkit.persistence.PersistentDataType.BYTE)) {
+            e.setCancelled(true);
+            return;
+        }
         AirdropCrate c = crates.get(e.getRightClicked().getUniqueId());
         if (c == null) return;
         e.setCancelled(true);
+        if (openEditor(e.getPlayer(), c)) return;
         c.interact(e.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onDamage(EntityDamageEvent e) {
-        if (crates.containsKey(e.getEntity().getUniqueId())) e.setCancelled(true);
+        if (crates.containsKey(e.getEntity().getUniqueId())
+                || e.getEntity().getPersistentDataContainer().has(AirdropCrate.CHUTE, org.bukkit.persistence.PersistentDataType.BYTE)) e.setCancelled(true);
     }
 }

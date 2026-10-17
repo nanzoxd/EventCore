@@ -1,5 +1,5 @@
 # Events. Every event has the same structure; "settings" holds event-specific options.
-# Placeholders: {event} {description} {minutes} {time}  (airdrop adds {code} {status} {crates})
+# Placeholders: {event} {description} {minutes} {time}  (airdrop adds {status} {coords} {crates})
 scheduler:
   enabled: true
   warnings: [300, 60, 10]    # seconds before a scheduled start
@@ -15,7 +15,7 @@ events:
     cooldown-minutes: 0
     bossbar:
       enabled: true
-      text: "<g>{event}</g> <dark_gray>|</dark_gray> <g>{time}</g>"
+      text: "<bb>{event_name} | {time}</bb>"
       color: RED
       style: PROGRESS
       countdown: true
@@ -61,7 +61,7 @@ events:
     cooldown-minutes: 0
     bossbar:
       enabled: true
-      text: "<g>{event}</g> <dark_gray>|</dark_gray> <g>{time}</g>"
+      text: "<bb>{event_name} | {time}</bb>"
       color: YELLOW
       style: PROGRESS
       countdown: true
@@ -110,7 +110,7 @@ events:
     cooldown-minutes: 0
     bossbar:
       enabled: true
-      text: "<g>{event}</g> <dark_gray>|</dark_gray> <g>{time}</g>"
+      text: "<bb>{event_name} | {time}</bb>"
       color: YELLOW
       style: PROGRESS
       countdown: true
@@ -147,7 +147,7 @@ events:
     settings:
       drop-item: GOLDEN_APPLE
       replace-apples: true
-      bonus-chance: 0.0    # percent chance that ANY leaf drops the item as well
+      drop-chance: 6.0     # percent chance per broken/decayed leaf (vanilla apple chance is about 0.5)
       amount-min: 1
       amount-max: 1
       block-swap:          # optional client-side visual swap (never changes the world)
@@ -166,7 +166,7 @@ events:
     cooldown-minutes: 0
     bossbar:
       enabled: true
-      text: "<g>{event}</g> <dark_gray>|</dark_gray> <g>{time}</g>"
+      text: "<bb>{event_name} | {time}</bb>"
       color: GREEN
       style: PROGRESS
       countdown: true
@@ -208,6 +208,10 @@ events:
       hide-advancements: true
       tablist-mode: ANON   # ANON, BLANK or OFF
       reveal-to-admins: true   # players with eventcore.bypass see the real name in brackets
+      skin:                    # everyone gets this skin while the event runs (needs Paper's profile API)
+        enabled: true
+        url: "http://textures.minecraft.net/texture/1a4af718455d4aab528e7a61f86fa25e6a369d1768dcb13f7df319a713eb810b"
+        slim: false
   glow:
     enabled: true
     display-name: "glow"
@@ -218,7 +222,7 @@ events:
     cooldown-minutes: 0
     bossbar:
       enabled: true
-      text: "<g>{event}</g> <dark_gray>|</dark_gray> <g>{time}</g>"
+      text: "<bb>{event_name} | {time}</bb>"
       color: BLUE
       style: PROGRESS
       countdown: true
@@ -263,7 +267,7 @@ events:
     cooldown-minutes: 0
     bossbar:
       enabled: true
-      text: "<g>{event}</g> <dark_gray>|</dark_gray> <g>{time}</g>"
+      text: "<bb>{event_name} | {time}</bb>"
       color: BLUE
       style: PROGRESS
       countdown: true
@@ -318,7 +322,7 @@ events:
     cooldown-minutes: 0
     bossbar:
       enabled: true
-      text: "<g>{event}</g> <dark_gray>|</dark_gray> <g>{time}</g>"
+      text: "<bb>{event_name} | {time}</bb>"
       color: PURPLE
       style: PROGRESS
       countdown: true
@@ -353,46 +357,46 @@ events:
       days: [ALL]          # ALL or MONDAY, TUESDAY ...
       interval-minutes: 180
     settings:
-      code:
-        length: 6
-        charset: "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-        show-bossbar: true
-        show-actionbar: true
-        actionbar-seconds: 30
-        show-title: true
-        title: {title: "<g>airdrop code</g>", subtitle: "<white>{code}</white>"}
-        actionbar: "<g>airdrop code:</g> <white>{code}</white>"
-        chat:
-          text: "<g>airdrop incoming! code:</g> <white>{code}</white>"
-          sound: {sound: "entity.firework_rocket.launch", volume: 0.8, pitch: 1.0}
-      bossbar-text: "airdrop code {code} | {status}"
-      bossbar-scroll: {enabled: true, always-scroll: true, width: 34, speed-ticks: 3, gradient-speed: 0.04}
+      bossbar-text: "Lootdrop {status} | {coords}"   # {status} {coords}
+      bossbar-update-ticks: 5
       status:
-        waiting: "next drop in {seconds}s"
-        falling: "loot is dropping"
-        landed: "loot is ready"
-        done: "all loot claimed"
+        waiting: "Incoming"
+        falling: "Falling"
+        landed: "Landed"
+        done: "Done"
       spawn:
         first-delay-seconds: 20
         interval-seconds: 120
         max-crates: 5
         stop-spawning-seconds-before-end: 60
-        mode: AROUND_PLAYER    # AROUND_PLAYER or AREA
+        mode: AREA             # AREA (square around world spawn) or AROUND_PLAYER
         worlds: []
         min-distance: 30.0
         max-distance: 120.0
-        area: {world: "world", center-x: 0.0, center-z: 0.0, radius: 500.0}
+        area:
+          world: "world"
+          use-world-spawn: true   # centre = world spawn, otherwise center-x / center-z
+          center-x: 0.0
+          center-z: 0.0
+          half-size: 4000         # blocks to EACH side of the centre (a 8000 x 8000 square)
         avoid-liquids: true
         max-attempts: 8
       fall:
-        height: 70.0
-        time-seconds: 8.0
+        height: 90.0
+        time-seconds: 15.0        # the crate always takes exactly this long to reach the ground
         easing: LINEAR         # LINEAR or EASE_IN
         sound: {sound: "item.elytra.flying", volume: 1.0, pitch: 0.5}
         sound-interval-ticks: 10
         trail: {shape: scatter, particle: CLOUD, count: 6, radius-min: 0.0, radius-max: 0.5, y-min: 0.0, y-max: 0.8, particles-min: 1, particles-max: 1}
         hologram-offset: 2.0
+        flare: {shape: spiral, particle: END_ROD, count: 30, radius: 0.3, height: 0.0, rise: 25.0, turns: 6.0, spin: 12.0, particles-min: 1, particles-max: 1}
+      parachute:                 # chickens leashed to an invisible slime, like Airdrop 4.x
+        enabled: true
+        chickens: 5
+        height: 3.2
+        radius: 1.4
       land:
+        smoke: {shape: spiral, particle: CLOUD, count: 24, radius: 0.4, height: 0.0, rise: 18.0, turns: 4.0, spin: 8.0, particles-min: 1, particles-max: 1}
         sound: {sound: "entity.generic.explode", volume: 1.0, pitch: 0.8}
         shockwave:
           enabled: true
@@ -402,7 +406,7 @@ events:
           layer: {shape: ring, particle: CLOUD, count: 40, height: 0.2, particles-min: 1, particles-max: 1}
         title: {title: "<g>airdrop landed</g>", subtitle: "<gray>{world} [{x}, {y}, {z}]</gray>"}
         chat:
-          text: "{tier} <g>crate landed at {world} [{x}, {y}, {z}] (code {code})</g>"
+          text: "{tier} <g>crate landed at {world} [{x}, {y}, {z}]</g>"
           sound: {sound: "block.note_block.bell", volume: 0.8, pitch: 1.0}
         broadcast-title: true
         lock-seconds: 3
@@ -410,11 +414,11 @@ events:
       hit:
         damage-per-hit: 1
         sound: {sound: "block.anvil.hit", volume: 0.6, pitch: 1.6}
-        actionbar: "<g>{bar}</g> <gray>{hp}/{max}</gray>"
+        actionbar: "<n>{bar} <white>{hp}</white><gray>/{max}</gray></n>"
       open:
         sound: {sound: "block.shulker_box.open", volume: 1.0, pitch: 1.0}
         chat:
-          text: "<g>{player} opened a</g> {tier} <g>crate (code {code})</g>"
+          text: "<g>{player} opened a</g> {tier} <g>crate</g>"
           sound: {sound: "entity.player.levelup", volume: 0.8, pitch: 1.2}
         particles:
           burst: {shape: burst, particle: DUST, color: "#ffffff", size: 1.0, count: 30, radius-min: 0.5, radius-max: 2.0, height: 0.8, particles-min: 1, particles-max: 1}
@@ -424,15 +428,17 @@ events:
         locked: "<red>this crate is locked for {seconds}s</red>"
       hologram:
         enabled: true
-        falling: "{tier} <gray>#{code}</gray><newline><g>lands in {time}s</g>"
-        locked: "{tier} <gray>#{code}</gray><newline><red>locked ({seconds}s)</red>"
-        ready: "{tier} <gray>#{code}</gray><newline><g>{bar}</g> <gray>{hp}/{max}</gray>"
+        offset: 1.9
+        scale: 1.1
+        falling: "<n>{tier} <white>Crate</white><newline><gray>Landing in <white>{time}s</white></gray></n>"
+        locked: "<n>{tier} <white>Crate</white><newline><red>Locked <white>{seconds}s</white></red></n>"
+        ready: "<n>{tier} <white>Crate</white><newline>{bar}<newline><white>{hp}</white><gray>/{max} HP</gray><newline><yellow>Punch to open</yellow></n>"
       tiers:
         iron:
           display-name: "iron"
           rarity: "common"
           weight: 55.0
-          health: 8
+          health: 40
           shulker-color: LIGHT_GRAY
           gradient: ["#d0d4d9", "#8e969e"]
           trail: {shape: scatter, particle: DUST, color: "#c0c4c8", size: 1.0, count: 8, radius-min: 0.0, radius-max: 0.6, y-min: 0.0, y-max: 0.8, particles-min: 1, particles-max: 2}
@@ -446,7 +452,7 @@ events:
           display-name: "gold"
           rarity: "uncommon"
           weight: 28.0
-          health: 12
+          health: 60
           shulker-color: YELLOW
           gradient: ["#ffe066", "#ffa800"]
           trail: {shape: scatter, particle: DUST, color: "#ffcc33", size: 1.0, count: 8, radius-min: 0.0, radius-max: 0.6, y-min: 0.0, y-max: 0.8, particles-min: 1, particles-max: 2}
@@ -460,7 +466,7 @@ events:
           display-name: "diamond"
           rarity: "rare"
           weight: 13.0
-          health: 18
+          health: 90
           shulker-color: LIGHT_BLUE
           gradient: ["#7ef6ff", "#2bb6e6"]
           trail: {shape: scatter, particle: DUST, color: "#55e0ff", size: 1.0, count: 8, radius-min: 0.0, radius-max: 0.6, y-min: 0.0, y-max: 0.8, particles-min: 1, particles-max: 2}
@@ -474,7 +480,7 @@ events:
           display-name: "netherite"
           rarity: "legendary"
           weight: 4.0
-          health: 28
+          health: 140
           shulker-color: BLACK
           gradient: ["#6b4f5e", "#2b1b24"]
           trail: {shape: scatter, particle: DUST, color: "#7a3a4a", size: 1.0, count: 8, radius-min: 0.0, radius-max: 0.6, y-min: 0.0, y-max: 0.8, particles-min: 1, particles-max: 2}

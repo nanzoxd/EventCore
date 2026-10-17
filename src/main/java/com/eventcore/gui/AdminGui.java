@@ -1,50 +1,42 @@
 package com.eventcore.gui;
 
 import com.eventcore.EventCorePlugin;
-import com.eventcore.util.Text;
+import com.eventcore.event.EventManager.ActiveEvent;
+import com.eventcore.event.GameEvent;
 import com.eventcore.util.Util;
-import net.kyori.adventure.bossbar.BossBar;
-import net.kyori.adventure.key.Key;
-import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
-import org.bukkit.DyeColor;
 import org.bukkit.Material;
-import org.bukkit.Particle;
-import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
-import java.time.LocalTime;
-import java.time.ZoneId;
 import java.util.*;
-import java.util.regex.Pattern;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 /**
- * /eventcore gui. A main menu (layout in gui.yml) plus a generic YAML browser: every key of every config file is
- * listed with a widget matching its type, so literally every setting is editable in-game.
- * Booleans toggle, numbers step or take chat input, strings take chat input (sounds preview on right click),
- * lists add/remove entries. Values are validated, saved at once and applied live.
+ * Simple admin menu (/eventcore gui), coral theme from config.yml theme.*:
+ *   main -> Events | Airdrop | Loot tables | Ritual creator | Reload
+ * Events: left = on/off, right = start/stop, shift = duration +-5m.
+ * Airdrop: every number is a stepper (left +, right -, shift x5). Everything else lives in the yml files.
  */
 public final class AdminGui implements Listener {
-    private static final Pattern HEX = Pattern.compile("#[0-9a-fA-F]{6}");
+    private static final MiniMessage MM = MiniMessage.miniMessage();
+    private static final String AIR = "events.airdrop.settings.";
 
-    static final class MainHolder implements InventoryHolder {
-        Inventory inv; final Map<Integer, ConfigurationSection> actions = new HashMap<>();
-        @Override public Inventory getInventory() { return inv; }
-    }
-    static final class BrowserHolder implements InventoryHolder {
-        Inventory inv; String file, path; int page; final List<String> keys = new ArrayList<>();
+    static final class Page implements InventoryHolder {
+        Inventory inv; Runnable fill;
+        final Map<Integer, BiConsumer<Player, ClickType>> acts = new HashMap<>();
         @Override public Inventory getInventory() { return inv; }
     }
 
@@ -52,251 +44,161 @@ public final class AdminGui implements Listener {
 
     public AdminGui(EventCorePlugin pl) { this.pl = pl; }
 
-    private Component plain(String s, NamedTextColor c) { return Component.text(s, c).decoration(TextDecoration.ITALIC, false); }
-
-    // ---------- main menu ----------
-    public void openMain(Player p) {
-        ConfigurationSection g = pl.cfg.gui().getConfigurationSection("admin-main");
-        MainHolder h = new MainHolder();
-        h.inv = Bukkit.createInventory(h, Math.max(1, Math.min(6, g.getInt("rows", 3))) * 9, pl.text.render(g.getString("title", "eventcore admin"), null));
-        ConfigurationSection items = g.getConfigurationSection("items");
-        if (items != null) for (String k : items.getKeys(false)) {
-            ConfigurationSection s = items.getConfigurationSection(k);
-            if (s == null) continue;
-            h.inv.setItem(s.getInt("slot"), GuiUtil.item(pl, s, Map.of()));
-            h.actions.put(s.getInt("slot"), s);
-        }
-        p.openInventory(h.inv);
+    // ---------- theme helpers ----------
+    private String th(String key, String def) { return pl.cfg.config().getString("theme." + key, def); }
+    private String fmt(String s) {
+        return s.replace("%main%", th("main", "#F47F6A")).replace("%soft%", th("soft", "#FAB2A0"))
+                .replace("%good%", th("good", "#2EFF2E")).replace("%bad%", th("bad", "#FF2E4A"))
+                .replace("%warn%", th("warn", "#FFFF5C")).replace("%info%", th("info", "#00C3FF"));
     }
+    private Component mm(String s) { return MM.deserialize("<!italic>" + fmt(s)); }
 
-    // ---------- browser ----------
-    public void openBrowser(Player p, String file, String path, int page) {
-        BrowserHolder h = new BrowserHolder();
-        h.file = file; h.path = path; h.page = page;
-        h.inv = Bukkit.createInventory(h, 54, pl.text.render("<g>" + file + (path.isEmpty() ? "" : " > " + path) + "</g>", null));
-        render(h);
-        p.openInventory(h.inv);
-    }
-
-    private ConfigurationSection section(BrowserHolder h) {
-        YamlConfiguration y = pl.cfg.get(h.file);
-        if (y == null) return null;
-        return h.path.isEmpty() ? y : y.getConfigurationSection(h.path);
-    }
-
-    private void render(BrowserHolder h) {
-        h.inv.clear();
-        h.keys.clear();
-        ConfigurationSection s = section(h);
-        if (s == null) return;
-        h.keys.addAll(s.getKeys(false));
-        int from = h.page * 45;
-        for (int i = 0; i < 45 && from + i < h.keys.size(); i++) h.inv.setItem(i, icon(s, h.keys.get(from + i), h.path));
-        ConfigurationSection nav = pl.cfg.gui().getConfigurationSection("admin-browser.nav");
-        for (String k : List.of("prev", "up", "home", "reload", "next")) {
-            ConfigurationSection n = nav == null ? null : nav.getConfigurationSection(k);
-            if (n != null) h.inv.setItem(n.getInt("slot"), GuiUtil.item(pl, n, Map.of()));
-        }
-    }
-
-    private int navSlot(String key, int def) { return pl.cfg.gui().getInt("admin-browser.nav." + key + ".slot", def); }
-
-    private ItemStack icon(ConfigurationSection s, String key, String parent) {
-        Object v = s.get(key);
-        String full = parent.isEmpty() ? key : parent + "." + key;
-        Material m; List<Component> lore = new ArrayList<>();
-        lore.add(plain(full, NamedTextColor.DARK_GRAY));
-        if (v instanceof ConfigurationSection cs) {
-            m = Material.BOOKSHELF;
-            lore.add(plain(cs.getKeys(false).size() + " entries", NamedTextColor.GRAY));
-            if (cs.isBoolean("enabled")) {
-                lore.add(plain("enabled: " + cs.getBoolean("enabled"), cs.getBoolean("enabled") ? NamedTextColor.GREEN : NamedTextColor.RED));
-                lore.add(plain("shift-click: toggle enabled", NamedTextColor.GRAY));
-            }
-            lore.add(plain("click: open", NamedTextColor.YELLOW));
-        } else if (v instanceof Boolean b) {
-            m = b ? Material.LIME_DYE : Material.GRAY_DYE;
-            lore.add(plain("value: " + b, b ? NamedTextColor.GREEN : NamedTextColor.RED));
-            lore.add(plain("click: toggle", NamedTextColor.YELLOW));
-        } else if (v instanceof Number) {
-            m = Material.PAPER;
-            lore.add(plain("value: " + v, NamedTextColor.WHITE));
-            lore.add(plain("click: type a value | shift-left +step | shift-right -step", NamedTextColor.YELLOW));
-        } else if (v instanceof List<?> l) {
-            m = Material.WRITABLE_BOOK;
-            for (int i = 0; i < Math.min(8, l.size()); i++) lore.add(plain("- " + trim(String.valueOf(l.get(i))), NamedTextColor.WHITE));
-            if (l.size() > 8) lore.add(plain("... +" + (l.size() - 8), NamedTextColor.GRAY));
-            lore.add(plain("left: add | right: remove last | shift-right: clear", NamedTextColor.YELLOW));
-        } else {
-            m = key.equals("sound") ? Material.NOTE_BLOCK : Material.NAME_TAG;
-            lore.add(plain("value: " + trim(String.valueOf(v)), NamedTextColor.WHITE));
-            lore.add(plain("click: type a value" + (key.equals("sound") ? " | right: preview" : ""), NamedTextColor.YELLOW));
-        }
+    private ItemStack icon(Material m, String name, String... lore) {
         ItemStack it = new ItemStack(m);
         ItemMeta meta = it.getItemMeta();
-        meta.displayName(plain(key, NamedTextColor.GOLD));
-        meta.lore(lore);
+        meta.displayName(mm("<color:%main%>" + name));
+        List<Component> l = new ArrayList<>();
+        for (String s : lore) l.add(mm("<gray>" + s));
+        meta.lore(l);
+        meta.addItemFlags(ItemFlag.values());
         it.setItemMeta(meta);
         return it;
     }
 
-    private static String trim(String s) { return s.length() > 60 ? s.substring(0, 57) + "..." : s; }
+    private void open(Player p, String title, int rows, Consumer<Page> filler) {
+        Page pg = new Page();
+        pg.inv = Bukkit.createInventory(pg, rows * 9, mm("<gradient:%main%:%soft%>" + title + "</gradient>"));
+        pg.fill = () -> {
+            pg.inv.clear();
+            pg.acts.clear();
+            ItemStack glass = icon(Material.GRAY_STAINED_GLASS_PANE, " ");
+            for (int i = 0; i < pg.inv.getSize(); i++) pg.inv.setItem(i, glass);
+            filler.accept(pg);
+        };
+        pg.fill.run();
+        p.openInventory(pg.inv);
+    }
+
+    private void set(Page pg, int slot, ItemStack it, BiConsumer<Player, ClickType> act) {
+        pg.inv.setItem(slot, it);
+        if (act != null) pg.acts.put(slot, act);
+    }
+
+    private void back(Page pg, int slot) {
+        set(pg, slot, icon(Material.ARROW, "Back"), (p, c) -> openMain(p));
+    }
+
+    // ---------- pages ----------
+    public void openMain(Player p) {
+        open(p, "EventCore", 3, pg -> {
+            set(pg, 10, icon(Material.NETHER_STAR, "Events", "Turn events on or off and start them"), (pl2, c) -> openEvents(pl2));
+            set(pg, 12, icon(Material.SHULKER_BOX, "Airdrop", "Fall time, spawn area, crate health"), (pl2, c) -> openAirdrop(pl2));
+            set(pg, 14, icon(Material.CHEST, "Loot tables", "Edit what the crates drop"), (pl2, c) -> pl.lootGui.openTiers(pl2));
+            set(pg, 16, icon(Material.ENDER_EYE, "Ritual creator", "Open the ritual menu"), (pl2, c) -> pl.ritualGui.openMain(pl2));
+            set(pg, 22, icon(Material.LIME_DYE, "Reload", "Re-read every config file"), (pl2, c) -> { pl.reloadAll(pl2); pl2.closeInventory(); });
+        });
+    }
+
+    private Material eventIcon(String id) {
+        return switch (id) {
+            case "vulnerable" -> Material.REDSTONE;
+            case "shieldless" -> Material.SHIELD;
+            case "golden_trees" -> Material.GOLDEN_APPLE;
+            case "anonymous" -> Material.PLAYER_HEAD;
+            case "glow" -> Material.GLOWSTONE_DUST;
+            case "locator_bar" -> Material.COMPASS;
+            case "airdrop" -> Material.BEACON;
+            default -> Material.PAPER;
+        };
+    }
+
+    public void openEvents(Player p) {
+        open(p, "Events", 3, pg -> {
+            int slot = 10;
+            for (GameEvent ev : pl.events.registry().values()) {
+                if (slot > 16) break;
+                boolean on = ev.sec().getBoolean("enabled", true);
+                ActiveEvent ae = pl.events.active(ev.id());
+                String state = ae != null ? "<color:%good%>Running " + Util.mmss(ae.secondsLeft()) : on ? "<color:%soft%>Idle" : "<color:%bad%>Disabled";
+                int dur = ev.sec().getInt("duration-minutes", 10);
+                String id = ev.id();
+                set(pg, slot++, icon(eventIcon(id), Util.title(ev.displayName()),
+                        "Status: " + state,
+                        "Duration: <white>" + dur + " min",
+                        "",
+                        "<color:%soft%>Left click: turn " + (on ? "off" : "on"),
+                        "<color:%soft%>Right click: " + (ae != null ? "stop" : "start") + " now",
+                        "<color:%soft%>Shift click: duration +5 / -5"), (pl2, c) -> {
+                    String path = "events." + id + ".";
+                    if (c.isShiftClick()) {
+                        int nd = Math.max(1, ev.sec().getInt("duration-minutes", 10) + (c.isLeftClick() ? 5 : -5));
+                        pl.cfg.set("events", path + "duration-minutes", nd);
+                    } else if (c.isLeftClick()) {
+                        pl.cfg.set("events", path + "enabled", !ev.sec().getBoolean("enabled", true));
+                    } else if (c.isRightClick()) {
+                        if (pl.events.isActive(id)) pl.events.stop(id, true);
+                        else {
+                            String err = pl.events.start(id, null, false);
+                            if (err != null) pl2.sendMessage(pl.msg("errors." + err, "event", ev.displayName()));
+                        }
+                    }
+                    pl.afterConfigChange("events");
+                    pg.fill.run();
+                });
+            }
+            back(pg, 22);
+        });
+    }
+
+    public void openAirdrop(Player p) {
+        open(p, "Airdrop", 4, pg -> {
+            stepper(pg, 10, Material.CLOCK, "Fall time (seconds)", "fall.time-seconds", 1, 1, 300, true);
+            stepper(pg, 11, Material.HOPPER, "First drop after (seconds)", "spawn.first-delay-seconds", 10, 0, 3600, false);
+            stepper(pg, 12, Material.REPEATER, "Seconds between drops", "spawn.interval-seconds", 10, 5, 3600, false);
+            stepper(pg, 13, Material.SHULKER_BOX, "Max crates per event", "spawn.max-crates", 1, 0, 100, false);
+            stepper(pg, 14, Material.MAP, "Area: blocks each side", "spawn.area.half-size", 500, 100, 30000000, false);
+            stepper(pg, 15, Material.IRON_BARS, "Locked after landing (s)", "land.lock-seconds", 1, 0, 120, false);
+            stepper(pg, 16, Material.FEATHER, "Parachute chickens", "parachute.chickens", 1, 0, 16, false);
+            int s = 19;
+            for (String tier : pl.airdrop.tierIds())
+                if (s <= 22) stepper(pg, s++, Material.SHULKER_BOX, Util.title(tier) + " crate health", "tiers." + tier + ".health", 1, 1, 500, false);
+            String mode = pl.cfg.events().getString(AIR + "spawn.mode", "AREA");
+            set(pg, 24, icon(Material.COMPASS, "Spawn mode", "Now: <white>" + mode,
+                    "AREA = random spot in the square", "AROUND_PLAYER = near a random player", "", "<color:%soft%>Click to switch"), (pl2, c) -> {
+                pl.cfg.set("events", AIR + "spawn.mode", mode.equalsIgnoreCase("AREA") ? "AROUND_PLAYER" : "AREA");
+                pl.afterConfigChange("events");
+                pg.fill.run();
+            });
+            back(pg, 31);
+        });
+    }
+
+    private void stepper(Page pg, int slot, Material m, String label, String path, double step, double min, double max, boolean dbl) {
+        double v = pl.cfg.events().getDouble(AIR + path);
+        String shown = dbl ? String.format(Locale.ROOT, "%.1f", v) : String.valueOf((long) v);
+        set(pg, slot, icon(m, label, "Value: <white>" + shown, "", "<color:%soft%>Left +" + (long) step + "  Right -" + (long) step, "<color:%soft%>Shift = x5"),
+                (p, c) -> {
+                    double cur = pl.cfg.events().getDouble(AIR + path);
+                    double nv = cur + (c.isLeftClick() ? 1 : -1) * step * (c.isShiftClick() ? 5 : 1);
+                    nv = Math.max(min, Math.min(max, nv));
+                    pl.cfg.set("events", AIR + path, dbl ? (Object) (Math.round(nv * 10.0) / 10.0) : (Object) (int) Math.round(nv));
+                    pl.afterConfigChange("events");
+                    pg.fill.run();
+                });
+    }
 
     // ---------- events ----------
     @EventHandler
     public void onDrag(InventoryDragEvent e) {
-        InventoryHolder h = e.getView().getTopInventory().getHolder();
-        if (h instanceof MainHolder || h instanceof BrowserHolder) e.setCancelled(true);
+        if (e.getView().getTopInventory().getHolder() instanceof Page) e.setCancelled(true);
     }
 
     @EventHandler
     public void onClick(InventoryClickEvent e) {
-        InventoryHolder holder = e.getView().getTopInventory().getHolder();
-        if (!(e.getWhoClicked() instanceof Player p)) return;
-        if (holder instanceof MainHolder h) {
-            e.setCancelled(true);
-            if (e.getClickedInventory() != e.getView().getTopInventory() || !p.hasPermission("eventcore.gui")) return;
-            ConfigurationSection a = h.actions.get(e.getSlot());
-            if (a == null) return;
-            switch (a.getString("action", "browse")) {
-                case "loot" -> pl.lootGui.openTiers(p);
-                case "reload" -> { pl.reloadAll(p); p.closeInventory(); }
-                default -> openBrowser(p, a.getString("file", "config"), a.getString("path", ""), 0);
-            }
-        } else if (holder instanceof BrowserHolder h) {
-            e.setCancelled(true);
-            if (e.getClickedInventory() != e.getView().getTopInventory() || !p.hasPermission("eventcore.gui")) return;
-            browserClick(p, h, e.getSlot(), e.getClick());
-        }
-    }
-
-    private void browserClick(Player p, BrowserHolder h, int slot, org.bukkit.event.inventory.ClickType click) {
-        if (slot == navSlot("prev", 45)) { if (h.page > 0) { h.page--; render(h); } return; }
-        if (slot == navSlot("next", 53)) { if ((h.page + 1) * 45 < h.keys.size()) { h.page++; render(h); } return; }
-        if (slot == navSlot("home", 49)) { openMain(p); return; }
-        if (slot == navSlot("reload", 50)) { pl.reloadAll(p); render(h); return; }
-        if (slot == navSlot("up", 48)) {
-            if (h.path.isEmpty()) openMain(p);
-            else openBrowser(p, h.file, h.path.contains(".") ? h.path.substring(0, h.path.lastIndexOf('.')) : "", 0);
-            return;
-        }
-        int idx = h.page * 45 + slot;
-        if (slot >= 45 || idx >= h.keys.size()) return;
-        ConfigurationSection s = section(h);
-        if (s == null) return;
-        String key = h.keys.get(idx), full = h.path.isEmpty() ? key : h.path + "." + key;
-        Object v = s.get(key);
-
-        if (v instanceof ConfigurationSection cs) {
-            if (click.isShiftClick() && cs.isBoolean("enabled")) { change(h, full + ".enabled", !cs.getBoolean("enabled")); render(h); }
-            else openBrowser(p, h.file, full, 0);
-        } else if (v instanceof Boolean b) {
-            change(h, full, !b); render(h);
-        } else if (v instanceof Number n) {
-            if (click.isShiftClick()) {
-                double step = n instanceof Double || n instanceof Float ? (Math.abs(n.doubleValue()) >= 5 ? 0.5 : 0.1) : 1;
-                double nv = n.doubleValue() + (click.isLeftClick() ? step : -step);
-                Object val = (n instanceof Double || n instanceof Float) ? (Object) (Math.round(nv * 100.0) / 100.0) : (Object) (int) Math.round(nv);
-                try { validateNumber(full, ((Number) val).doubleValue()); change(h, full, val); render(h); }
-                catch (IllegalArgumentException ex) { p.sendMessage(pl.msg("gui.invalid", "reason", ex.getMessage())); }
-            } else prompt(p, h, full, v);
-        } else if (v instanceof List<?> l) {
-            if (click.isShiftClick() && click.isRightClick()) { change(h, full, new ArrayList<>()); render(h); }
-            else if (click.isRightClick()) {
-                if (!l.isEmpty()) { List<Object> c = new ArrayList<>(l); c.remove(c.size() - 1); change(h, full, c); render(h); }
-            } else promptList(p, h, full, l);
-        } else {
-            if (click.isRightClick() && key.equals("sound")) { preview(p, s); return; }
-            prompt(p, h, full, v);
-        }
-    }
-
-    private void preview(Player p, ConfigurationSection s) {
-        try {
-            p.playSound(Sound.sound(Key.key(s.getString("sound", "").toLowerCase(Locale.ROOT)), Sound.Source.MASTER,
-                    (float) s.getDouble("volume", 1.0), (float) s.getDouble("pitch", 1.0)));
-        } catch (Exception ex) { p.sendMessage(pl.msg("gui.invalid", "reason", "bad sound key")); }
-    }
-
-    private void prompt(Player p, BrowserHolder h, String full, Object old) {
-        p.closeInventory();
-        pl.chat.ask(p, pl.msg("gui.prompt-edit", "path", full, "value", String.valueOf(old)), in -> {
-            Object val = parse(full, old, in);
-            change(h, full, val);
-            return null;
-        }, () -> openBrowser(p, h.file, h.path, h.page));
-    }
-
-    private void promptList(Player p, BrowserHolder h, String full, List<?> old) {
-        p.closeInventory();
-        pl.chat.ask(p, pl.msg("gui.prompt-add", "path", full), in -> {
-            Object val;
-            if (!old.isEmpty() && old.get(0) instanceof List) {
-                List<String> inner = new ArrayList<>();
-                for (String part : in.split("[,\\s]+")) if (!part.isBlank()) inner.add(part.trim().toLowerCase(Locale.ROOT));
-                val = inner;
-            } else { validateString(full, in, true); val = in; }
-            List<Object> c = new ArrayList<>(old);
-            c.add(val);
-            change(h, full, c);
-            return null;
-        }, () -> openBrowser(p, h.file, h.path, h.page));
-    }
-
-    /** Writes a value, saves the file and applies it live. */
-    private void change(BrowserHolder h, String path, Object value) {
-        pl.cfg.set(h.file, path, value);
-        pl.afterConfigChange(h.file);
-    }
-
-    // ---------- parsing & validation ----------
-    private Object parse(String path, Object old, String in) {
-        if (old instanceof Number n) {
-            try {
-                Object val;
-                if (in.contains(".") || n instanceof Double || n instanceof Float) val = Double.parseDouble(in);
-                else val = Integer.parseInt(in);
-                if (n instanceof Integer && val instanceof Double d && d == Math.rint(d)) val = (int) Math.rint(d);
-                validateNumber(path, ((Number) val).doubleValue());
-                return val;
-            } catch (NumberFormatException ex) { throw new IllegalArgumentException("not a valid number"); }
-        }
-        validateString(path, in, false);
-        return in;
-    }
-
-    private void validateNumber(String path, double v) {
-        String k = Util.last(path);
-        if (k.contains("chance") && (v < 0 || v > 100)) throw new IllegalArgumentException("must be 0-100");
-        if (k.equals("volume") && (v < 0 || v > 10)) throw new IllegalArgumentException("volume must be 0-10");
-        if (k.equals("pitch") && (v < 0 || v > 2)) throw new IllegalArgumentException("pitch must be 0-2");
-        if (k.equals("rows") && (v < 1 || v > 6)) throw new IllegalArgumentException("rows must be 1-6");
-        if ((k.equals("slot") || k.equals("weight") || k.endsWith("-minutes") || k.endsWith("-seconds") || k.endsWith("-ticks")
-                || k.equals("count") || k.equals("health") || k.equals("hearts") || k.equals("length")) && v < 0)
-            throw new IllegalArgumentException("must not be negative");
-    }
-
-    private void validateString(String path, String in, boolean listItem) {
-        String k = Util.last(path);
-        if (in.isBlank() && !k.equals("subtitle") && !k.equals("glow-color")) throw new IllegalArgumentException("value is empty");
-        switch (k) {
-            case "sound" -> { if (!in.equalsIgnoreCase("none") && !in.matches("[a-z0-9_.:/-]+")) throw new IllegalArgumentException("sound keys are lowercase like block.note_block.chime"); }
-            case "material", "drop-item", "to" -> { if (Material.matchMaterial(in) == null) throw new IllegalArgumentException("unknown material"); }
-            case "timezone" -> { try { ZoneId.of(in); } catch (Exception e) { throw new IllegalArgumentException("unknown timezone (example Europe/Berlin)"); } }
-            case "particle" -> { try { Particle.valueOf(in.toUpperCase(Locale.ROOT)); } catch (Exception e) { throw new IllegalArgumentException("unknown particle"); } }
-            case "shulker-color" -> { try { DyeColor.valueOf(in.toUpperCase(Locale.ROOT)); } catch (Exception e) { throw new IllegalArgumentException("unknown dye colour"); } }
-            case "style" -> { try { BossBar.Overlay.valueOf(in.toUpperCase(Locale.ROOT)); } catch (Exception e) { throw new IllegalArgumentException("PROGRESS, NOTCHED_6, NOTCHED_10, NOTCHED_12 or NOTCHED_20"); } }
-            case "shape" -> { if (!List.of("ring", "scatter", "burst", "spiral", "helix").contains(in.toLowerCase(Locale.ROOT))) throw new IllegalArgumentException("ring, scatter, burst, spiral or helix"); }
-            case "color", "to-color", "glow-color" -> {
-                if (path.contains("bossbar")) { try { BossBar.Color.valueOf(in.toUpperCase(Locale.ROOT)); } catch (Exception e) { throw new IllegalArgumentException("not a bossbar colour"); } }
-                else if (!in.isEmpty() && !HEX.matcher(in).matches()) throw new IllegalArgumentException("use a hex colour like #ff6666");
-            }
-            case "palette", "gradient" -> { if (!HEX.matcher(in).matches()) throw new IllegalArgumentException("use a hex colour like #ff6666"); }
-            case "times" -> {
-                try { LocalTime.parse(in.trim().split("\\s+")[in.trim().split("\\s+").length - 1]); }
-                catch (Exception e) { throw new IllegalArgumentException("use HH:mm, optionally with a day: SAT 20:00"); }
-            }
-            default -> { }
-        }
+        if (!(e.getView().getTopInventory().getHolder() instanceof Page pg) || !(e.getWhoClicked() instanceof Player p)) return;
+        e.setCancelled(true);
+        if (e.getClickedInventory() != e.getView().getTopInventory() || !p.hasPermission("eventcore.gui")) return;
+        BiConsumer<Player, ClickType> a = pg.acts.get(e.getSlot());
+        if (a != null) a.accept(p, e.getClick());
     }
 }

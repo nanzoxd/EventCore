@@ -13,7 +13,16 @@ import org.bukkit.event.player.PlayerAdvancementDoneEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
+import com.destroystokyo.paper.profile.PlayerProfile;
+import com.destroystokyo.paper.profile.ProfileProperty;
+import org.bukkit.Bukkit;
+import org.bukkit.configuration.ConfigurationSection;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Everyone shares one configurable name. Chat names, join/quit/death/advancement messages, tab list entries and
@@ -25,12 +34,47 @@ public final class AnonymousEvent extends GameEvent {
     private String anonName() { return settings().getString("name", "Anonymous"); }
 
     @Override protected void doApply(Player p) {
+        applySkin(p);
         String mode = settings().getString("tablist-mode", "ANON").toUpperCase();
         if (mode.equals("ANON")) p.playerListName(Component.text(anonName()));
         else if (mode.equals("BLANK")) p.playerListName(Component.text(" "));
     }
 
-    @Override protected void doStrip(Player p) { p.playerListName(null); }
+    @Override protected void doStrip(Player p) {
+        p.playerListName(null);
+        PlayerProfile orig = originals.remove(p.getUniqueId());
+        if (orig != null) { try { p.setPlayerProfile(orig); refreshSkin(p); } catch (Throwable ignored) { } }
+    }
+
+    private final Map<UUID, PlayerProfile> originals = new ConcurrentHashMap<>();
+
+    /** Gives everyone the same skin (settings.skin.url, a textures.minecraft.net link). The real name and UUID are kept. */
+    private void applySkin(Player p) {
+        ConfigurationSection sk = settings().getConfigurationSection("skin");
+        if (sk == null || !sk.getBoolean("enabled", true) || originals.containsKey(p.getUniqueId())) return;
+        try {
+            String url = sk.getString("url", "");
+            if (url.isBlank()) return;
+            String json = "{\"textures\":{\"SKIN\":{\"url\":\"" + url + "\"" + (sk.getBoolean("slim", false) ? ",\"metadata\":{\"model\":\"slim\"}" : "") + "}}}";
+            String value = Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
+            originals.put(p.getUniqueId(), p.getPlayerProfile());
+            PlayerProfile prof = Bukkit.createProfile(p.getUniqueId(), p.getName());
+            prof.setProperty(new ProfileProperty("textures", value));
+            p.setPlayerProfile(prof);
+            refreshSkin(p);
+        } catch (Throwable t) {
+            pl.getLogger().warning("Anonymous skin failed: " + t.getMessage());
+        }
+    }
+
+    /** Re-sends the player to everyone so the new/restored skin shows. */
+    private void refreshSkin(Player p) {
+        for (Player o : Bukkit.getOnlinePlayers()) {
+            if (o.equals(p)) continue;
+            pl.sched.entity(o, () -> o.hidePlayer(pl, p));
+            pl.sched.entityLater(o, () -> o.showPlayer(pl, p), 3);
+        }
+    }
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onChat(AsyncChatEvent e) {

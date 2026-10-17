@@ -54,7 +54,7 @@ ritual:
   complete-title: {title: "<g>ritual complete</g>", subtitle: "<gray>heavy piece successfully crafted</gray>"}
   stopped-title: {title: "<g>ritual stopped</g>", subtitle: ""}
   stopped-broadcast: "<red>all rituals ended</red>"
-  bossbar-title: "<g>{item} ritual</g> <gray>|</gray> <g>{world} [{x}, {y}, {z}]</g>"
+  bossbar-title: "<bb>Ritual {item} | {x} {y} {z}</bb>"
   name-text: "{item_display}"
   unnamed-format: "<gold>{item}</gold>"
   timer-text: "<red>({time} left)</red>"

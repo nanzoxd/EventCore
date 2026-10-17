@@ -77,6 +77,7 @@ public final class EventScheduler {
                 "color_raw", s.getString("color", "#ffffff"));
         pl.fx.broadcast(pl.cfg.messages(), "scheduler.warning", ph, pl.cfg.messages().getString("prefix", ""));
         pl.fx.playAll(pl.cfg.events().getConfigurationSection("scheduler.warning-sound"));
+        pl.discord.warning(com.eventcore.util.Util.title(ev.displayName()), humanTime(secondsLeft));
     }
 
     private static String humanTime(long sec) {

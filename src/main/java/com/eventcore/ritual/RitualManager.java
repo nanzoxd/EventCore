@@ -196,6 +196,7 @@ public final class RitualManager implements Listener {
             if (starter != null) pl.fx.title(starter, pl.cfg.messages().getConfigurationSection("ritual.start-title"), ph);
             Bukkit.getServer().sendMessage(m("ritual.broadcast", ph));
             pl.fx.title(Bukkit.getServer(), pl.cfg.messages().getConfigurationSection("ritual.announce-title"), ph);
+            pl.discord.ritualStarted(r.plainName, r.starter, r.loc.getWorld().getName(), Math.round(r.loc.getX()) + " " + Math.round(r.loc.getY()) + " " + Math.round(r.loc.getZ()), r.total / 60);
         }
         ConfigurationSection bb = rc().getConfigurationSection("bossbar");
         if (bb != null && bb.getBoolean("enabled", true)) {
@@ -226,6 +227,7 @@ public final class RitualManager implements Listener {
         });
         pl.fx.playAll(rc().getConfigurationSection("sounds.complete"));
         pl.fx.title(Bukkit.getServer(), pl.cfg.messages().getConfigurationSection("ritual.complete-title"), r.ph());
+        pl.discord.ritualComplete(r.plainName);
         deleteSave();
     }
 
@@ -247,6 +249,7 @@ public final class RitualManager implements Listener {
         pl.fx.playAll(rc().getConfigurationSection("sounds.stop"));
         pl.fx.title(Bukkit.getServer(), pl.cfg.messages().getConfigurationSection("ritual.stopped-title"), r.ph());
         Bukkit.getServer().sendMessage(m("ritual.stopped-broadcast", r.ph()));
+        pl.discord.ritualStopped(r.plainName);
         deleteSave();
     }
 

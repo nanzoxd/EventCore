@@ -38,6 +38,17 @@ public final class Util {
         return String.valueOf(full).repeat(f) + String.valueOf(empty).repeat(width - f);
     }
 
+    /** "golden trees" -> "Golden Trees" */
+    public static String title(String s) {
+        StringBuilder b = new StringBuilder();
+        for (String part : s.replace('_', ' ').split("\\s+")) {
+            if (part.isEmpty()) continue;
+            if (b.length() > 0) b.append(' ');
+            b.append(Character.toUpperCase(part.charAt(0))).append(part.substring(1));
+        }
+        return b.toString();
+    }
+
     public static String last(String path) {
         int i = path.lastIndexOf('.');
         return i < 0 ? path : path.substring(i + 1);

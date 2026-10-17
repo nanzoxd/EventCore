@@ -97,11 +97,16 @@ public final class EventCoreCommand implements TabExecutor {
                 }
             }
             case "airdrop" -> {
-                if (a.length < 3 || !a[1].equalsIgnoreCase("spawn")) { s.sendMessage(pl.msg("command.usage")); return true; }
+                String what = a.length >= 2 ? a[1].toLowerCase(Locale.ROOT) : "";
                 if (!(s instanceof Player p)) { err(s, "player-only"); return true; }
-                String tier = a[2].toLowerCase(Locale.ROOT);
-                if (!pl.airdrop.spawnAt(p, tier)) err(s, "unknown-tier", "input", a[2]);
-                else s.sendMessage(pl.msg("command.airdrop-spawned", "tier", tier));
+                if (what.equals("loot")) {
+                    if (a.length >= 3 && pl.airdrop.tierSec(a[2].toLowerCase(Locale.ROOT)) != null) pl.lootGui.openEntries(p, a[2].toLowerCase(Locale.ROOT), 0);
+                    else pl.lootGui.openTiers(p);
+                } else if (what.equals("spawn") && a.length >= 3) {
+                    String tier = a[2].toLowerCase(Locale.ROOT);
+                    if (!pl.airdrop.spawnAt(p, tier)) err(s, "unknown-tier", "input", a[2]);
+                    else s.sendMessage(pl.msg("command.airdrop-spawned", "tier", tier));
+                } else s.sendMessage(pl.msg("command.usage"));
             }
             default -> { }
         }
@@ -117,7 +122,7 @@ public final class EventCoreCommand implements TabExecutor {
                 case "start" -> { out.addAll(pl.events.allNames()); out.addAll(List.of("1", "2", "3")); }
                 case "force", "stop" -> out.addAll(pl.events.allNames());
                 case "rig" -> { out.addAll(pl.events.allNames()); out.add("clear"); }
-                case "airdrop" -> out.add("spawn");
+                case "airdrop" -> out.addAll(List.of("spawn", "loot"));
                 default -> { }
             }
         } else if (a.length == 3) {

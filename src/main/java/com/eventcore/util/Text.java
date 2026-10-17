@@ -57,16 +57,22 @@ public final class Text {
     private static String smallCapsTemplate(String s) {
         StringBuilder b = new StringBuilder(s.length());
         int i = 0;
+        boolean off = false; // inside <bb>..</bb> or <n>..</n>: keep normal letters
         while (i < s.length()) {
             char c = s.charAt(i);
             if (c == '<') {
                 int e = s.indexOf('>', i);
-                if (e > 0) { b.append(s, i, e + 1); i = e + 1; continue; }
+                if (e > 0) {
+                    String tag = s.substring(i, e + 1).toLowerCase(Locale.ROOT);
+                    if (tag.equals("<bb>") || tag.equals("<n>")) off = true;
+                    else if (tag.equals("</bb>") || tag.equals("</n>")) off = false;
+                    b.append(s, i, e + 1); i = e + 1; continue;
+                }
             } else if (c == '{') {
                 int e = s.indexOf('}', i);
                 if (e > 0 && s.substring(i + 1, e).matches("[a-zA-Z_0-9]+")) { b.append(s, i, e + 1); i = e + 1; continue; }
             }
-            b.append(sc(c));
+            b.append(off ? c : sc(c));
             i++;
         }
         return b.toString();
@@ -77,6 +83,33 @@ public final class Text {
         if (p.size() == 1) return "<color:" + p.get(0) + ">";
         String ph = phase != 0 ? ":" + String.format(Locale.ROOT, "%.3f", phase) : "";
         return "<gradient:" + String.join(":", p) + ph + ">";
+    }
+
+    public List<String> bossbarColors() {
+        List<String> l = pl.cfg.config().getStringList("bossbar-gradient");
+        return l.isEmpty() ? palette() : l;
+    }
+
+    private String bbOpen() {
+        List<String> p = bossbarColors();
+        return p.size() == 1 ? "<color:" + p.get(0) + ">" : "<gradient:" + String.join(":", p) + ">";
+    }
+
+    private String bbClose() { return bossbarColors().size() == 1 ? "</color>" : "</gradient>"; }
+
+    /** Bossbar gradient (config bossbar-gradient) over an already expanded plain string. */
+    public Component bossbar(String plain) { return gradient(plain, bossbarColors(), 0); }
+
+    /** Like expand() but keeps normal letters (no small caps). */
+    public String expandPlain(String tpl, Map<String, Object> ph) {
+        if (tpl == null) return "";
+        tpl = tpl.replace("<g>", "").replace("</g>", "").replace("<bb>", "").replace("</bb>", "").replace("<n>", "").replace("</n>", "");
+        if (ph != null)
+            for (Map.Entry<String, Object> e : ph.entrySet()) {
+                Object v = e.getValue();
+                tpl = tpl.replace("{" + e.getKey() + "}", v instanceof Component c ? plain(c) : String.valueOf(v));
+            }
+        return MM.stripTags(tpl);
     }
 
     private String gradientClose() { return palette().size() == 1 ? "</color>" : "</gradient>"; }
@@ -90,6 +123,7 @@ public final class Text {
         boolean strip = pl.cfg.config().getBoolean("style.strip-bold", true);
         if (strip) tpl = tpl.replaceAll("(?i)</?(b|bold)>", "");
         tpl = tpl.replace("<g>", gradientOpen(0)).replace("</g>", gradientClose());
+        tpl = tpl.replace("<bb>", bbOpen()).replace("</bb>", bbClose()).replace("<n>", "").replace("</n>", "");
         TagResolver.Builder tr = TagResolver.builder();
         for (Map.Entry<String, Object> e : ph.entrySet()) {
             String k = e.getKey();

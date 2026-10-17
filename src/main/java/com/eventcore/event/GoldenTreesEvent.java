@@ -12,6 +12,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockDropItemEvent;
 import org.bukkit.event.block.LeavesDecayEvent;
 import org.bukkit.inventory.ItemStack;
@@ -39,7 +40,7 @@ public final class GoldenTreesEvent extends GameEvent {
     }
 
     private boolean bonusRoll() {
-        double c = settings().getDouble("bonus-chance", 0.0);
+        double c = settings().getDouble("drop-chance", 6.0);
         return c > 0 && ThreadLocalRandom.current().nextDouble() * 100.0 < c;
     }
 
@@ -48,6 +49,18 @@ public final class GoldenTreesEvent extends GameEvent {
         if (!active() || !Tag.LEAVES.isTagged(e.getBlockState().getType())) return;
         if (settings().getBoolean("replace-apples", true))
             for (Item it : e.getItems()) if (it.getItemStack().getType() == Material.APPLE) it.setItemStack(dropStack());
+    }
+
+    /**
+     * BlockDropItemEvent is not fired when a leaf drops nothing, so the extra chance lives here.
+     * Shears and silk touch keep the vanilla behaviour (the leaf itself drops).
+     */
+    @EventHandler(ignoreCancelled = true, priority = org.bukkit.event.EventPriority.MONITOR)
+    public void onBreak(BlockBreakEvent e) {
+        if (!active() || !Tag.LEAVES.isTagged(e.getBlock().getType())) return;
+        if (e.getPlayer().getGameMode() == org.bukkit.GameMode.CREATIVE || !e.isDropItems()) return;
+        ItemStack tool = e.getPlayer().getInventory().getItemInMainHand();
+        if (tool.getType() == Material.SHEARS || tool.containsEnchantment(org.bukkit.enchantments.Enchantment.SILK_TOUCH)) return;
         if (bonusRoll()) e.getBlock().getWorld().dropItemNaturally(e.getBlock().getLocation().add(0.5, 0.5, 0.5), dropStack());
     }
 

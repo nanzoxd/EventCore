@@ -109,7 +109,7 @@ public final class AdminGui implements Listener {
             case "anonymous" -> Material.PLAYER_HEAD;
             case "glow" -> Material.GLOWSTONE_DUST;
             case "elo_buff" -> Material.EXPERIENCE_BOTTLE;
-            case "millionaire" -> Material.GOLD_INGOT;
+            case "gold_frenzy" -> Material.GOLD_INGOT;
             case "locator_bar" -> Material.COMPASS;
             case "airdrop" -> Material.BEACON;
             default -> Material.PAPER;
@@ -163,8 +163,8 @@ public final class AdminGui implements Listener {
 
     public void openAirdrop(Player p) {
         open(p, "Airdrop", 4, pg -> {
-            stepper(pg, 10, Material.CLOCK, "Fall time (seconds)", "fall.time-seconds", 1, 1, 300, true);
-            stepper(pg, 11, Material.HOPPER, "First drop after (seconds)", "spawn.first-delay-seconds", 10, 0, 3600, false);
+            stepper(pg, 10, Material.CLOCK, "Fall time (minutes)", "fall.duration-minutes", 1, 1, 120, true);
+            stepper(pg, 11, Material.HOPPER, "Incoming countdown (seconds)", "spawn.incoming-seconds", 10, 1, 3600, false);
             stepper(pg, 12, Material.REPEATER, "Seconds between drops", "spawn.interval-seconds", 10, 5, 3600, false);
             stepper(pg, 13, Material.SHULKER_BOX, "Max crates per event", "spawn.max-crates", 1, 0, 100, false);
             stepper(pg, 14, Material.MAP, "Area: blocks each side", "spawn.area.half-size", 500, 100, 30000000, false);

@@ -37,7 +37,7 @@ persistence:
   cancel-drops-item: true  # with CANCEL: drop the item at the ritual spot
   save-interval-seconds: 10
 # The ritual circle from RitualCreator.sk: a static sigil (one circle with a hexagram of two overlapping
-# triangles in the middle) plus ambient particles falling above it. Peach and gold palettes only.
+# triangles in the middle) plus ambient particles falling above it. Default palettes: gold and peach, plus the fire / pink / blue / red / white presets of the Skript.
 # The sigil redraws every interval-ticks (raise it first if the server lags) and is only drawn while a player is
 # within view-distance. height is measured from the ritual spot; 2.325 = the item-name stand (2.275) + 0.05, like the original.
 particles:
@@ -46,7 +46,7 @@ particles:
   view-distance: 32
   height: 2.325
   palette: gold               # current palette (changed by the nether star in the GUI)
-  cycle: [gold, peach]        # order the nether star cycles through
+  cycle: [gold, peach, fire, pink, blue, red, white]   # order the nether star cycles through
   palettes:
     gold:
       label: "gold"
@@ -66,3 +66,49 @@ particles:
         tri1: {shape: polygon, sides: 3, rotation: 0.0, particle: DUST, color: "#ffd7ca", size: 0.9, radius: 4.5, count: 24, particles-min: 1, particles-max: 1}
         tri2: {shape: polygon, sides: 3, rotation: 60.0, particle: DUST, color: "#ffe4d5", size: 0.9, radius: 4.5, count: 24, particles-min: 1, particles-max: 1}
         falling: {shape: rain, particle: CHERRY_LEAVES, radius: 9.0, count: 6, y-min: 3.0, y-max: 6.0, height: 0.0, particles-min: 1, particles-max: 1}
+    # ---- presets from RitualCreator.sk (fire / pink / blue / red / white) ----
+    fire:
+      label: "fire"
+      color: "#ff8a1f"
+      bossbar-color: YELLOW
+      layers:
+        outer: {shape: circle, particle: FLAME, size: 0.9, radius: 9.0, count: 120, particles-min: 1, particles-max: 1}
+        tri1: {shape: polygon, sides: 3, rotation: 0.0, particle: DRIPPING_LAVA, size: 0.9, radius: 4.5, count: 24, particles-min: 1, particles-max: 1}
+        tri2: {shape: polygon, sides: 3, rotation: 60.0, particle: FLAME, size: 0.9, radius: 4.5, count: 24, particles-min: 1, particles-max: 1}
+        falling: {shape: rain, particle: WAX_ON, radius: 9.0, count: 6, y-min: 3.0, y-max: 6.0, height: 0.0, particles-min: 1, particles-max: 1}
+    pink:
+      label: "pink"
+      color: "#ff69b4"
+      bossbar-color: PINK
+      layers:
+        outer: {shape: circle, particle: DUST, color: "#ff69b4", size: 0.9, radius: 9.0, count: 120, particles-min: 1, particles-max: 1}
+        tri1: {shape: polygon, sides: 3, rotation: 0.0, particle: DUST, color: "#ff69b4", size: 0.9, radius: 4.5, count: 24, particles-min: 1, particles-max: 1}
+        tri2: {shape: polygon, sides: 3, rotation: 60.0, particle: DUST, color: "#ff69b4", size: 0.9, radius: 4.5, count: 24, particles-min: 1, particles-max: 1}
+        falling: {shape: rain, particle: CHERRY_LEAVES, radius: 9.0, count: 6, y-min: 3.0, y-max: 6.0, height: 0.0, particles-min: 1, particles-max: 1}
+    blue:
+      label: "blue"
+      color: "#3b6cff"
+      bossbar-color: BLUE
+      layers:
+        outer: {shape: circle, particle: DUST, color: "#3b6cff", size: 0.9, radius: 9.0, count: 120, particles-min: 1, particles-max: 1}
+        tri1: {shape: polygon, sides: 3, rotation: 0.0, particle: DUST, color: "#3b6cff", size: 0.9, radius: 4.5, count: 24, particles-min: 1, particles-max: 1}
+        tri2: {shape: polygon, sides: 3, rotation: 60.0, particle: DUST, color: "#3b6cff", size: 0.9, radius: 4.5, count: 24, particles-min: 1, particles-max: 1}
+        falling: {shape: rain, particle: RAIN, radius: 9.0, count: 6, y-min: 3.0, y-max: 6.0, height: 0.0, particles-min: 1, particles-max: 1}
+    red:
+      label: "red"
+      color: "#e01010"
+      bossbar-color: RED
+      layers:
+        outer: {shape: circle, particle: DUST, color: "#e01010", size: 0.9, radius: 9.0, count: 120, particles-min: 1, particles-max: 1}
+        tri1: {shape: polygon, sides: 3, rotation: 0.0, particle: DUST, color: "#e01010", size: 0.9, radius: 4.5, count: 24, particles-min: 1, particles-max: 1}
+        tri2: {shape: polygon, sides: 3, rotation: 60.0, particle: DUST, color: "#e01010", size: 0.9, radius: 4.5, count: 24, particles-min: 1, particles-max: 1}
+        falling: {shape: rain, particle: DUST, color: "#dc1400", size: 0.3, radius: 9.0, count: 6, y-min: 3.0, y-max: 6.0, height: 0.0, particles-min: 1, particles-max: 1}
+    white:
+      label: "white"
+      color: "#ffffff"
+      bossbar-color: WHITE
+      layers:
+        outer: {shape: circle, particle: DUST, color: "#ffffff", size: 0.9, radius: 9.0, count: 120, particles-min: 1, particles-max: 1}
+        tri1: {shape: polygon, sides: 3, rotation: 0.0, particle: DUST, color: "#ffffff", size: 0.9, radius: 4.5, count: 24, particles-min: 1, particles-max: 1}
+        tri2: {shape: polygon, sides: 3, rotation: 60.0, particle: DUST, color: "#ffffff", size: 0.9, radius: 4.5, count: 24, particles-min: 1, particles-max: 1}
+        falling: {shape: rain, particle: ENCHANT, radius: 9.0, count: 6, y-min: 3.0, y-max: 6.0, height: 0.0, particles-min: 1, particles-max: 1}

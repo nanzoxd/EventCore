@@ -34,8 +34,8 @@ or landed, to open the editor for that crate's tier. The editor shows the loot a
 It needs the patched ReliqueOnlineAPI (ReliqueSmpStats-patched.zip: adds `getStatsManager()` and `setEloGainMultiplier`).
 Losses are not changed. The multiplier goes back to normal when the event ends or the server stops.
 
-## Millionaire event
-`/eventcore start millionaire` makes every gold ore (GOLD_ORE, DEEPSLATE_GOLD_ORE, NETHER_GOLD_ORE) drop extra gold on top of its normal drop:
+## Gold Frenzy event
+(formerly Millionaire; the aliases `millionaire` and `mrbeast` still work) `/eventcore start gold_frenzy` makes every gold ore (GOLD_ORE, DEEPSLATE_GOLD_ORE, NETHER_GOLD_ORE) drop extra gold on top of its normal drop:
 `settings.extra-min` to `extra-max` more raw gold (or gold nuggets from nether gold ore), `settings.chance` percent per ore, `settings.blocks` lists the ores.
 Silk touch gets no bonus (the ore block itself drops).
 
@@ -43,7 +43,7 @@ Silk touch gets no bonus (the ore block itself drops).
 The former Elo Buff event is now called DuoDeck (`display-name`). Its internal id stays `elo_buff`, so config, scheduler and saved data keep working.
 
 ## Tab completion
-`/eventcore start|force|stop|rig <tab>` suggests exactly one name per event (its display name as one word: `golden_tree`, `duodeck`, `millionaire`).
+`/eventcore start|force|stop|rig <tab>` suggests exactly one name per event (its display name as one word: `golden_tree`, `duodeck`, `gold_frenzy`).
 Ids and aliases still work when typed, they are just not suggested.
 
 ## Event display
@@ -76,3 +76,14 @@ Delete the old `plugins/EventCore/` config files (config, events, messages, gui,
 * Scoreboard teams (glow colours, hidden nametags) are limited on Folia; failures are logged once.
 * This source was written without access to a compiler or Paper API in the authoring environment: it has not been
   built or run. Expect to fix a few compile errors on the first `mvn package`.
+
+## Lootdrop flow
+Start -> `Lootdrop Incoming | 30 Seconds` (`spawn.incoming-seconds`) -> `Lootdrop Falling | 25 Minutes` (`fall.duration-minutes`),
+spawned at least 100 blocks above the surface (`fall.min-height`), smooth descent, explosion on landing, low-pitched elytra sound next to the landed crate
+(`land.ambient-sound`). The event runs at least incoming + fall + 5 minutes. Hitting a crate announces each new hitter in chat; when it opens the top 3 hitters are listed (`hit.top-count`).
+
+## Late joiners
+Players who join while an event runs get its bossbar and a one-time chat explanation (`events.<id>.messages.join`, header in messages.yml `event-join`). Nothing restarts.
+
+## Ritual palettes
+gold, peach, fire, pink, blue, red, white (nether star in /ritualcreator cycles through every palette in rituals.yml).

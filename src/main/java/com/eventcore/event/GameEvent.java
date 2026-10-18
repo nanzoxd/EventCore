@@ -47,6 +47,8 @@ public abstract class GameEvent implements Listener {
     public boolean active() { return pl.events.isActive(id); }
 
     // ---- lifecycle hooks (all optional) ----
+    /** Shortest run time this event needs (minutes). 0 = no minimum. */
+    public int minMinutes() { return 0; }
     public void onStart(ActiveEvent ae) { }
     public void onStop(ActiveEvent ae) { }
     public void onSecond(ActiveEvent ae, int secondsLeft) { }

@@ -28,7 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * One crate. FALLING (timed descent under a chicken parachute, locked, invulnerable) -> LOCKED (optional grace) ->
  * READY (virtual HP, spam-hit to open) -> OPENED (loot straight into the opener's inventory).
- * The fall always takes exactly fall.time-seconds, whatever the height. Parachute idea taken from Airdrop 4.x:
+ * The fall always takes exactly fall.duration-minutes, whatever the height. Parachute idea taken from Airdrop 4.x:
  * chickens leashed to an invisible slime above the crate. All entity work runs on the region scheduler of the
  * landing spot (x/z never change during the fall, so the region never changes).
  */
@@ -47,6 +47,9 @@ public final class AirdropCrate {
     private ScheduledTask task;
     public volatile State state = State.FALLING;
     private int tick, fallTicks, hp, maxHp;
+    private double fallHeight;
+    private final Map<UUID, Integer> damage = new ConcurrentHashMap<>();
+    private final Map<UUID, String> hitterNames = new ConcurrentHashMap<>();
     private long lockUntil, expireAt;
     private String lastHolo = "";
     private final Map<UUID, Long> denyCd = new ConcurrentHashMap<>();
@@ -62,6 +65,7 @@ public final class AirdropCrate {
     public String tier() { return tier; }
 
     public String coords() { return ground.getBlockX() + " " + ground.getBlockY() + " " + ground.getBlockZ(); }
+    public int secondsLeft() { return Math.max(0, (int) Math.ceil((fallTicks - tick) / 20.0)); }
     public double fallProgress() { return fallTicks <= 0 ? 1 : Math.min(1.0, tick / (double) fallTicks); }
 
     /** HP bar: filled part in the tier gradient, empty part soft peach. */
@@ -77,15 +81,21 @@ public final class AirdropCrate {
         return Text.ph("tier", owner.tierName(tier), "tier_plain", Util.title(tier), "code", code, "world", ground.getWorld().getName(),
                 "x", ground.getBlockX(), "y", ground.getBlockY(), "z", ground.getBlockZ(),
                 "hp", hp, "max", maxHp, "bar", hpBar(),
-                "time", Math.max(0, (int) Math.ceil((fallTicks - tick) / 20.0)),
+                "time", secondsLeft(), "time_fmt", AirdropEvent.fmtTime(secondsLeft()),
                 "seconds", Math.max(0, (lockUntil - System.currentTimeMillis()) / 1000));
     }
 
     void spawn() {
+        try { doSpawn(); }
+        catch (RuntimeException ex) { destroy(false); throw ex; }
+    }
+
+    private void doSpawn() {
         World w = ground.getWorld();
-        ConfigurationSection fall = s().getConfigurationSection("fall");
-        double height = fall == null ? 70 : fall.getDouble("height", 70);
-        fallTicks = Math.max(1, (int) ((fall == null ? 8 : fall.getDouble("time-seconds", 8)) * 20));
+        double height = owner.fallHeight();
+        fallHeight = height;
+        fallTicks = Math.max(1, owner.fallSeconds() * 20);
+        try { w.addPluginChunkTicket(ground.getBlockX() >> 4, ground.getBlockZ() >> 4, pl); } catch (Throwable ignored) { }
         maxHp = Math.max(1, t().getInt("health", 10));
         hp = maxHp;
         flare = pl.particles.read(s().getConfigurationSection("fall.flare"));
@@ -182,13 +192,13 @@ public final class AirdropCrate {
             tick++;
             double f = Math.min(1.0, tick / (double) fallTicks);
             if (s().getString("fall.easing", "LINEAR").equalsIgnoreCase("EASE_IN")) f = f * f;
-            double top = ground.getY() + s().getDouble("fall.height", 70);
+            double top = ground.getY() + fallHeight;
             Location l = new Location(ground.getWorld(), ground.getX(), top - (top - ground.getY()) * f, ground.getZ());
             shulker.teleportAsync(l);
             if (holo != null) holo.teleportAsync(l.clone().add(0, hologramOffset() + (chuteCount() > 0 ? chuteHeight() : 0), 0));
             moveParachute(l);
             ConfigurationSection trail = owner.resolve(tier, "trail", "fall.trail");
-            if (trail != null) pl.particles.play(l.clone(), List.of(pl.particles.readLayer("trail", trail)), tick);
+            if (trail != null && tick % Math.max(1, s().getInt("fall.trail-interval-ticks", 2)) == 0) pl.particles.play(l.clone(), List.of(pl.particles.readLayer("trail", trail)), tick);
             if (tick % 10 == 0 && !flare.isEmpty()) pl.particles.play(ground.clone(), flare, tick);
             int iv = Math.max(1, s().getInt("fall.sound-interval-ticks", 10));
             if (tick % iv == 0) {
@@ -198,8 +208,14 @@ public final class AirdropCrate {
             if (tick >= fallTicks) land();
         } else if (state == State.LOCKED && now >= lockUntil) {
             state = State.READY;
-        } else if (state != State.OPENED && tick++ % 20 == 0 && !smoke.isEmpty()) {
-            pl.particles.play(ground.clone(), smoke, tick);
+        } else if (state != State.OPENED) {
+            tick++;
+            if (tick % 20 == 0 && !smoke.isEmpty()) pl.particles.play(ground.clone(), smoke, tick);
+            // low-pitched elytra wind next to the landed crate
+            if (tick % Math.max(1, s().getInt("land.ambient-interval-ticks", 30)) == 0) {
+                var amb = pl.fx.sound(s().getConfigurationSection("land.ambient-sound"));
+                if (amb != null) ground.getWorld().playSound(amb, ground.getX(), ground.getY(), ground.getZ());
+            }
         }
         if (state != State.OPENED && expireAt > 0 && now >= expireAt) { destroy(false); return; }
         if (tick % 5 == 0 || state == State.READY) updateHolo();
@@ -219,6 +235,7 @@ public final class AirdropCrate {
         if (so != null) w.playSound(so, ground.getX(), ground.getY(), ground.getZ());
         ConfigurationSection lp = t().getConfigurationSection("land-particles");
         if (lp != null) pl.particles.play(ground.clone(), pl.particles.read(lp), 0);
+        ground.getWorld().spawnParticle(Particle.EXPLOSION, ground.clone().add(0, 0.5, 0), 3, 0.6, 0.3, 0.6, 0);
         shockwave();
         Map<String, Object> ph = ph();
         if (s().getBoolean("land.broadcast-title", true)) pl.fx.title(Bukkit.getServer(), s().getConfigurationSection("land.title"), ph);
@@ -270,7 +287,16 @@ public final class AirdropCrate {
             case FALLING -> deny(p, "still-falling");
             case LOCKED -> deny(p, "locked");
             case READY -> {
-                hp -= Math.max(1, s().getInt("hit.damage-per-hit", 1));
+                int dmg = Math.max(1, s().getInt("hit.damage-per-hit", 1));
+                hp -= dmg;
+                boolean first = damage.putIfAbsent(p.getUniqueId(), 0) == null;
+                damage.merge(p.getUniqueId(), dmg, Integer::sum);
+                hitterNames.put(p.getUniqueId(), p.getName());
+                if (first && s().getBoolean("hit.announce-first-hit", true) && hp > 0) {
+                    Map<String, Object> hph = ph();
+                    hph.put("player", p.getName());
+                    pl.fx.broadcast(s(), "hit.first-chat", hph, pl.cfg.messages().getString("prefix", ""));
+                }
                 var so = pl.fx.sound(owner.resolve(tier, "sounds.hit", "hit.sound"));
                 if (so != null) ground.getWorld().playSound(so, ground.getX(), ground.getY(), ground.getZ());
                 if (hp <= 0) { hp = 0; open(p); return; }
@@ -297,8 +323,27 @@ public final class AirdropCrate {
             if (op != null) pl.particles.play(ground.clone(), pl.particles.read(op), 0);
         });
         pl.fx.broadcast(s(), "open.chat", ph, pl.cfg.messages().getString("prefix", ""));
+        announceTopHitters();
         pl.discord.crateOpened(Util.title(tier), p.getName(), coords());
         pl.sched.regionLater(ground, () -> destroy(false), 20);
+    }
+
+    /** Chat ranking of who hit this crate the most (1-2-3 by default). */
+    private void announceTopHitters() {
+        int n = Math.max(1, s().getInt("hit.top-count", 3));
+        List<Map.Entry<UUID, Integer>> top = new ArrayList<>(damage.entrySet());
+        top.sort((a, b) -> Integer.compare(b.getValue(), a.getValue()));
+        if (top.isEmpty()) return;
+        String prefix = pl.cfg.messages().getString("prefix", "");
+        Map<String, Object> hp0 = ph();
+        Bukkit.getServer().sendMessage(pl.text.render(prefix + s().getString("hit.top-header", "<g>top hitters of the {tier_plain} lootdrop:</g>"), hp0));
+        for (int i = 0; i < Math.min(n, top.size()); i++) {
+            Map<String, Object> ph = ph();
+            ph.put("rank", i + 1);
+            ph.put("player", hitterNames.getOrDefault(top.get(i).getKey(), "?"));
+            ph.put("damage", top.get(i).getValue());
+            Bukkit.getServer().sendMessage(pl.text.render(prefix + s().getString("hit.top-line", "<g>#{rank} {player} - {damage} hits</g>"), ph));
+        }
     }
 
     /** direct = true during plugin disable (schedulers are unavailable then). */
@@ -310,6 +355,7 @@ public final class AirdropCrate {
             releaseParachute();
             if (shulker != null) shulker.remove();
             if (holo != null) holo.remove();
+            try { ground.getWorld().removePluginChunkTicket(ground.getBlockX() >> 4, ground.getBlockZ() >> 4, pl); } catch (Throwable ignored) { }
         };
         if (direct) { try { rm.run(); } catch (Throwable ignored) { } }
         else pl.sched.region(ground, rm);

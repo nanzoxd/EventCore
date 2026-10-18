@@ -20,6 +20,7 @@ import org.bukkit.event.player.PlayerInteractEntityEvent;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Consumer;
 
 /**
  * Airdrop event: generates a random code, shows it (bossbar / actionbar / title / chat, each toggleable), and drops
@@ -35,6 +36,9 @@ public final class AirdropEvent extends GameEvent {
     private volatile long nextDropAt;
     private long startedAt;
     private ScheduledTask barTask;
+    private volatile boolean spawning;
+    private volatile long spawningSince;
+    private volatile int failStreak;
 
     public AirdropEvent(EventCorePlugin pl) { super(pl, "airdrop"); }
 
@@ -101,26 +105,46 @@ public final class AirdropEvent extends GameEvent {
         return other;
     }
 
+    public int incomingSeconds() { return Math.max(1, settings().getInt("spawn.incoming-seconds", 30)); }
+    public int fallSeconds() { return Math.max(1, (int) Math.round(settings().getDouble("fall.duration-minutes", 25.0) * 60)); }
+    /** Always at least 100 blocks above the surface. */
+    public double fallHeight() { return Math.max(100.0, settings().getDouble("fall.min-height", 100.0)); }
+    /** Shortest event length that lets the first crate land and stay open for a while. */
+    @Override public int minMinutes() { return (int) Math.ceil((incomingSeconds() + fallSeconds() + 300) / 60.0); }
+
+    public static String fmtTime(int s) {
+        s = Math.max(0, s);
+        if (s >= 60) { int m = (int) Math.ceil(s / 60.0); return m + (m == 1 ? " Minute" : " Minutes"); }
+        return s + (s == 1 ? " Second" : " Seconds");
+    }
+
+    private boolean allDone() {
+        int max = settings().getInt("spawn.max-crates", 5);
+        return max > 0 && spawned >= max;
+    }
+
     private String status() {
         ConfigurationSection st = settings().getConfigurationSection("status");
         AirdropCrate f = focus();
-        int max = settings().getInt("spawn.max-crates", 5);
-        String key = f == null ? ((max > 0 && spawned >= max) ? "done" : "waiting") : f.state == State.FALLING ? "falling" : "landed";
+        String key = f == null ? (allDone() ? "done" : "waiting") : f.state == State.FALLING ? "falling" : "landed";
         return st == null ? key : st.getString(key, key);
     }
 
+    /** Incoming: seconds until the drop. Falling: time left to land. Landed: coordinates. */
     private String coords() {
         AirdropCrate f = focus();
-        if (f != null) return f.coords();
-        long secs = Math.max(0, (nextDropAt - System.currentTimeMillis()) / 1000);
-        return secs + "s";
+        if (f != null) return f.state == State.FALLING ? fmtTime(f.secondsLeft()) : f.coords();
+        if (allDone()) return "-";
+        return fmtTime((int) Math.max(0, (nextDropAt - System.currentTimeMillis() + 999) / 1000));
     }
 
     @Override public void onStart(ActiveEvent ae) {
         code = generateCode();
         spawned = 0;
         startedAt = System.currentTimeMillis();
-        nextDropAt = startedAt + settings().getInt("spawn.first-delay-seconds", 20) * 1000L;
+        nextDropAt = startedAt + incomingSeconds() * 1000L;
+        spawning = false;
+        failStreak = 0;
         int period = Math.max(1, settings().getInt("bossbar-update-ticks", 5));
         barTask = pl.sched.globalTimer(t -> animateBar(ae, t), 1, period);
     }
@@ -132,12 +156,31 @@ public final class AirdropEvent extends GameEvent {
 
     @Override public void onSecond(ActiveEvent ae, int left) {
         long now = System.currentTimeMillis();
-        int max = settings().getInt("spawn.max-crates", 5);
+        if (spawning && now - spawningSince > 20_000L) {   // a spawn callback got lost: never block forever
+            pl.getLogger().warning("Airdrop: spawn attempt timed out, retrying.");
+            spawning = false;
+        }
         int stopBefore = settings().getInt("spawn.stop-spawning-seconds-before-end", 60);
-        if (now >= nextDropAt && (max <= 0 || spawned < max) && left > stopBefore) {
-            nextDropAt = now + settings().getInt("spawn.interval-seconds", 120) * 1000L;
-            String tier = pickTier();
-            if (tier != null) spawnRandom(tier);
+        // a crate must be able to land before the event ends
+        if (now < nextDropAt || spawning || allDone() || left < fallSeconds() + stopBefore) return;
+        String tier = pickTier();
+        if (tier == null) { nextDropAt = now + 30_000L; pl.getLogger().warning("Airdrop: no crate tiers configured."); return; }
+        spawning = true;
+        spawningSince = now;
+        try {
+            spawnRandom(tier, ok -> {
+                long t = System.currentTimeMillis();
+                spawning = false;
+                if (ok) { failStreak = 0; nextDropAt = t + settings().getInt("spawn.interval-seconds", 120) * 1000L; }
+                else {
+                    nextDropAt = t + 5_000L;   // retry soon instead of waiting a whole interval
+                    if (failStreak++ % 12 == 0) pl.getLogger().warning("Airdrop: could not place a crate, retrying in 5s (attempt " + failStreak + ").");
+                }
+            });
+        } catch (Throwable ex) {
+            spawning = false;
+            nextDropAt = now + 5_000L;
+            pl.getLogger().warning("Airdrop: spawn failed: " + ex);
         }
     }
 
@@ -159,56 +202,82 @@ public final class AirdropEvent extends GameEvent {
     private boolean isActiveAe(ActiveEvent ae) { return pl.events.active(id()) == ae; }
 
     // ---------- spawning ----------
-    private void spawnRandom(String tier) {
+    private World areaWorld(ConfigurationSection a) {
+        World w = Bukkit.getWorld(a.getString("world", "world"));
+        if (w != null) return w;
+        for (World x : Bukkit.getWorlds()) if (x.getEnvironment() == World.Environment.NORMAL) {
+            pl.getLogger().warning("Airdrop: world '" + a.getString("world", "world") + "' not found, using '" + x.getName() + "'.");
+            return x;
+        }
+        return null;
+    }
+
+    private void spawnRandom(String tier, Consumer<Boolean> done) {
         ConfigurationSection sp = settings().getConfigurationSection("spawn");
-        if (sp == null) return;
+        if (sp == null) { done.accept(false); return; }
         List<String> worlds = sp.getStringList("worlds");
         if (sp.getString("mode", "AROUND_PLAYER").equalsIgnoreCase("AREA")) {
             ConfigurationSection a = sp.getConfigurationSection("area");
-            World w = a == null ? null : Bukkit.getWorld(a.getString("world", "world"));
-            if (w == null || a == null) return;
+            World w = a == null ? null : areaWorld(a);
+            if (w == null) { done.accept(false); return; }
             double cx = a.getDouble("center-x"), cz = a.getDouble("center-z");
             if (a.getBoolean("use-world-spawn", true)) { Location sp0 = w.getSpawnLocation(); cx = sp0.getX(); cz = sp0.getZ(); }
-            // half-size blocks to each side of the centre: a square of 2*half-size, picked uniformly
-            attempt(w, cx, cz, 0, a.getDouble("half-size", 4000), tier, 0, true);
+            attempt(w, cx, cz, 0, a.getDouble("half-size", 4000), tier, 0, true, done);
             return;
         }
         List<Player> candidates = new ArrayList<>();
         for (Player p : Bukkit.getOnlinePlayers())
             if (p.getWorld().getEnvironment() == World.Environment.NORMAL && (worlds.isEmpty() || worlds.contains(p.getWorld().getName())))
                 candidates.add(p);
-        if (candidates.isEmpty()) return;
+        if (candidates.isEmpty()) { done.accept(false); return; }
         Player p = candidates.get(ThreadLocalRandom.current().nextInt(candidates.size()));
         pl.sched.entity(p, () -> {
             Location l = p.getLocation();
-            attempt(l.getWorld(), l.getX(), l.getZ(), sp.getDouble("min-distance", 30), sp.getDouble("max-distance", 120), tier, 0, false);
+            attempt(l.getWorld(), l.getX(), l.getZ(), sp.getDouble("min-distance", 30), sp.getDouble("max-distance", 120), tier, 0, false, done);
         });
     }
 
-    private void attempt(World w, double cx, double cz, double minD, double maxD, String tier, int tries, boolean square) {
-        if (tries >= settings().getInt("spawn.max-attempts", 8)) return;
+    private void attempt(World w, double cx, double cz, double minD, double maxD, String tier, int tries, boolean square, Consumer<Boolean> done) {
+        int maxTries = Math.max(1, settings().getInt("spawn.max-attempts", 8));
+        if (tries >= maxTries) { done.accept(false); return; }
         ThreadLocalRandom r = ThreadLocalRandom.current();
         double ang = r.nextDouble(Math.PI * 2);
         double dist = maxD <= minD ? minD : r.nextDouble(minD, maxD);
         final int x = square ? (int) Math.floor(cx + r.nextDouble(-maxD, maxD)) : (int) Math.floor(cx + Math.cos(ang) * dist);
         final int z = square ? (int) Math.floor(cz + r.nextDouble(-maxD, maxD)) : (int) Math.floor(cz + Math.sin(ang) * dist);
+        final boolean lastTry = tries >= maxTries - 1;
         w.getChunkAtAsync(x >> 4, z >> 4).thenAccept(ch -> pl.sched.region(new Location(w, x, 64, z), () -> {
-            int y = w.getHighestBlockYAt(x, z, HeightMap.MOTION_BLOCKING_NO_LEAVES);
-            Block b = w.getBlockAt(x, y, z);
-            if (settings().getBoolean("spawn.avoid-liquids", true) && b.isLiquid()) {
-                attempt(w, cx, cz, minD, maxD, tier, tries + 1, square);
-                return;
+            try {
+                int y = w.getHighestBlockYAt(x, z, HeightMap.MOTION_BLOCKING_NO_LEAVES);
+                Block b = w.getBlockAt(x, y, z);
+                boolean bad = y <= w.getMinHeight()
+                        || !w.getWorldBorder().isInside(new Location(w, x, y, z))
+                        || (settings().getBoolean("spawn.avoid-liquids", true) && b.isLiquid() && !lastTry);   // last try accepts water
+                if (bad) { attempt(w, cx, cz, minD, maxD, tier, tries + 1, square, done); return; }
+                done.accept(spawnCrate(tier, new Location(w, x + 0.5, y + 1, z + 0.5)));
+            } catch (Throwable ex) {
+                pl.getLogger().warning("Airdrop: spawn error: " + ex);
+                done.accept(false);
             }
-            spawnCrate(tier, new Location(w, x + 0.5, y + 1, z + 0.5));
-        }));
+        })).exceptionally(ex -> {
+            pl.getLogger().warning("Airdrop: chunk load failed: " + ex);
+            done.accept(false);
+            return null;
+        });
     }
 
-    /** Must run on the region thread of ground. */
-    public void spawnCrate(String tier, Location ground) {
-        if (tierSec(tier) == null) return;
-        spawned++;
+    /** Must run on the region thread of ground. Returns false (and cleans up) when the crate could not be created. */
+    public boolean spawnCrate(String tier, Location ground) {
+        if (tierSec(tier) == null) return false;
         String c = code.isEmpty() ? generateCode() : code;
-        new AirdropCrate(pl, this, tier, ground, c).spawn();
+        try {
+            new AirdropCrate(pl, this, tier, ground, c).spawn();
+            spawned++;
+            return true;
+        } catch (Throwable ex) {
+            pl.getLogger().warning("Airdrop: could not spawn crate: " + ex);
+            return false;
+        }
     }
 
     /** /eventcore airdrop spawn: drops a crate on the sender's position. */

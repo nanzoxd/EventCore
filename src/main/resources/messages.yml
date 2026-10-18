@@ -33,6 +33,9 @@ command:
   schedule-line: "<white>{event}</white> <gray>{at} (in {in})</gray>"
   schedule-none: "<gray>nothing is scheduled.</gray>"
   airdrop-spawned: "<g>dropping a {tier} crate.</g>"
+event-join:      # sent once to players who join while an event is running (rules come from events.<id>.messages.join)
+  header: "<g>{event} is running ({time} left)</g>"
+  bullet: "<g>-</g> "
 scheduler:
   warning: "<g>{event} starts in {time}!</g>"
 events:

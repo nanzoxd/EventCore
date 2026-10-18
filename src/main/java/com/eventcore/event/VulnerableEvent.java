@@ -1,6 +1,7 @@
 package com.eventcore.event;
 
 import com.eventcore.EventCorePlugin;
+import com.eventcore.event.EventManager.ActiveEvent;
 import org.bukkit.NamespacedKey;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
@@ -17,6 +18,11 @@ public final class VulnerableEvent extends GameEvent {
     public VulnerableEvent(EventCorePlugin pl) {
         super(pl, "vulnerable");
         modKey = new NamespacedKey(pl, "vulnerable_hearts");
+    }
+
+    @Override public java.util.Map<String, Object> extra(ActiveEvent ae) {
+        double h = settings().getDouble("hearts", 7.5);
+        return java.util.Map.of("hearts", h == Math.rint(h) ? String.valueOf((long) h) : String.valueOf(h));
     }
 
     @Override protected void doApply(Player p) {

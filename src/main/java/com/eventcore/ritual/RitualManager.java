@@ -183,6 +183,9 @@ public final class RitualManager implements Listener {
     private List<String> paletteCycle() {
         List<String> c = new ArrayList<>(rc().getStringList("particles.cycle"));
         c.removeIf(n -> rc().getConfigurationSection("particles.palettes." + n) == null);
+        // every palette defined in rituals.yml is selectable, even if an older cycle list does not mention it
+        ConfigurationSection all = rc().getConfigurationSection("particles.palettes");
+        if (all != null) for (String n : all.getKeys(false)) if (!c.contains(n)) c.add(n);
         if (c.isEmpty()) c.add("gold");
         return c;
     }

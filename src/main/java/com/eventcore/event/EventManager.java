@@ -33,6 +33,8 @@ public final class EventManager implements Listener {
         public final int totalSec;
         public volatile BossBar bar;
         public volatile ScheduledTask aura;
+        /** players who already got the join info (or saw the start broadcast): never message them twice */
+        public final Set<UUID> informed = ConcurrentHashMap.newKeySet();
 
         ActiveEvent(GameEvent ev, long start, int minutes) {
             this.ev = ev;
@@ -125,6 +127,7 @@ public final class EventManager implements Listener {
             }
         }
         int minutes = minutesOverride != null ? Math.max(1, minutesOverride) : Math.max(1, s.getInt("duration-minutes", 10));
+        minutes = Math.max(minutes, ev.minMinutes());
         launch(ev, minutes);
         return null;
     }
@@ -133,6 +136,7 @@ public final class EventManager implements Listener {
         ConfigurationSection s = ev.sec();
         ActiveEvent ae = new ActiveEvent(ev, System.currentTimeMillis(), minutes);
         active.put(ev.id(), ae);
+        for (Player pp : Bukkit.getOnlinePlayers()) ae.informed.add(pp.getUniqueId());   // they see the start broadcast
         Map<String, Object> ph = placeholders(ae);
 
         ConfigurationSection bb = s.getConfigurationSection("bossbar");
@@ -293,9 +297,27 @@ public final class EventManager implements Listener {
         Player p = e.getPlayer();
         pl.sched.entityLater(p, () -> {
             stripStale(p);
-            for (ActiveEvent ae : active.values()) ae.ev.apply(p);
+            for (ActiveEvent ae : active.values()) {
+                ae.ev.apply(p);
+                if (ae.bar != null) p.showBossBar(ae.bar);   // same bar, same timer: nothing is restarted
+                if (ae.informed.add(p.getUniqueId())) sendJoinInfo(p, ae);   // once per player per event run
+            }
         }, 5);
         pl.teams.refreshLater();
+    }
+
+    /** Explains the effects and rules of a running event to a player who joined late. */
+    private void sendJoinInfo(Player p, ActiveEvent ae) {
+        pl.sched.entityLater(p, () -> {
+            if (active.get(ae.ev.id()) != ae) return;
+            Map<String, Object> ph = placeholders(ae);
+            String prefix = pl.cfg.messages().getString("prefix", "");
+            List<String> lines = ae.ev.sec().getStringList("messages.join");
+            if (lines.isEmpty()) lines = List.of("{description}");
+            p.sendMessage(pl.text.render(prefix + pl.cfg.messages().getString("event-join.header", "<g>{event} is running ({time} left)</g>"), ph));
+            String bullet = pl.cfg.messages().getString("event-join.bullet", "<g>-</g> ");
+            for (String l : lines) p.sendMessage(pl.text.render(bullet + l, ph));
+        }, 40);
     }
 
     @EventHandler

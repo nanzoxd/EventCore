@@ -25,7 +25,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
- * Simple admin menu (/eventcore gui), coral theme from config.yml theme.*:
+ * Simple admin menu (/eventcore gui), peach + gold theme from config.yml theme.*:
  *   main -> Events | Airdrop | Loot tables | Ritual creator | Reload
  * Events: left = on/off, right = start/stop, shift = duration +-5m.
  * Airdrop: every number is a stepper (left +, right -, shift x5). Everything else lives in the yml files.
@@ -47,9 +47,9 @@ public final class AdminGui implements Listener {
     // ---------- theme helpers ----------
     private String th(String key, String def) { return pl.cfg.config().getString("theme." + key, def); }
     private String fmt(String s) {
-        return s.replace("%main%", th("main", "#F47F6A")).replace("%soft%", th("soft", "#FAB2A0"))
-                .replace("%good%", th("good", "#2EFF2E")).replace("%bad%", th("bad", "#FF2E4A"))
-                .replace("%warn%", th("warn", "#FFFF5C")).replace("%info%", th("info", "#00C3FF"));
+        return s.replace("%main%", th("main", "#d8b04a")).replace("%soft%", th("soft", "#ffd7ca"))
+                .replace("%good%", th("good", "#f1d58f")).replace("%bad%", th("bad", "#ffcfca"))
+                .replace("%warn%", th("warn", "#e8c670")).replace("%info%", th("info", "#ffe4d5")).replace("%white%", th("white", "#fffbf0"));
     }
     private Component mm(String s) { return MM.deserialize("<!italic>" + fmt(s)); }
 
@@ -58,7 +58,7 @@ public final class AdminGui implements Listener {
         ItemMeta meta = it.getItemMeta();
         meta.displayName(mm("<color:%main%>" + name));
         List<Component> l = new ArrayList<>();
-        for (String s : lore) l.add(mm("<gray>" + s));
+        for (String s : lore) l.add(mm("<color:%info%>" + s));
         meta.lore(l);
         meta.addItemFlags(ItemFlag.values());
         it.setItemMeta(meta);
@@ -67,7 +67,9 @@ public final class AdminGui implements Listener {
 
     private void open(Player p, String title, int rows, Consumer<Page> filler) {
         Page pg = new Page();
-        pg.inv = Bukkit.createInventory(pg, rows * 9, mm("<gradient:%main%:%soft%>" + title + "</gradient>"));
+        String grad = title.equals("EventCore") ? String.join(":", pl.cfg.config().getStringList("eventcore-gradient").isEmpty()
+                ? java.util.List.of("#808080", "#C4C4C4", "#808080") : pl.cfg.config().getStringList("eventcore-gradient")) : "%main%:%soft%";
+        pg.inv = Bukkit.createInventory(pg, rows * 9, mm("<gradient:" + grad + ">" + title + "</gradient>"));
         pg.fill = () -> {
             pg.inv.clear();
             pg.acts.clear();
@@ -107,6 +109,7 @@ public final class AdminGui implements Listener {
             case "anonymous" -> Material.PLAYER_HEAD;
             case "glow" -> Material.GLOWSTONE_DUST;
             case "elo_buff" -> Material.EXPERIENCE_BOTTLE;
+            case "millionaire" -> Material.GOLD_INGOT;
             case "locator_bar" -> Material.COMPASS;
             case "airdrop" -> Material.BEACON;
             default -> Material.PAPER;
@@ -126,7 +129,7 @@ public final class AdminGui implements Listener {
                 String id = ev.id();
                 set(pg, slot++, icon(eventIcon(id), Util.title(ev.displayName()),
                         "Status: " + state,
-                        "Duration: <white>" + dur + " min",
+                        "Duration: <color:%white%>" + dur + " min",
                         "",
                         "<color:%soft%>Left click: turn " + (on ? "off" : "on"),
                         "<color:%soft%>Right click: " + (ae != null ? "stop" : "start") + " now",
@@ -149,7 +152,7 @@ public final class AdminGui implements Listener {
                 });
             }
             String dm = pl.cfg.config().getString("event-display", "BOSSBAR").toUpperCase(Locale.ROOT);
-            set(pg, 29, icon(Material.OAK_SIGN, "Event display", "Now: <white>" + dm, "BOSSBAR, ACTIONBAR or BOTH", "", "<color:%soft%>Click to switch"), (pl2, c) -> {
+            set(pg, 29, icon(Material.OAK_SIGN, "Event display", "Now: <color:%white%>" + dm, "BOSSBAR, ACTIONBAR or BOTH", "", "<color:%soft%>Click to switch"), (pl2, c) -> {
                 String next = dm.equals("BOSSBAR") ? "ACTIONBAR" : dm.equals("ACTIONBAR") ? "BOTH" : "BOSSBAR";
                 pl.cfg.set("config", "event-display", next);
                 pg.fill.run();
@@ -171,7 +174,7 @@ public final class AdminGui implements Listener {
             for (String tier : pl.airdrop.tierIds())
                 if (s <= 22) stepper(pg, s++, Material.SHULKER_BOX, Util.title(tier) + " crate health", "tiers." + tier + ".health", 1, 1, 500, false);
             String mode = pl.cfg.events().getString(AIR + "spawn.mode", "AREA");
-            set(pg, 24, icon(Material.COMPASS, "Spawn mode", "Now: <white>" + mode,
+            set(pg, 24, icon(Material.COMPASS, "Spawn mode", "Now: <color:%white%>" + mode,
                     "AREA = random spot in the square", "AROUND_PLAYER = near a random player", "", "<color:%soft%>Click to switch"), (pl2, c) -> {
                 pl.cfg.set("events", AIR + "spawn.mode", mode.equalsIgnoreCase("AREA") ? "AROUND_PLAYER" : "AREA");
                 pl.afterConfigChange("events");
@@ -184,7 +187,7 @@ public final class AdminGui implements Listener {
     private void stepper(Page pg, int slot, Material m, String label, String path, double step, double min, double max, boolean dbl) {
         double v = pl.cfg.events().getDouble(AIR + path);
         String shown = dbl ? String.format(Locale.ROOT, "%.1f", v) : String.valueOf((long) v);
-        set(pg, slot, icon(m, label, "Value: <white>" + shown, "", "<color:%soft%>Left +" + (long) step + "  Right -" + (long) step, "<color:%soft%>Shift = x5"),
+        set(pg, slot, icon(m, label, "Value: <color:%white%>" + shown, "", "<color:%soft%>Left +" + (long) step + "  Right -" + (long) step, "<color:%soft%>Shift = x5"),
                 (p, c) -> {
                     double cur = pl.cfg.events().getDouble(AIR + path);
                     double nv = cur + (c.isLeftClick() ? 1 : -1) * step * (c.isShiftClick() ? 5 : 1);

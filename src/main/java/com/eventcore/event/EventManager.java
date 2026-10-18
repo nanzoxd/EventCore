@@ -76,12 +76,13 @@ public final class EventManager implements Listener {
         return null;
     }
 
+    /**
+     * Tab completion: exactly ONE name per event, the display name as a single word ("golden_tree", "duodeck").
+     * Aliases and ids still work when typed (see find) but are never suggested.
+     */
     public List<String> allNames() {
         List<String> out = new ArrayList<>();
-        for (GameEvent e : registry.values()) {
-            out.add(e.id());
-            out.addAll(e.sec().getStringList("aliases"));
-        }
+        for (GameEvent e : registry.values()) out.add(e.displayName().trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", "_"));
         return out;
     }
 

@@ -80,7 +80,7 @@ public final class AnonymousEvent extends GameEvent {
     public void onChat(AsyncChatEvent e) {
         if (!active()) return;
         boolean reveal = settings().getBoolean("reveal-to-admins", true);
-        String fmt = settings().getString("chat-format", "<gray>{name}</gray> <dark_gray>»</dark_gray> ");
+        String fmt = settings().getString("chat-format", "<color:#ffd7ca>{name}</color> <color:#ffe4d5>»</color> ");
         Map<String, Object> ph = Text.ph("name", anonName());
         e.renderer((ChatRenderer) (source, sourceDisplayName, message, viewer) -> {
             Component out = pl.text.render(fmt, ph);

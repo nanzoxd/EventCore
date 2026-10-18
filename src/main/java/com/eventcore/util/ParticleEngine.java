@@ -19,7 +19,7 @@ import java.util.function.BooleanSupplier;
 
 /**
  * Configurable particle engine used by the ritual, event start animations, auras and crate landings.
- * Shapes: ring, scatter, burst, spiral, helix. Point offsets are plain maths, so they can be computed off-thread
+ * Shapes: ring, circle, polygon, rain, scatter, burst, spiral, helix. Point offsets are plain maths, so they can be computed off-thread
  * (config.yml particles.compute-async) while the spawn itself always happens on the owning region thread.
  */
 public final class ParticleEngine {
@@ -30,6 +30,8 @@ public final class ParticleEngine {
         public Color color, toColor;
         public float size;
         public int count, min, max;
+        public int sides;
+        public double rotation;
         public boolean skript;   // reproduce the original Skript: its cos/sin take degrees, but the script passed radians
         public double radius, radiusJitter, rMin, rMax, yJitter, height, yMin, yMax, step, turns, rise, spin;
     }
@@ -73,6 +75,8 @@ public final class ParticleEngine {
         l.turns = s.getDouble("turns", 2.0);
         l.rise = s.getDouble("rise", 2.0);
         l.spin = s.getDouble("spin", 0.0);
+        l.sides = Math.max(3, s.getInt("sides", 3));
+        l.rotation = s.getDouble("rotation", 0.0);
         l.skript = s.getBoolean("skript-trig", false);
         return l;
     }
@@ -109,6 +113,30 @@ public final class ParticleEngine {
                         double a = ang(l, rnd(0, 360)), r = rnd(l.rMin, l.rMax);
                         out.add(new Pt(l, r * Math.cos(a), l.height + rnd(l.yMin, l.yMax), r * Math.sin(a), per(l)));
                     }
+                }
+                case "circle" -> {
+                    // true static circle: count points evenly on radius
+                    for (int i = 0; i < l.count; i++) {
+                        double a = Math.toRadians(i * 360.0 / l.count);
+                        out.add(new Pt(l, l.radius * Math.cos(a), l.height, l.radius * Math.sin(a), per(l)));
+                    }
+                }
+                case "polygon" -> {
+                    // regular polygon (radius = distance centre -> corner), count = points per edge, rotated by rotation degrees
+                    int n = l.sides;
+                    for (int k = 0; k < n; k++) {
+                        double a1 = Math.toRadians(l.rotation + k * 360.0 / n), a2 = Math.toRadians(l.rotation + (k + 1) * 360.0 / n);
+                        double x1 = l.radius * Math.cos(a1), z1 = l.radius * Math.sin(a1), x2 = l.radius * Math.cos(a2), z2 = l.radius * Math.sin(a2);
+                        for (int i = 0; i < l.count; i++) {
+                            double t = i / (double) l.count;
+                            out.add(new Pt(l, x1 + (x2 - x1) * t, l.height, z1 + (z2 - z1) * t, per(l)));
+                        }
+                    }
+                }
+                case "rain" -> {
+                    // ambient particles scattered in a square of +-radius, yMin..yMax above the centre
+                    for (int i = 0; i < l.count; i++)
+                        out.add(new Pt(l, rnd(-l.radius, l.radius), l.height + rnd(l.yMin, l.yMax), rnd(-l.radius, l.radius), per(l)));
                 }
                 case "burst" -> {
                     for (int i = 0; i < l.count; i++) {

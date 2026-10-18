@@ -41,6 +41,7 @@ public final class RitualManager implements Listener {
         BossBar bar;
         ScheduledTask spin, particles, countdown;
         float yaw;
+        final String palette = currentPalette();
         String lastTimer = "";
         long cycle;
 
@@ -127,10 +128,15 @@ public final class RitualManager implements Listener {
                 if (!ts.equals(lastTimer)) { lastTimer = ts; setText(timerText, timerComponent()); }
             }, () -> { }, 1, spinIv);
             if (rc().getBoolean("particles.enabled", true)) {
-                List<ParticleEngine.Layer> layers = pl.particles.read(rc().getConfigurationSection("particles.layers"));
-                particles = pl.sched.entityTimer(display, t ->
-                        pl.particles.playMaybeAsync(display.getLocation(), layers, cycle++), () -> { },
-                        1, Math.max(1, rc().getInt("particles.interval-ticks", 10)));
+                // the sigil from RitualCreator.sk: layers of the palette that was active when the ritual started
+                List<ParticleEngine.Layer> layers = pl.particles.read(rc().getConfigurationSection("particles.palettes." + palette + ".layers"));
+                Location center = loc.clone().add(0, rc().getDouble("particles.height", 2.325), 0);
+                double view = Math.max(1.0, rc().getDouble("particles.view-distance", 32.0));
+                particles = pl.sched.entityTimer(display, t -> {
+                    // only draw while a player can see it
+                    if (center.getWorld().getNearbyPlayers(center, view).isEmpty()) return;
+                    pl.particles.playMaybeAsync(center, layers, cycle++);
+                }, () -> { }, 1, Math.max(1, rc().getInt("particles.interval-ticks", 4)));
             }
             countdown = pl.sched.globalTimer(t -> {
                 if (cur != this) { t.cancel(); return; }
@@ -173,7 +179,33 @@ public final class RitualManager implements Listener {
         pl.sched.async(() -> pl.cfg.save("rituals"));
     }
 
+    // ---------- particle palette (nether star in the GUI) ----------
+    private List<String> paletteCycle() {
+        List<String> c = new ArrayList<>(rc().getStringList("particles.cycle"));
+        c.removeIf(n -> rc().getConfigurationSection("particles.palettes." + n) == null);
+        if (c.isEmpty()) c.add("gold");
+        return c;
+    }
+
+    public String currentPalette() {
+        String p = rc().getString("particles.palette", "gold");
+        return rc().getConfigurationSection("particles.palettes." + p) != null ? p : paletteCycle().get(0);
+    }
+
+    public String paletteLabel() { return rc().getString("particles.palettes." + currentPalette() + ".label", currentPalette()); }
+    public String paletteColor() { return rc().getString("particles.palettes." + currentPalette() + ".color", "#d8b04a"); }
+
+    /** Next palette in particles.cycle; saved to rituals.yml. */
+    public String cyclePalette() {
+        List<String> c = paletteCycle();
+        String next = c.get((Math.max(0, c.indexOf(currentPalette())) + 1) % c.size());
+        pl.cfg.rituals().set("particles.palette", next);
+        pl.sched.async(() -> pl.cfg.save("rituals"));
+        return next;
+    }
+
     private void updateBar(Ritual r) {
+        if (r.bar != null) r.bar.name(pl.text.render(cfgMsg("ritual.bossbar-title", "<bb>{item} Ritual | {time}</bb>"), r.ph()));
         if (r.bar != null && rc().getString("bossbar.progress-mode", "STATIC").equalsIgnoreCase("COUNTDOWN"))
             r.bar.progress(BossBars.clamp(r.remaining / (double) Math.max(1, r.total)));
     }
@@ -202,7 +234,7 @@ public final class RitualManager implements Listener {
         if (bb != null && bb.getBoolean("enabled", true)) {
             ConfigurationSection tmp = new org.bukkit.configuration.MemoryConfiguration();
             tmp.set("text", cfgMsg("ritual.bossbar-title", "<g>{item} ritual | {world} [{x}, {y}, {z}]</g>"));
-            tmp.set("color", bb.getString("color", "YELLOW"));
+            tmp.set("color", rc().getString("particles.palettes." + r.palette + ".bossbar-color", bb.getString("color", "YELLOW")));
             tmp.set("style", bb.getString("style", "PROGRESS"));
             double prog = bb.getString("progress-mode", "STATIC").equalsIgnoreCase("COUNTDOWN")
                     ? r.remaining / (double) r.total : bb.getDouble("static-progress", 1.0);

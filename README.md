@@ -34,24 +34,42 @@ or landed, to open the editor for that crate's tier. The editor shows the loot a
 It needs the patched ReliqueOnlineAPI (ReliqueSmpStats-patched.zip: adds `getStatsManager()` and `setEloGainMultiplier`).
 Losses are not changed. The multiplier goes back to normal when the event ends or the server stops.
 
+## Millionaire event
+`/eventcore start millionaire` makes every gold ore (GOLD_ORE, DEEPSLATE_GOLD_ORE, NETHER_GOLD_ORE) drop extra gold on top of its normal drop:
+`settings.extra-min` to `extra-max` more raw gold (or gold nuggets from nether gold ore), `settings.chance` percent per ore, `settings.blocks` lists the ores.
+Silk touch gets no bonus (the ore block itself drops).
+
+## DuoDeck
+The former Elo Buff event is now called DuoDeck (`display-name`). Its internal id stays `elo_buff`, so config, scheduler and saved data keep working.
+
+## Tab completion
+`/eventcore start|force|stop|rig <tab>` suggests exactly one name per event (its display name as one word: `golden_tree`, `duodeck`, `millionaire`).
+Ids and aliases still work when typed, they are just not suggested.
+
 ## Event display
 `event-display` in config.yml (or the Events page in `/eventcore gui`) sets how running events show: BOSSBAR, ACTIONBAR or BOTH.
 Actionbar and bossbar read "Golden Tree : 01:00" in small caps. Each event has its own bossbar colour, style and gradient in events.yml.
 
-## Chat colours
-Chat, titles and messages use only the peach palette (config.yml `palette`, `style.text-color`). Any red/green/gray colour tag in a
+## Colours
+Everything uses only the two palettes in config.yml: peach (#fffbf0 #fff1e0 #ffe4d5 #ffd7ca #ffcfca) and gold (#d8b04a #e8c670 #f1d58f #f7e2ad #fff0cc).
+Titles, chat, bossbars, holograms and the GUIs follow `palette`, `theme`, `bossbar-gradient` and the per event gradients in events.yml.
+The `[EventCore]` label (chat prefix and /eventcore gui title) is the grey gradient #808080 #C4C4C4 #808080 (`eventcore-gradient`, messages.yml `prefix`).
+Chat, titles and messages use only the palette (config.yml `palette`, `style.text-color`). Any red/green/gray colour tag in a
 message is flattened to `style.text-color` (`style.flatten-colors: false` turns that off). Bossbars use `bossbar-gradient`.
 
 ## Notes on behaviour
 * `rig` queues an event: the next `/eventcore start <count>` roll (or random pick) takes rigged events first.
 * The airdrop code is displayed (bossbar, actionbar, title, chat) and on the crate hologram; it is not an input.
 * Crates are invulnerable at all times; hits are counted as virtual HP, so explosions can never break them.
-* Ritual: the bossbar colour "gold" of the original maps to YELLOW (Adventure has no gold). Adventure bossbars have no id.
+* Ritual: the sigil, GUI and bossbar follow RitualCreator.sk: a circle (radius 9) with a hexagram (two triangles, radius 4.5) and ambient particles falling above it,
+  drawn at `particles.height` above the ritual spot (2.325 like the script, lower it to put it on the ground). The nether star in the ritual menu cycles `particles.cycle`
+  (gold, peach); add more palettes under `particles.palettes`. The bossbar shows "item Ritual | time [x, y, z]" and drains like the script.
+  Finishing shows "<item> ritual completed" as the title. Adventure bossbars have no id.
 * Reloading while a ritual runs keeps it running and warns admins, like the original script.
 * `/eventcore gui` lists every key of every file with a widget for its type, so every setting is editable in-game.
 
 ## Updating
-Delete the old `plugins/EventCore/` config files (config, events, messages, gui) once so the new defaults are written.
+Delete the old `plugins/EventCore/` config files (config, events, messages, gui, rituals) once so the new defaults are written.
 
 ## Known limits
 * Anonymous skin uses Paper's profile API with the texture link in events.yml (settings.skin.url); check that skin loads on your server.

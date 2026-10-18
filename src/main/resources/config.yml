@@ -1,21 +1,26 @@
 # EventCore main configuration. Everything here is also editable in-game: /eventcore gui
 # Gradient palette used by the <g> tag in every message, title and bossbar.
-palette:            # peach palette (chat, titles)
+# The two palettes everything is coloured with (titles, chat, GUIs, bossbars, holograms):
+#   peach: #fffbf0 #fff1e0 #ffe4d5 #ffd7ca #ffcfca     gold: #d8b04a #e8c670 #f1d58f #f7e2ad #fff0cc
+palette:            # peach -> gold (chat, titles)
   - "#fffbf0"
-  - "#fff1e0"
   - "#ffe4d5"
-  - "#ffd7ca"
   - "#ffcfca"
+  - "#f1d58f"
+  - "#d8b04a"
 # Bossbars use this gradient (<bb> tag): "Lootdrop Falling | 10 20 30"
-bossbar-gradient: ["#2FD0CD", "#C5F2F1", "#2FD0CD"]
-# GUI colours (same theme as the Teams plugin)
+bossbar-gradient: ["#d8b04a", "#fff0cc", "#d8b04a"]
+# The [EventCore] label (chat prefix in messages.yml and the /eventcore gui title)
+eventcore-gradient: ["#808080", "#C4C4C4", "#808080"]
+# GUI colours (peach + gold only)
 theme:
-  main: "#F47F6A"
-  soft: "#FAB2A0"
-  good: "#2EFF2E"
-  bad: "#FF2E4A"
-  warn: "#FFFF5C"
-  info: "#00C3FF"
+  main: "#d8b04a"
+  soft: "#ffd7ca"
+  good: "#f1d58f"
+  bad: "#ffcfca"
+  warn: "#e8c670"
+  info: "#ffe4d5"
+  white: "#fffbf0"
 style:
   flatten-colors: true   # chat uses only the palette: red/green/gray... tags become text-color
   text-color: "#ffd7ca"
@@ -57,8 +62,8 @@ discord:
     ritual-complete: true
     ritual-stop: true
   colors:
-    start: "#2EFF2E"
-    end: "#FF2E4A"
-    warn: "#FFFF5C"
+    start: "#f1d58f"
+    end: "#ffcfca"
+    warn: "#e8c670"
     airdrop: "#d8b04a"
-    ritual: "#F47F6A"
+    ritual: "#ffd7ca"

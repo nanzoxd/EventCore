@@ -1,6 +1,6 @@
 # Messages. Text supports MiniMessage, <g> (palette gradient) and {placeholders}.
 # A message may be a plain string or a section {text, sound: {sound, volume, pitch}}.
-prefix: "<g>eventcore</g> <dark_gray>|</dark_gray> "
+prefix: "<gradient:#808080:#C4C4C4:#808080>eventcore |</gradient> "
 ritual-prefix: "<g>ritual</g> <dark_gray>|</dark_gray> "
 errors:
   no-permission: "<red>you do not have permission.</red>"
@@ -28,7 +28,7 @@ command:
   nothing-running: "<red>no event is running.</red>"
   reloaded: "<g>configuration reloaded.</g>"
   list-header: "<g>events:</g>"
-  list-line: "<white>{event}</white> <dark_gray>({id})</dark_gray> <gray>{state} | {minutes}m | aliases: {aliases}</gray>"
+  list-line: "<white>{event}</white> <gray>{state} | {minutes}m</gray>"
   schedule-header: "<g>next scheduled starts ({zone}):</g>"
   schedule-line: "<white>{event}</white> <gray>{at} (in {in})</gray>"
   schedule-none: "<gray>nothing is scheduled.</gray>"
@@ -51,11 +51,11 @@ ritual:
   wait-active: "<red>please wait for the current active ritual to end</red>"
   broadcast: "<gray>a</gray> <g>ritual</g> <gray>was initiated by</gray> <green>{player}</green><gray>. location: {world} [{x}, {y}, {z}]</gray>"
   start-title: {title: "<g>{item} ritual started</g>", subtitle: "<g>defend the piece while it charges!</g>"}
-  announce-title: {title: "<g>{item} ritual</g>", subtitle: "<gray>location: {world} [{x}, {y}, {z}]</gray>"}
-  complete-title: {title: "<g>ritual complete</g>", subtitle: "<gray>heavy piece successfully crafted</gray>"}
+  announce-title: {title: "<g>{item} ritual started</g>", subtitle: "<g>{world} | {x}, {y}, {z}</g>"}
+  complete-title: {title: "<g>{item} ritual completed</g>", subtitle: ""}
   stopped-title: {title: "<g>ritual stopped</g>", subtitle: ""}
   stopped-broadcast: "<red>all rituals ended</red>"
-  bossbar-title: "<bb>Ritual {item} | {x} {y} {z}</bb>"
+  bossbar-title: "<bb>✦ {item} Ritual | {time} [{x}, {y}, {z}]</bb>"
   name-text: "{item_display}"
   unnamed-format: "<gold>{item}</gold>"
   timer-text: "<red>({time} left)</red>"

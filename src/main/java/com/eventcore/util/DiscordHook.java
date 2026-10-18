@@ -115,7 +115,7 @@ public final class DiscordHook {
     public void ritualStarted(String item, String player, String world, String xyz, int minutes) {
         if (!on("ritual-start")) return;
         long end = Instant.now().getEpochSecond() + minutes * 60L;
-        post(true, "🔮 Ritual started: " + item, color("ritual", "#F47F6A"),
+        post(true, "🔮 Ritual started: " + item, color("ritual", "#ffd7ca"),
                 "```css\n[Item]     " + clean(item) + "\n[Started]  " + clean(player) + "\n[Where]    " + clean(world) + " " + xyz + "\n[Time]     " + minutes + " minutes\n```\nCompletes " + rel(end));
     }
 

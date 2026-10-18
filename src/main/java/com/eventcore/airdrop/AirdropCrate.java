@@ -9,7 +9,7 @@ import com.eventcore.util.Text;
 import com.eventcore.util.Util;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.*;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.*;
@@ -64,13 +64,13 @@ public final class AirdropCrate {
     public String coords() { return ground.getBlockX() + " " + ground.getBlockY() + " " + ground.getBlockZ(); }
     public double fallProgress() { return fallTicks <= 0 ? 1 : Math.min(1.0, tick / (double) fallTicks); }
 
-    /** HP bar: filled part in the tier gradient, empty part dark gray. */
+    /** HP bar: filled part in the tier gradient, empty part soft peach. */
     private Component hpBar() {
         int w = 12;
         int f = maxHp == 0 ? 0 : (int) Math.round(w * (hp / (double) maxHp));
         List<String> g = t().getStringList("gradient");
         Component filled = f > 0 ? pl.text.gradient("█".repeat(f), g.isEmpty() ? pl.text.palette() : g, 0) : Component.empty();
-        return Component.empty().append(filled).append(Component.text("█".repeat(w - f), NamedTextColor.DARK_GRAY));
+        return Component.empty().append(filled).append(Component.text("█".repeat(w - f), TextColor.color(0xffe4d5)));
     }
 
     private Map<String, Object> ph() {

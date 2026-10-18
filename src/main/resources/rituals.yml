@@ -1,4 +1,4 @@
-# Ritual Creator. Values mirror the original RitualCreator.sk.
+# Ritual Creator. Values mirror RitualCreator.sk (sigil circle, palettes, timer in the bossbar).
 time:
   minutes: 15      # current value (changed by the clock in the GUI)
   min: 1
@@ -25,9 +25,9 @@ sounds:
   stop: {sound: "entity.ender_dragon.death", volume: 0.75, pitch: 3.0}
 bossbar:
   enabled: true
-  color: YELLOW            # the original used gold, which Adventure maps to yellow
+  color: YELLOW            # fallback; the active particle palette (particles.palettes.<name>.bossbar-color) decides
   style: PROGRESS
-  progress-mode: STATIC    # STATIC (original: always 100%) or COUNTDOWN
+  progress-mode: COUNTDOWN # COUNTDOWN (like RitualCreator.sk: drains to 0) or STATIC
   static-progress: 1.0
 cancel:
   return-item-to-admin: false
@@ -36,12 +36,33 @@ persistence:
   on-restart: RESTORE      # RESTORE or CANCEL
   cancel-drops-item: true  # with CANCEL: drop the item at the ritual spot
   save-interval-seconds: 10
+# The ritual circle from RitualCreator.sk: a static sigil (one circle with a hexagram of two overlapping
+# triangles in the middle) plus ambient particles falling above it. Peach and gold palettes only.
+# The sigil redraws every interval-ticks (raise it first if the server lags) and is only drawn while a player is
+# within view-distance. height is measured from the ritual spot; 2.325 = the item-name stand (2.275) + 0.05, like the original.
 particles:
   enabled: true
-  interval-ticks: 10
-  # skript-trig: true reproduces the original script exactly. Skript's cos/sin take degrees but the script passed
-  # radians, so its "rings" are really small blobs on the +x side. Set it to false for true circles.
-  layers:
-    outer-ring: {skript-trig: true, shape: ring, particle: DUST, color: "#ff5a00", size: 0.35, count: 40, step-degrees: 9.0, radius: 2.0, radius-jitter: 0.15, y-jitter: 0.05, height: 0.5, particles-min: 1, particles-max: 3}
-    inner-ring: {skript-trig: true, shape: ring, particle: DUST, color: "#ff5a00", size: 0.35, count: 28, step-degrees: 12.85, radius: 1.1, radius-jitter: 0.1, y-jitter: 0.05, height: 0.5, particles-min: 1, particles-max: 3}
-    sparks: {skript-trig: true, shape: scatter, particle: DUST, color: "#ffdc64", size: 0.2, count: 6, radius-min: 0.8, radius-max: 2.2, y-min: -0.1, y-max: 0.2, height: 0.5, particles-min: 1, particles-max: 1}
+  interval-ticks: 4
+  view-distance: 32
+  height: 2.325
+  palette: gold               # current palette (changed by the nether star in the GUI)
+  cycle: [gold, peach]        # order the nether star cycles through
+  palettes:
+    gold:
+      label: "gold"
+      color: "#d8b04a"        # name colour of the GUI button
+      bossbar-color: YELLOW   # vanilla bossbar colour used while this palette is active
+      layers:
+        outer: {shape: circle, particle: DUST, color: "#d8b04a", size: 0.9, radius: 9.0, count: 120, particles-min: 1, particles-max: 1}
+        tri1: {shape: polygon, sides: 3, rotation: 0.0, particle: DUST, color: "#e8c670", size: 0.9, radius: 4.5, count: 24, particles-min: 1, particles-max: 1}
+        tri2: {shape: polygon, sides: 3, rotation: 60.0, particle: DUST, color: "#f1d58f", size: 0.9, radius: 4.5, count: 24, particles-min: 1, particles-max: 1}
+        falling: {shape: rain, particle: WAX_ON, radius: 9.0, count: 6, y-min: 3.0, y-max: 6.0, height: 0.0, particles-min: 1, particles-max: 1}
+    peach:
+      label: "peach"
+      color: "#ffcfca"
+      bossbar-color: PINK
+      layers:
+        outer: {shape: circle, particle: DUST, color: "#ffcfca", size: 0.9, radius: 9.0, count: 120, particles-min: 1, particles-max: 1}
+        tri1: {shape: polygon, sides: 3, rotation: 0.0, particle: DUST, color: "#ffd7ca", size: 0.9, radius: 4.5, count: 24, particles-min: 1, particles-max: 1}
+        tri2: {shape: polygon, sides: 3, rotation: 60.0, particle: DUST, color: "#ffe4d5", size: 0.9, radius: 4.5, count: 24, particles-min: 1, particles-max: 1}
+        falling: {shape: rain, particle: CHERRY_LEAVES, radius: 9.0, count: 6, y-min: 3.0, y-max: 6.0, height: 0.0, particles-min: 1, particles-max: 1}

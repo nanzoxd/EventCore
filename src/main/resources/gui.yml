@@ -1,19 +1,37 @@
-# Ritual Creator GUI. Colours follow the Teams plugin theme (#F47F6A coral, #FAB2A0 soft).
+# Ritual Creator GUI. Peach + gold palette only (see config.yml palette / theme).
 # Names/lore support MiniMessage and {placeholders}. The admin menu (/eventcore gui) is built in code, theme in config.yml.
+# Layout matches RitualCreator.sk: stop 10 | timer 12 | creator 13 | particle colours 14 | end 16
 ritual-main:
-  title: "<gradient:#F47F6A:#FAB2A0>ritual creator</gradient>"
+  title: "<gradient:#d8b04a:#fff0cc:#ffd7ca>ritual creator</gradient>"
   rows: 3
   items:
-    cancel: {slot: 10, material: RED_CONCRETE, name: "<color:#FF2E4A>cancel rituals</color>", lore: ["<color:#FAB2A0>click to cancel the active ritual</color>"]}
-    creation: {slot: 13, material: PLAYER_HEAD, name: "<color:#F47F6A>ritual creation</color>", lore: ["<color:#FAB2A0>click to pick the ritual item</color>"]}
-    submit: {slot: 16, material: GREEN_CONCRETE, name: "<color:#2EFF2E>ritual submitter</color>", lore: ["<color:#FAB2A0>click to finish the ritual now</color>"]}
+    cancel:
+      slot: 10
+      material: RED_CONCRETE
+      name: "<color:#ffcfca>✖ stop all ritual</color>"
+      lore: ["<color:#fffbf0>click to stop the active ritual</color>", "<color:#ffd7ca>(no completion reward)</color>"]
     time:
-      slot: 4
+      slot: 12
       material: CLOCK
-      name: "<color:#F47F6A>ritual time: <color:#FAB2A0>{minutes} minutes</color></color>"
-      lore: ["<color:#FAB2A0>left click: <color:#2EFF2E>+1 minute</color></color>", "<color:#FAB2A0>right click: <color:#FF2E4A>-1 minute</color></color>"]
+      name: "<color:#e8c670>◷ ritual timer: <color:#fff0cc>{minutes} minutes</color></color>"
+      lore: ["<color:#fffbf0>left click: <color:#f1d58f>+1 minute</color></color>", "<color:#fffbf0>right click: <color:#ffcfca>-1 minute</color></color>"]
+    creation:
+      slot: 13
+      material: BEACON
+      name: "<color:#d8b04a>✦ ritualcreator</color>"
+      lore: ["<color:#fffbf0>place item to create ritual</color>", "<color:#ffd7ca>click to open the item selector</color>"]
+    palette:
+      slot: 14
+      material: NETHER_STAR
+      name: "<color:{palette_color_raw}>■ {palette_label}</color>"
+      lore: ["<color:#fffbf0>click to cycle particle colors</color>", "<color:#d8b04a>■ <color:#fffbf0>gold</color></color>", "<color:#ffd7ca>■ <color:#fffbf0>peach</color></color>"]
+    submit:
+      slot: 16
+      material: GREEN_CONCRETE
+      name: "<color:#f1d58f>✔ end all ritual</color>"
+      lore: ["<color:#fffbf0>click to instantly <color:#f1d58f>complete</color> the active ritual</color>"]
 ritual-select:
-  title: "<gradient:#F47F6A:#FAB2A0>please select an item</gradient>"
+  title: "<gradient:#d8b04a:#fff0cc:#ffd7ca>please select an item</gradient>"
   rows: 3
   input-slot: 13
   filler: {material: BLACK_STAINED_GLASS_PANE, name: " "}

@@ -33,7 +33,8 @@ public final class RitualGui implements Listener {
     public RitualGui(EventCorePlugin pl) { this.pl = pl; }
 
     private Map<String, Object> ph() {
-        return Text.ph("minutes", pl.ritual.minutes(), "min", pl.ritual.minMinutes(), "max", pl.ritual.maxMinutes());
+        return Text.ph("minutes", pl.ritual.minutes(), "min", pl.ritual.minMinutes(), "max", pl.ritual.maxMinutes(),
+                "palette_label", pl.ritual.paletteLabel(), "palette_color_raw", pl.ritual.paletteColor());
     }
 
     public void openMain(Player p) {
@@ -95,6 +96,11 @@ public final class RitualGui implements Listener {
                         ConfigurationSection s = pl.cfg.gui().getConfigurationSection("ritual-main.items.time");
                         top.setItem(e.getSlot(), GuiUtil.item(pl, s, ph()));
                     }
+                }
+                case "palette" -> {
+                    pl.ritual.cyclePalette();
+                    ConfigurationSection s = pl.cfg.gui().getConfigurationSection("ritual-main.items.palette");
+                    top.setItem(e.getSlot(), GuiUtil.item(pl, s, ph()));
                 }
                 default -> { }
             }

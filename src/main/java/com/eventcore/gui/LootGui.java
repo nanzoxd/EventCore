@@ -4,7 +4,7 @@ import com.eventcore.EventCorePlugin;
 import com.eventcore.airdrop.LootService;
 import com.eventcore.util.Util;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -59,10 +59,14 @@ public final class LootGui implements Listener {
         kCmds = new NamespacedKey(pl, "loot_cmds");
     }
 
-    private Component plain(String s, NamedTextColor c) { return Component.text(s, c).decoration(TextDecoration.ITALIC, false); }
+    // peach + gold palette (config.yml theme)
+    private static final TextColor WHITE = TextColor.color(0xfffbf0), SOFT = TextColor.color(0xffd7ca), GOLD = TextColor.color(0xf1d58f),
+            DARK = TextColor.color(0xe8c670), MUTED = TextColor.color(0xffe4d5);
+
+    private Component plain(String s, TextColor c) { return Component.text(s, c).decoration(TextDecoration.ITALIC, false); }
 
     private Component title(String s) {
-        String a = pl.cfg.config().getString("theme.main", "#F47F6A"), b = pl.cfg.config().getString("theme.soft", "#FAB2A0");
+        String a = pl.cfg.config().getString("theme.main", "#d8b04a"), b = pl.cfg.config().getString("theme.soft", "#ffd7ca");
         return pl.text.gradient(s, List.of(a, b), 0);
     }
 
@@ -79,8 +83,8 @@ public final class LootGui implements Listener {
             ItemMeta meta = it.getItemMeta();
             meta.displayName(pl.airdrop.tierName(t).decoration(TextDecoration.ITALIC, false));
             ConfigurationSection es = pl.loot.entries(t);
-            meta.lore(List.of(plain("Loot entries: " + (es == null ? 0 : es.getKeys(false).size()), NamedTextColor.GRAY),
-                    plain("Click to edit the loot", NamedTextColor.YELLOW)));
+            meta.lore(List.of(plain("Loot entries: " + (es == null ? 0 : es.getKeys(false).size()), SOFT),
+                    plain("Click to edit the loot", GOLD)));
             it.setItemMeta(meta);
             h.inv.setItem(slot, it);
             h.ids.add(t);
@@ -122,9 +126,9 @@ public final class LootGui implements Listener {
     private ItemStack button(Material m, String name, String... lore) {
         ItemStack it = new ItemStack(m);
         ItemMeta meta = it.getItemMeta();
-        meta.displayName(plain(name, NamedTextColor.WHITE));
+        meta.displayName(plain(name, WHITE));
         List<Component> l = new ArrayList<>();
-        for (String s : lore) l.add(plain(s, NamedTextColor.GRAY));
+        for (String s : lore) l.add(plain(s, SOFT));
         meta.lore(l);
         it.setItemMeta(meta);
         return it;
@@ -139,10 +143,10 @@ public final class LootGui implements Listener {
         ItemMeta meta = it.getItemMeta();
         List<Component> lore = meta.lore() == null ? new ArrayList<>() : new ArrayList<>(meta.lore());
         List<Component> extra = new ArrayList<>();
-        extra.add(plain("Chance: " + fmt(d.chance()) + "%", NamedTextColor.YELLOW));
-        if (!d.cmdOnly()) extra.add(plain("Amount: " + (d.min() == d.max() ? d.min() : d.min() + "-" + d.max()), NamedTextColor.YELLOW));
-        for (String c : d.cmds()) extra.add(plain("/" + (c.length() > 34 ? c.substring(0, 31) + "..." : c), NamedTextColor.DARK_AQUA));
-        extra.add(plain("L/R: chance  Shift: amount  Q: remove", NamedTextColor.DARK_GRAY));
+        extra.add(plain("Chance: " + fmt(d.chance()) + "%", GOLD));
+        if (!d.cmdOnly()) extra.add(plain("Amount: " + (d.min() == d.max() ? d.min() : d.min() + "-" + d.max()), GOLD));
+        for (String c : d.cmds()) extra.add(plain("/" + (c.length() > 34 ? c.substring(0, 31) + "..." : c), DARK));
+        extra.add(plain("L/R: chance  Shift: amount  Q: remove", MUTED));
         lore.addAll(extra);
         meta.lore(lore);
         PersistentDataContainer p = meta.getPersistentDataContainer();

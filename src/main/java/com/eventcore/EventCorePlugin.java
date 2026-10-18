@@ -65,14 +65,16 @@ public final class EventCorePlugin extends JavaPlugin {
         events.register(new AnonymousEvent(this));
         events.register(new GlowEvent(this));
         events.register(new EloBuffEvent(this));
+        events.register(new MillionaireEvent(this));
         events.register(new LocatorBarEvent(this));
         events.register(airdrop);
 
         for (org.bukkit.event.Listener l : new org.bukkit.event.Listener[]{bars, chat, events, ritual, ritualGui, adminGui, lootGui})
             Bukkit.getPluginManager().registerEvents(l, this);
 
-        getCommand("eventcore").setExecutor(new EventCoreCommand(this));
-        getCommand("eventcore").setTabCompleter(new EventCoreCommand(this));
+        EventCoreCommand ecCmd = new EventCoreCommand(this);
+        getCommand("eventcore").setExecutor(ecCmd);
+        getCommand("eventcore").setTabCompleter(ecCmd);
         getCommand("ritualcreator").setExecutor(new RitualCommand(this));
 
         events.startTicker();

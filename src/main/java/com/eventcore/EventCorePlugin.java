@@ -42,6 +42,7 @@ public final class EventCorePlugin extends JavaPlugin {
     public void onEnable() {
         cfg = new Cfg(this);
         cfg.save("config"); cfg.save("messages"); cfg.save("events"); cfg.save("rituals"); cfg.save("gui");
+        migrate();
         text = new Text(this);
         sched = new Sched(this);
         fx = new Fx(this);
@@ -81,6 +82,17 @@ public final class EventCorePlugin extends JavaPlugin {
         scheduler.start();
         ritual.restore();
         getLogger().info("EventCore enabled.");
+    }
+
+    /** One-time config updates for servers that already have an events.yml (new defaults never overwrite existing values). */
+    private void migrate() {
+        org.bukkit.configuration.file.YamlConfiguration ev = cfg.events();
+        if (ev.getBoolean("migrations.shulker-colors-v1", false)) return;
+        String base = "events.airdrop.settings.tiers.";
+        String[][] colors = {{"iron", "YELLOW"}, {"gold", "ORANGE"}, {"diamond", "RED"}, {"netherite", "BLACK"}};
+        for (String[] c : colors) if (ev.isConfigurationSection(base + c[0])) ev.set(base + c[0] + ".shulker-color", c[1]);
+        ev.set("migrations.shulker-colors-v1", true);
+        cfg.save("events");
     }
 
     @Override

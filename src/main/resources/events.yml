@@ -526,6 +526,14 @@ events:
         min-height: 100.0         # spawn height above the surface (never below 100)
         duration-minutes: 25.0    # smooth descent: the crate takes exactly this long to reach the ground
         trail-interval-ticks: 2
+        sound-range: 64.0         # blocks the falling sound carries (volume above 1 = farther)
+        marker:                   # ring on the surface that shows where the crate lands (tier coloured)
+          enabled: true
+          use-tier-color: true
+          interval-ticks: 10
+          layers:
+            ring: {shape: ring, particle: DUST, size: 1.6, radius: 4.0, count: 56, height: 0.15, particles-min: 1, particles-max: 1, force: true}
+            inner: {shape: ring, particle: DUST, size: 1.2, radius: 2.0, count: 28, height: 0.15, particles-min: 1, particles-max: 1, force: true}
         easing: LINEAR         # LINEAR or EASE_IN
         sound: {sound: "item.elytra.flying", volume: 1.0, pitch: 0.5}
         sound-interval-ticks: 10
@@ -561,6 +569,8 @@ events:
         expire-seconds: 600
         ambient-sound: {sound: "item.elytra.flying", volume: 1.0, pitch: 0.5}   # low-pitched elytra wind next to the landed crate
         ambient-interval-ticks: 30
+        ambient-range: 100.0      # blocks the low elytra sound carries
+        sound-range: 160.0        # blocks the landing explosion carries
       hit:
         damage-per-hit: 1
         announce-first-hit: true   # chat line the first time each player hits a crate
@@ -596,7 +606,7 @@ events:
           rarity: "common"
           weight: 55.0
           health: 40
-          shulker-color: PINK
+          shulker-color: YELLOW
           gradient: ["#ffe4d5", "#ffcfca"]
           trail: {shape: scatter, particle: DUST, color: "#ffd7ca", size: 1.0, count: 8, radius-min: 0.0, radius-max: 0.6, y-min: 0.0, y-max: 0.8, particles-min: 1, particles-max: 2}
           land-particles:
@@ -610,7 +620,7 @@ events:
           rarity: "uncommon"
           weight: 28.0
           health: 60
-          shulker-color: YELLOW
+          shulker-color: ORANGE
           gradient: ["#f1d58f", "#d8b04a"]
           trail: {shape: scatter, particle: DUST, color: "#e8c670", size: 1.0, count: 8, radius-min: 0.0, radius-max: 0.6, y-min: 0.0, y-max: 0.8, particles-min: 1, particles-max: 2}
           land-particles:
@@ -624,7 +634,7 @@ events:
           rarity: "rare"
           weight: 13.0
           health: 90
-          shulker-color: ORANGE
+          shulker-color: RED
           gradient: ["#fff0cc", "#f7e2ad"]
           trail: {shape: scatter, particle: DUST, color: "#fff0cc", size: 1.0, count: 8, radius-min: 0.0, radius-max: 0.6, y-min: 0.0, y-max: 0.8, particles-min: 1, particles-max: 2}
           land-particles:
@@ -638,7 +648,7 @@ events:
           rarity: "legendary"
           weight: 4.0
           health: 140
-          shulker-color: BROWN
+          shulker-color: BLACK
           gradient: ["#ffcfca", "#d8b04a"]
           trail: {shape: scatter, particle: DUST, color: "#ffcfca", size: 1.0, count: 8, radius-min: 0.0, radius-max: 0.6, y-min: 0.0, y-max: 0.8, particles-min: 1, particles-max: 2}
           land-particles:

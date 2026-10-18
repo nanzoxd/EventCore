@@ -14,7 +14,11 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 
+import org.bukkit.inventory.meta.ItemMeta;
+
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /** The Ritual Creator main GUI and the item selection GUI (layout from gui.yml). */
@@ -37,6 +41,24 @@ public final class RitualGui implements Listener {
                 "palette_label", pl.ritual.paletteLabel(), "palette_color_raw", pl.ritual.paletteColor());
     }
 
+    /** Nether star: the lore lists EVERY palette (current one marked), not just the two written in gui.yml. */
+    private ItemStack paletteItem(ConfigurationSection s) {
+        ItemStack it = GuiUtil.item(pl, s, ph());
+        ItemMeta meta = it.getItemMeta();
+        List<net.kyori.adventure.text.Component> lore = new ArrayList<>();
+        List<String> cfg = s.getStringList("lore");
+        if (!cfg.isEmpty()) lore.add(pl.text.item(cfg.get(0), ph()));
+        String cur = pl.ritual.currentPalette();
+        for (String n : pl.ritual.paletteList()) {
+            String line = "<color:" + pl.ritual.paletteColor(n) + ">■</color> <color:#fffbf0>" + pl.ritual.paletteLabel(n) + "</color>"
+                    + (n.equals(cur) ? " <color:#f1d58f>◀</color>" : "");
+            lore.add(pl.text.item(line, Map.of()));
+        }
+        meta.lore(lore);
+        it.setItemMeta(meta);
+        return it;
+    }
+
     public void openMain(Player p) {
         ConfigurationSection g = pl.cfg.gui().getConfigurationSection("ritual-main");
         MainHolder h = new MainHolder();
@@ -46,7 +68,7 @@ public final class RitualGui implements Listener {
             ConfigurationSection s = items.getConfigurationSection(k);
             if (s == null) continue;
             int slot = s.getInt("slot", 0);
-            h.inv.setItem(slot, GuiUtil.item(pl, s, ph()));
+            h.inv.setItem(slot, k.equals("palette") ? paletteItem(s) : GuiUtil.item(pl, s, ph()));
             h.actions.put(slot, k);
         }
         p.openInventory(h.inv);
@@ -100,7 +122,7 @@ public final class RitualGui implements Listener {
                 case "palette" -> {
                     pl.ritual.cyclePalette();
                     ConfigurationSection s = pl.cfg.gui().getConfigurationSection("ritual-main.items.palette");
-                    top.setItem(e.getSlot(), GuiUtil.item(pl, s, ph()));
+                    top.setItem(e.getSlot(), paletteItem(s));
                 }
                 default -> { }
             }

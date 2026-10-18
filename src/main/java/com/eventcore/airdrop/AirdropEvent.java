@@ -39,6 +39,7 @@ public final class AirdropEvent extends GameEvent {
     private volatile boolean spawning;
     private volatile long spawningSince;
     private volatile int failStreak;
+    private boolean barWarned;
 
     public AirdropEvent(EventCorePlugin pl) { super(pl, "airdrop"); }
 
@@ -145,6 +146,7 @@ public final class AirdropEvent extends GameEvent {
         nextDropAt = startedAt + incomingSeconds() * 1000L;
         spawning = false;
         failStreak = 0;
+        barWarned = false;
         int period = Math.max(1, settings().getInt("bossbar-update-ticks", 5));
         barTask = pl.sched.globalTimer(t -> animateBar(ae, t), 1, period);
     }
@@ -154,7 +156,22 @@ public final class AirdropEvent extends GameEvent {
         destroyAll();
     }
 
+    /** Keeps the bossbar text current and visible to every online player (idempotent), so it can never go missing. */
+    private void refreshBar(ActiveEvent ae) {
+        try {
+            if (ae.bar == null) {
+                if (!barWarned) { barWarned = true; pl.getLogger().warning("Airdrop: no bossbar (events.airdrop.bossbar.enabled or event-display is turning it off)."); }
+                return;
+            }
+            ae.bar.name(displayText(ae));
+            for (Player p : Bukkit.getOnlinePlayers()) p.showBossBar(ae.bar);
+        } catch (Throwable ex) {
+            pl.getLogger().warning("Airdrop: bossbar refresh failed: " + ex);
+        }
+    }
+
     @Override public void onSecond(ActiveEvent ae, int left) {
+        refreshBar(ae);
         long now = System.currentTimeMillis();
         if (spawning && now - spawningSince > 20_000L) {   // a spawn callback got lost: never block forever
             pl.getLogger().warning("Airdrop: spawn attempt timed out, retrying.");
@@ -193,7 +210,7 @@ public final class AirdropEvent extends GameEvent {
     private void animateBar(ActiveEvent ae, ScheduledTask t) {
         if (!isActiveAe(ae)) { t.cancel(); return; }
         if (ae.bar == null) return;
-        ae.bar.name(displayText(ae));
+        try { ae.bar.name(displayText(ae)); } catch (Throwable ex) { pl.getLogger().warning("Airdrop: bossbar title failed: " + ex); }
         AirdropCrate f = focus();
         ae.bar.progress(f != null && f.state == State.FALLING ? com.eventcore.util.BossBars.clamp(f.fallProgress())
                 : com.eventcore.util.BossBars.clamp(ae.secondsLeft() / (double) Math.max(1, ae.totalSec)));

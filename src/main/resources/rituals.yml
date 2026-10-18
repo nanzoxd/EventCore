@@ -23,6 +23,18 @@ sounds:
   start: {sound: "block.end_portal.spawn", volume: 1.0, pitch: 1.0}
   complete: {sound: "entity.ender_dragon.death", volume: 1.0, pitch: 2.0}
   stop: {sound: "entity.ender_dragon.death", volume: 0.75, pitch: 3.0}
+# Standing close to the ritual randomly curses you for a few seconds (message is private to that player).
+curse:
+  enabled: true
+  radius: 9.0               # blocks from the ritual spot (the sigil radius)
+  interval-seconds: 6       # how often a nearby player is rolled
+  chance: 40.0              # percent per roll to get a negative effect
+  effects: [POISON, SLOWNESS, NAUSEA]
+  duration-min-seconds: 4
+  duration-max-seconds: 5
+  glow-chance: 25.0         # separate chance per roll to also glow
+  glow-seconds: 5
+  ignore-creative: true
 bossbar:
   enabled: true
   color: YELLOW            # fallback; the active particle palette (particles.palettes.<name>.bossbar-color) decides

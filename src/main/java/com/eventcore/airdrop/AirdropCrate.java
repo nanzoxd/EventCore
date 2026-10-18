@@ -53,7 +53,7 @@ public final class AirdropCrate {
     private long lockUntil, expireAt;
     private String lastHolo = "";
     private final Map<UUID, Long> denyCd = new ConcurrentHashMap<>();
-    private List<ParticleEngine.Layer> flare, smoke;
+    private List<ParticleEngine.Layer> flare, smoke, marker;
 
     AirdropCrate(EventCorePlugin pl, AirdropEvent owner, String tier, Location ground, String code) {
         this.pl = pl; this.owner = owner; this.tier = tier; this.ground = ground; this.code = code;
@@ -100,6 +100,7 @@ public final class AirdropCrate {
         hp = maxHp;
         flare = pl.particles.read(s().getConfigurationSection("fall.flare"));
         smoke = pl.particles.read(s().getConfigurationSection("land.smoke"));
+        marker = buildMarker();
         Location start = ground.clone().add(0, height, 0);
         DyeColor dye = BossBars.enumOf(DyeColor.class, t().getString("shulker-color", "PURPLE"), DyeColor.PURPLE);
         shulker = w.spawn(start, Shulker.class, sh -> {
@@ -131,6 +132,31 @@ public final class AirdropCrate {
             if (an.getBoolean("show-title", true)) pl.fx.title(Bukkit.getServer(), an.getConfigurationSection("title"), ph);
         }
         pl.discord.crateFalling(Util.title(tier), ground.getWorld().getName(), coords(), (int) Math.ceil(fallTicks / 20.0));
+    }
+
+    /** Ring on the surface that shows where the crate will land (tier coloured, visible from far away). */
+    private List<ParticleEngine.Layer> buildMarker() {
+        ConfigurationSection m = s().getConfigurationSection("fall.marker");
+        if (m == null || !m.getBoolean("enabled", true)) return List.of();
+        List<ParticleEngine.Layer> l = pl.particles.read(m.getConfigurationSection("layers"));
+        if (m.getBoolean("use-tier-color", true)) {
+            List<String> g = t().getStringList("gradient");
+            if (!g.isEmpty()) {
+                try {
+                    Color c = Color.fromRGB(Integer.parseInt(g.get(g.size() - 1).replace("#", ""), 16));
+                    for (ParticleEngine.Layer x : l) { x.color = c; x.toColor = c; }
+                } catch (Exception ignored) { }
+            }
+        }
+        return l;
+    }
+
+    /** Plays a sound so that it carries `range` blocks (volume above 1 extends the audible distance). */
+    private void playLoud(ConfigurationSection sec, double range, double x, double y, double z) {
+        var so = pl.fx.sound(sec);
+        if (so == null) return;
+        float vol = (float) Math.max(so.volume(), range / 16.0);
+        ground.getWorld().playSound(net.kyori.adventure.sound.Sound.sound(so.name(), so.source(), vol, so.pitch()), x, y, z);
     }
 
     private double hologramOffset() { return s().getDouble("hologram.offset", 1.9); }
@@ -202,8 +228,7 @@ public final class AirdropCrate {
             if (tick % 10 == 0 && !flare.isEmpty()) pl.particles.play(ground.clone(), flare, tick);
             int iv = Math.max(1, s().getInt("fall.sound-interval-ticks", 10));
             if (tick % iv == 0) {
-                var so = pl.fx.sound(s().getConfigurationSection("fall.sound"));
-                if (so != null) ground.getWorld().playSound(so, l.getX(), l.getY(), l.getZ());
+                playLoud(s().getConfigurationSection("fall.sound"), s().getDouble("fall.sound-range", 64.0), l.getX(), l.getY(), l.getZ());
             }
             if (tick >= fallTicks) land();
         } else if (state == State.LOCKED && now >= lockUntil) {
@@ -213,10 +238,11 @@ public final class AirdropCrate {
             if (tick % 20 == 0 && !smoke.isEmpty()) pl.particles.play(ground.clone(), smoke, tick);
             // low-pitched elytra wind next to the landed crate
             if (tick % Math.max(1, s().getInt("land.ambient-interval-ticks", 30)) == 0) {
-                var amb = pl.fx.sound(s().getConfigurationSection("land.ambient-sound"));
-                if (amb != null) ground.getWorld().playSound(amb, ground.getX(), ground.getY(), ground.getZ());
+                playLoud(s().getConfigurationSection("land.ambient-sound"), s().getDouble("land.ambient-range", 100.0), ground.getX(), ground.getY(), ground.getZ());
             }
         }
+        if (state != State.OPENED && !marker.isEmpty() && tick % Math.max(1, s().getInt("fall.marker.interval-ticks", 10)) == 0)
+            pl.particles.play(ground.clone(), marker, tick);
         if (state != State.OPENED && expireAt > 0 && now >= expireAt) { destroy(false); return; }
         if (tick % 5 == 0 || state == State.READY) updateHolo();
     }
@@ -231,8 +257,7 @@ public final class AirdropCrate {
         if (holo != null) holo.teleportAsync(ground.clone().add(0, hologramOffset(), 0));
         releaseParachute();
         World w = ground.getWorld();
-        var so = pl.fx.sound(owner.resolve(tier, "sounds.land", "land.sound"));
-        if (so != null) w.playSound(so, ground.getX(), ground.getY(), ground.getZ());
+        playLoud(owner.resolve(tier, "sounds.land", "land.sound"), s().getDouble("land.sound-range", 160.0), ground.getX(), ground.getY(), ground.getZ());
         ConfigurationSection lp = t().getConfigurationSection("land-particles");
         if (lp != null) pl.particles.play(ground.clone(), pl.particles.read(lp), 0);
         ground.getWorld().spawnParticle(Particle.EXPLOSION, ground.clone().add(0, 0.5, 0), 3, 0.6, 0.3, 0.6, 0);

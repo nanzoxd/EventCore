@@ -32,6 +32,7 @@ public final class ParticleEngine {
         public int count, min, max;
         public int sides;
         public double rotation;
+        public boolean force;    // visible from far away even if particles.force is off
         public boolean skript;   // reproduce the original Skript: its cos/sin take degrees, but the script passed radians
         public double radius, radiusJitter, rMin, rMax, yJitter, height, yMin, yMax, step, turns, rise, spin;
     }
@@ -78,6 +79,7 @@ public final class ParticleEngine {
         l.sides = Math.max(3, s.getInt("sides", 3));
         l.rotation = s.getDouble("rotation", 0.0);
         l.skript = s.getBoolean("skript-trig", false);
+        l.force = s.getBoolean("force", false);
         return l;
     }
 
@@ -170,9 +172,10 @@ public final class ParticleEngine {
     private void spawnFrame(Location c, List<Pt> pts) {
         World w = c.getWorld();
         if (w == null) return;
-        boolean force = pl.cfg.config().getBoolean("particles.force", false);
+        boolean globalForce = pl.cfg.config().getBoolean("particles.force", false);
         for (Pt p : pts) {
             Layer l = p.l();
+            boolean force = globalForce || l.force;
             Object data = null;
             if (l.particle == Particle.DUST) data = new Particle.DustOptions(l.color, l.size);
             else if (l.particle == Particle.DUST_COLOR_TRANSITION) data = new Particle.DustTransition(l.color, l.toColor, l.size);

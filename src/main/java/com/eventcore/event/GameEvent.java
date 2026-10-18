@@ -52,6 +52,8 @@ public abstract class GameEvent implements Listener {
     public void onSecond(ActiveEvent ae, int secondsLeft) { }
     /** True when the event animates its own bossbar title. */
     public boolean ownsBarTitle() { return false; }
+    /** Custom bar/actionbar text for events that build their own (airdrop). Null = use bossbar.text. */
+    public net.kyori.adventure.text.Component displayText(ActiveEvent ae) { return null; }
     /** Extra placeholders for this event's bossbar and messages. */
     public Map<String, Object> extra(ActiveEvent ae) { return Map.of(); }
 

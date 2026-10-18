@@ -44,6 +44,7 @@ gui:
   prompt-edit: "<g>type a new value for {path} in chat</g> <gray>(current: {value}, type cancel to abort)</gray>"
   prompt-add: "<g>type an entry to add to {path} in chat</g> <gray>(type cancel to abort)</gray>"
   prompt-simple: "<g>type the {what} in chat</g> <gray>(type cancel to abort)</gray>"
+  loot-saved: "<g>loot pool saved.</g>"
   loot-need-item: "<red>click this slot while holding an item on your cursor.</red>"
 ritual:
   no-active: "<red>there are no active rituals</red>"

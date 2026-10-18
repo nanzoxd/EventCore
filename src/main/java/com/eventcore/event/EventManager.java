@@ -6,6 +6,7 @@ import com.eventcore.util.Text;
 import com.eventcore.util.Util;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import net.kyori.adventure.bossbar.BossBar;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
@@ -134,10 +135,7 @@ public final class EventManager implements Listener {
         Map<String, Object> ph = placeholders(ae);
 
         ConfigurationSection bb = s.getConfigurationSection("bossbar");
-        if (bb != null && bb.getBoolean("enabled", true)) {
-            ae.bar = pl.bars.create(bb, ph, 1f);
-            pl.bars.show(ae.bar);
-        }
+        if (bb != null && bb.getBoolean("enabled", true) && wantsBar(ev)) ae.bar = createBar(ae, bb);
         pl.fx.playAll(s.getConfigurationSection("sounds.start"));
         pl.fx.title(Bukkit.getServer(), s.getConfigurationSection("titles.start"), ph);
         pl.fx.broadcast(s, "messages.start", ph, pl.cfg.messages().getString("prefix", ""));
@@ -155,6 +153,35 @@ public final class EventManager implements Listener {
         try { ev.onStart(ae); } catch (Exception ex) { pl.getLogger().warning("onStart " + ev.id() + ": " + ex); }
         for (Player p : Bukkit.getOnlinePlayers()) pl.sched.entity(p, () -> ev.apply(p));
         pl.teams.refreshLater();
+    }
+
+    // ---------- bossbar / actionbar ----------
+    /** BOSSBAR, ACTIONBAR or BOTH: per event display-mode, falling back to config.yml event-display. */
+    private String mode(GameEvent ev) {
+        String m = ev.sec().getString("display-mode", "DEFAULT").toUpperCase(Locale.ROOT);
+        if (m.equals("DEFAULT")) m = pl.cfg.config().getString("event-display", "BOSSBAR").toUpperCase(Locale.ROOT);
+        return m;
+    }
+    private boolean wantsBar(GameEvent ev) { String m = mode(ev); return m.equals("BOSSBAR") || m.equals("BOTH"); }
+    private boolean wantsAction(GameEvent ev) { String m = mode(ev); return m.equals("ACTIONBAR") || m.equals("BOTH"); }
+
+    /** "Golden Tree : 01:00" in small caps, coloured with the event's own gradient. */
+    private Component barText(ActiveEvent ae) {
+        Component custom = ae.ev.displayText(ae);
+        if (custom != null) return custom;
+        ConfigurationSection bb = ae.ev.sec().getConfigurationSection("bossbar");
+        String tpl = bb == null ? "{event} : {time}" : bb.getString("text", "{event} : {time}");
+        String plain = pl.text.expandPlain(tpl, placeholders(ae));
+        List<String> g = bb == null ? List.of() : bb.getStringList("gradient");
+        return g.isEmpty() ? pl.text.bossbar(plain) : pl.text.gradient(plain, g, 0);
+    }
+
+    private BossBar createBar(ActiveEvent ae, ConfigurationSection bb) {
+        BossBar.Color col = com.eventcore.util.BossBars.enumOf(BossBar.Color.class, bb.getString("color", "YELLOW"), BossBar.Color.YELLOW);
+        BossBar.Overlay ov = com.eventcore.util.BossBars.enumOf(BossBar.Overlay.class, bb.getString("style", "PROGRESS"), BossBar.Overlay.PROGRESS);
+        BossBar b = BossBar.bossBar(barText(ae), 1f, col, ov);
+        pl.bars.show(b);
+        return b;
     }
 
     public boolean stop(String id, boolean announce) { return stopInternal(id, announce, false); }
@@ -199,16 +226,24 @@ public final class EventManager implements Listener {
         }
     }
 
+    private int teamTick;
+
     private void tickSecond() {
         long now = System.currentTimeMillis();
+        if ((active.containsKey("anonymous") || active.containsKey("glow")) && ++teamTick % 5 == 0) pl.teams.refresh();
         for (ActiveEvent ae : new ArrayList<>(active.values())) {
             int left = ae.secondsLeft();
+            ConfigurationSection bb = ae.ev.sec().getConfigurationSection("bossbar");
+            boolean bar = bb != null && bb.getBoolean("enabled", true) && wantsBar(ae.ev);
+            if (bar && ae.bar == null) ae.bar = createBar(ae, bb);
+            else if (!bar && ae.bar != null) { pl.bars.hide(ae.bar); ae.bar = null; }
             if (ae.bar != null) {
-                ConfigurationSection bb = ae.ev.sec().getConfigurationSection("bossbar");
-                if (bb != null) {
-                    if (!ae.ev.ownsBarTitle()) ae.bar.name(pl.text.render(bb.getString("text", ""), placeholders(ae)));
-                    ae.bar.progress(bb.getBoolean("countdown", true) ? com.eventcore.util.BossBars.clamp(left / (double) Math.max(1, ae.totalSec)) : 1f);
-                }
+                if (!ae.ev.ownsBarTitle()) ae.bar.name(barText(ae));
+                ae.bar.progress(bb.getBoolean("countdown", true) ? com.eventcore.util.BossBars.clamp(left / (double) Math.max(1, ae.totalSec)) : 1f);
+            }
+            if (wantsAction(ae.ev)) {
+                Component c = barText(ae);
+                for (Player p : Bukkit.getOnlinePlayers()) p.sendActionBar(c);
             }
             try { ae.ev.onSecond(ae, left); } catch (Exception ex) { pl.getLogger().warning("onSecond " + ae.ev.id() + ": " + ex); }
             if (now >= ae.end) stop(ae.ev.id(), true);

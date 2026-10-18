@@ -1,11 +1,11 @@
 # EventCore main configuration. Everything here is also editable in-game: /eventcore gui
 # Gradient palette used by the <g> tag in every message, title and bossbar.
-palette:            # gold palette
-  - "#d8b04a"
-  - "#e8c670"
-  - "#f1d58f"
-  - "#f7e2ad"
-  - "#fff0cc"
+palette:            # peach palette (chat, titles)
+  - "#fffbf0"
+  - "#fff1e0"
+  - "#ffe4d5"
+  - "#ffd7ca"
+  - "#ffcfca"
 # Bossbars use this gradient (<bb> tag): "Lootdrop Falling | 10 20 30"
 bossbar-gradient: ["#2FD0CD", "#C5F2F1", "#2FD0CD"]
 # GUI colours (same theme as the Teams plugin)
@@ -17,6 +17,8 @@ theme:
   warn: "#FFFF5C"
   info: "#00C3FF"
 style:
+  flatten-colors: true   # chat uses only the palette: red/green/gray... tags become text-color
+  text-color: "#ffd7ca"
   small-caps: true      # convert template text to small caps (placeholder values are left alone)
   strip-bold: true      # never render bold
   title-times:          # ticks
@@ -25,6 +27,8 @@ style:
     fade-out: 20
 # Timezone for scheduled events (IANA name, e.g. Europe/Berlin, America/New_York)
 timezone: "UTC"
+# How running events are shown to players: BOSSBAR, ACTIONBAR or BOTH (an event can override with display-mode)
+event-display: BOSSBAR
 max-concurrent-events: 2
 # Groups of events that can never run together (ids or aliases)
 incompatible-events:
@@ -46,6 +50,7 @@ discord:
   notify:
     event-start: true
     schedule-warning: true
+    airdrop-falling: true
     airdrop-landed: true
     airdrop-opened: true
     ritual-start: true

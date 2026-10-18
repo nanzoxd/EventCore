@@ -64,6 +64,7 @@ public final class EventCorePlugin extends JavaPlugin {
         events.register(new GoldenTreesEvent(this));
         events.register(new AnonymousEvent(this));
         events.register(new GlowEvent(this));
+        events.register(new EloBuffEvent(this));
         events.register(new LocatorBarEvent(this));
         events.register(airdrop);
 

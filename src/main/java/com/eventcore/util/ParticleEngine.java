@@ -30,6 +30,7 @@ public final class ParticleEngine {
         public Color color, toColor;
         public float size;
         public int count, min, max;
+        public boolean skript;   // reproduce the original Skript: its cos/sin take degrees, but the script passed radians
         public double radius, radiusJitter, rMin, rMax, yJitter, height, yMin, yMax, step, turns, rise, spin;
     }
 
@@ -72,6 +73,7 @@ public final class ParticleEngine {
         l.turns = s.getDouble("turns", 2.0);
         l.rise = s.getDouble("rise", 2.0);
         l.spin = s.getDouble("spin", 0.0);
+        l.skript = s.getBoolean("skript-trig", false);
         return l;
     }
 
@@ -88,6 +90,11 @@ public final class ParticleEngine {
         catch (Exception e) { return Color.ORANGE; }
     }
 
+    /** Angle in degrees -> radians. In skript-trig mode the value is first multiplied by 0.0174533 and then used as DEGREES, like the original script. */
+    private static double ang(Layer l, double deg) {
+        return l.skript ? Math.toRadians(deg * 0.0174533) : Math.toRadians(deg);
+    }
+
     private static double rnd(double a, double b) { return b <= a ? a : ThreadLocalRandom.current().nextDouble(a, b); }
     private static double jit(double j) { return j <= 0 ? 0 : ThreadLocalRandom.current().nextDouble(-j, j); }
     private static int per(Layer l) { return ThreadLocalRandom.current().nextInt(l.min, l.max + 1); }
@@ -99,7 +106,7 @@ public final class ParticleEngine {
             switch (l.shape) {
                 case "scatter" -> {
                     for (int i = 0; i < l.count; i++) {
-                        double a = rnd(0, Math.PI * 2), r = rnd(l.rMin, l.rMax);
+                        double a = ang(l, rnd(0, 360)), r = rnd(l.rMin, l.rMax);
                         out.add(new Pt(l, r * Math.cos(a), l.height + rnd(l.yMin, l.yMax), r * Math.sin(a), per(l)));
                     }
                 }
@@ -122,7 +129,7 @@ public final class ParticleEngine {
                 default -> {
                     double step = l.step > 0 ? l.step : 360.0 / l.count;
                     for (int i = 0; i < l.count; i++) {
-                        double a = phase + Math.toRadians(i * step);
+                        double a = phase + ang(l, i * step);
                         double r = l.radius + jit(l.radiusJitter);
                         out.add(new Pt(l, r * Math.cos(a), l.height + jit(l.yJitter), r * Math.sin(a), per(l)));
                     }

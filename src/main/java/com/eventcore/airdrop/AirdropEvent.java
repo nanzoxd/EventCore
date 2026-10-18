@@ -141,13 +141,16 @@ public final class AirdropEvent extends GameEvent {
         }
     }
 
+    @Override public Component displayText(ActiveEvent ae) {
+        return pl.text.bossbar(pl.text.expandPlain(settings().getString("bossbar-text", "Lootdrop {status} | {coords}"),
+                Text.ph("code", code, "status", status(), "coords", coords(), "crates", crates.size())));
+    }
+
     /** Simple bossbar: "Lootdrop Falling | 10 20 30" in the bossbar gradient; the bar fills as the crate falls. */
     private void animateBar(ActiveEvent ae, ScheduledTask t) {
         if (!isActiveAe(ae)) { t.cancel(); return; }
         if (ae.bar == null) return;
-        String plain = pl.text.expandPlain(settings().getString("bossbar-text", "Lootdrop {status} | {coords}"),
-                Text.ph("code", code, "status", status(), "coords", coords(), "crates", crates.size()));
-        ae.bar.name(pl.text.bossbar(plain));
+        ae.bar.name(displayText(ae));
         AirdropCrate f = focus();
         ae.bar.progress(f != null && f.state == State.FALLING ? com.eventcore.util.BossBars.clamp(f.fallProgress())
                 : com.eventcore.util.BossBars.clamp(ae.secondsLeft() / (double) Math.max(1, ae.totalSec)));

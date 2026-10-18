@@ -74,7 +74,7 @@ public final class AirdropCrate {
     }
 
     private Map<String, Object> ph() {
-        return Text.ph("tier", owner.tierName(tier), "code", code, "world", ground.getWorld().getName(),
+        return Text.ph("tier", owner.tierName(tier), "tier_plain", Util.title(tier), "code", code, "world", ground.getWorld().getName(),
                 "x", ground.getBlockX(), "y", ground.getBlockY(), "z", ground.getBlockZ(),
                 "hp", hp, "max", maxHp, "bar", hpBar(),
                 "time", Math.max(0, (int) Math.ceil((fallTicks - tick) / 20.0)),
@@ -113,6 +113,14 @@ public final class AirdropCrate {
         }
         owner.crates.put(shulker.getUniqueId(), this);
         task = pl.sched.regionTimer(ground, tk -> step(), 1, 1);
+        // tell everyone where it is coming down
+        ConfigurationSection an = s().getConfigurationSection("fall.announce");
+        if (an != null) {
+            Map<String, Object> ph = ph();
+            if (an.contains("chat")) pl.fx.broadcast(an, "chat", ph, pl.cfg.messages().getString("prefix", ""));
+            if (an.getBoolean("show-title", true)) pl.fx.title(Bukkit.getServer(), an.getConfigurationSection("title"), ph);
+        }
+        pl.discord.crateFalling(Util.title(tier), ground.getWorld().getName(), coords(), (int) Math.ceil(fallTicks / 20.0));
     }
 
     private double hologramOffset() { return s().getDouble("hologram.offset", 1.9); }

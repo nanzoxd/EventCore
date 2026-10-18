@@ -27,7 +27,20 @@ Each toggle, colour, the ping (`discord.mention`) and the server name are config
 
 ## Loot editing
 `/eventcore airdrop loot [tier]` opens the loot editor. Admins (eventcore.gui) can also **sneak + click a crate**, falling
-or landed, to open the editor for that crate's tier. Add items by clicking the green slot with an item on your cursor.
+or landed, to open the editor for that crate's tier. The editor shows the loot as real items in a locked chest. Left click raises an entry's chance by 5, right click lowers it by 5, shift-left / shift-right change the amount by 1, Q removes the entry. Add an item by clicking an empty slot with it on your cursor or shift-clicking it in your inventory. The bottom row goes back, saves, or adds a command reward. Closing the editor saves too.
+
+## Elo Buff event
+`/eventcore start elobuff` multiplies every Elo gain (kills and playtime) by `settings.multiplier` (default 1.5) while it runs.
+It needs the patched ReliqueOnlineAPI (ReliqueSmpStats-patched.zip: adds `getStatsManager()` and `setEloGainMultiplier`).
+Losses are not changed. The multiplier goes back to normal when the event ends or the server stops.
+
+## Event display
+`event-display` in config.yml (or the Events page in `/eventcore gui`) sets how running events show: BOSSBAR, ACTIONBAR or BOTH.
+Actionbar and bossbar read "Golden Tree : 01:00" in small caps. Each event has its own bossbar colour, style and gradient in events.yml.
+
+## Chat colours
+Chat, titles and messages use only the peach palette (config.yml `palette`, `style.text-color`). Any red/green/gray colour tag in a
+message is flattened to `style.text-color` (`style.flatten-colors: false` turns that off). Bossbars use `bossbar-gradient`.
 
 ## Notes on behaviour
 * `rig` queues an event: the next `/eventcore start <count>` roll (or random pick) takes rigged events first.

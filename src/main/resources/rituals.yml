@@ -39,7 +39,9 @@ persistence:
 particles:
   enabled: true
   interval-ticks: 10
+  # skript-trig: true reproduces the original script exactly. Skript's cos/sin take degrees but the script passed
+  # radians, so its "rings" are really small blobs on the +x side. Set it to false for true circles.
   layers:
-    outer-ring: {shape: ring, particle: DUST, color: "#ff5a00", size: 0.35, count: 40, step-degrees: 9.0, radius: 2.0, radius-jitter: 0.15, y-jitter: 0.05, height: 0.5, particles-min: 1, particles-max: 3}
-    inner-ring: {shape: ring, particle: DUST, color: "#ff5a00", size: 0.35, count: 28, step-degrees: 12.85, radius: 1.1, radius-jitter: 0.1, y-jitter: 0.05, height: 0.5, particles-min: 1, particles-max: 3}
-    sparks: {shape: scatter, particle: DUST, color: "#ffdc64", size: 0.2, count: 6, radius-min: 0.8, radius-max: 2.2, y-min: -0.1, y-max: 0.2, height: 0.5, particles-min: 1, particles-max: 1}
+    outer-ring: {skript-trig: true, shape: ring, particle: DUST, color: "#ff5a00", size: 0.35, count: 40, step-degrees: 9.0, radius: 2.0, radius-jitter: 0.15, y-jitter: 0.05, height: 0.5, particles-min: 1, particles-max: 3}
+    inner-ring: {skript-trig: true, shape: ring, particle: DUST, color: "#ff5a00", size: 0.35, count: 28, step-degrees: 12.85, radius: 1.1, radius-jitter: 0.1, y-jitter: 0.05, height: 0.5, particles-min: 1, particles-max: 3}
+    sparks: {skript-trig: true, shape: scatter, particle: DUST, color: "#ffdc64", size: 0.2, count: 6, radius-min: 0.8, radius-max: 2.2, y-min: -0.1, y-max: 0.2, height: 0.5, particles-min: 1, particles-max: 1}

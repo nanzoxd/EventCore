@@ -15,9 +15,10 @@ events:
     cooldown-minutes: 0
     bossbar:
       enabled: true
-      text: "<bb>{event_name} | {time}</bb>"
+      text: "{event} : {time}"
       color: RED
-      style: PROGRESS
+      style: NOTCHED_10
+      gradient: ["#ff4d4d", "#ffa3a3"]
       countdown: true
     sounds:
       start: {sound: "entity.wither.spawn", volume: 0.8, pitch: 1.0}
@@ -61,9 +62,10 @@ events:
     cooldown-minutes: 0
     bossbar:
       enabled: true
-      text: "<bb>{event_name} | {time}</bb>"
-      color: YELLOW
-      style: PROGRESS
+      text: "{event} : {time}"
+      color: WHITE
+      style: NOTCHED_6
+      gradient: ["#f2f2f2", "#98a4b3"]
       countdown: true
     sounds:
       start: {sound: "item.shield.break", volume: 0.8, pitch: 1.0}
@@ -102,7 +104,7 @@ events:
       cooldown-ticks: 60
   golden_trees:
     enabled: true
-    display-name: "golden trees"
+    display-name: "golden tree"
     description: "leaves drop golden apples instead of apples"
     color: "#ffff66"
     aliases: [goldentrees, golden_trees, golden, trees, apples]
@@ -110,9 +112,10 @@ events:
     cooldown-minutes: 0
     bossbar:
       enabled: true
-      text: "<bb>{event_name} | {time}</bb>"
+      text: "{event} : {time}"
       color: YELLOW
       style: PROGRESS
+      gradient: ["#ffd34d", "#fff3b8"]
       countdown: true
     sounds:
       start: {sound: "entity.experience_orb.pickup", volume: 0.8, pitch: 1.0}
@@ -166,9 +169,10 @@ events:
     cooldown-minutes: 0
     bossbar:
       enabled: true
-      text: "<bb>{event_name} | {time}</bb>"
-      color: GREEN
-      style: PROGRESS
+      text: "{event} : {time}"
+      color: PURPLE
+      style: NOTCHED_12
+      gradient: ["#b388ff", "#e6dcff"]
       countdown: true
     sounds:
       start: {sound: "entity.enderman.teleport", volume: 0.8, pitch: 1.0}
@@ -222,9 +226,10 @@ events:
     cooldown-minutes: 0
     bossbar:
       enabled: true
-      text: "<bb>{event_name} | {time}</bb>"
-      color: BLUE
-      style: PROGRESS
+      text: "{event} : {time}"
+      color: GREEN
+      style: NOTCHED_20
+      gradient: ["#5dff9a", "#d6ffe6"]
       countdown: true
     sounds:
       start: {sound: "block.beacon.activate", volume: 0.8, pitch: 1.0}
@@ -257,6 +262,54 @@ events:
       days: [ALL]          # ALL or MONDAY, TUESDAY ...
       interval-minutes: 180
     settings: {}           # outline colours come from the palette
+  elo_buff:
+    enabled: true
+    display-name: "elo buff"
+    description: "all elo gains are boosted"
+    color: "#e8c670"
+    aliases: [elo, elobuff, doubleelo, 2xelo]
+    duration-minutes: 30
+    cooldown-minutes: 0
+    bossbar:
+      enabled: true
+      text: "{event} : {time}"
+      color: PINK
+      style: PROGRESS
+      gradient: ["#ff7ac6", "#ffd6ee"]
+      countdown: true
+    sounds:
+      start: {sound: "entity.player.levelup", volume: 0.8, pitch: 1.0}
+      end: {sound: "entity.experience_orb.pickup", volume: 0.8, pitch: 1.0}
+    titles:
+      start: {title: "<g>{event}</g>", subtitle: "<g>{description}</g>"}
+      end: {title: "<g>{event} ended</g>", subtitle: ""}
+    messages:
+      start:
+        text: "<g>{event} has started for {minutes} minutes: {description}</g>"
+        sound: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
+      end:
+        text: "<g>{event} has ended.</g>"
+        sound: {sound: "block.note_block.bass", volume: 0.6, pitch: 1.0}
+    start-animation:
+      enabled: true
+      duration-ticks: 40
+      interval-ticks: 5
+      layers:
+        ring: {shape: ring, particle: DUST, color: "#e8c670", size: 1.0, count: 36, radius: 2.5, radius-jitter: 0.1, y-jitter: 0.05, height: 1.0, particles-min: 1, particles-max: 1, spin: 10.0}
+        burst: {shape: burst, particle: DUST, color: "#e8c670", size: 0.8, count: 20, radius-min: 0.5, radius-max: 2.0, height: 1.0, particles-min: 1, particles-max: 1}
+    aura:
+      enabled: false
+      interval-ticks: 10
+      layers:
+        helix: {shape: helix, particle: DUST, color: "#e8c670", size: 0.6, count: 16, radius: 0.8, height: 0.1, rise: 2.0, turns: 2.0, spin: 20.0, particles-min: 1, particles-max: 1}
+    schedule:
+      mode: off            # off | times | interval
+      times: ["19:00"]     # "19:00" or "SAT 20:00"
+      days: [ALL]          # ALL or MONDAY, TUESDAY ...
+      interval-minutes: 180
+    settings:
+      multiplier: 1.5                  # every Elo gain (kills and playtime) is multiplied by this
+      plugin: "ReliqueOnlineAPI"       # the plugin that owns the Elo (needs the patch shipped with EventCore)
   locator_bar:
     enabled: true
     display-name: "locator bar"
@@ -267,9 +320,10 @@ events:
     cooldown-minutes: 0
     bossbar:
       enabled: true
-      text: "<bb>{event_name} | {time}</bb>"
+      text: "{event} : {time}"
       color: BLUE
-      style: PROGRESS
+      style: NOTCHED_10
+      gradient: ["#4dd2ff", "#c9f4ff"]
       countdown: true
     sounds:
       start: {sound: "block.beacon.power_select", volume: 0.8, pitch: 1.0}
@@ -322,9 +376,10 @@ events:
     cooldown-minutes: 0
     bossbar:
       enabled: true
-      text: "<bb>{event_name} | {time}</bb>"
-      color: PURPLE
-      style: PROGRESS
+      text: "{event} : {time}"
+      color: BLUE
+      style: NOTCHED_6
+      gradient: ["#2FD0CD", "#C5F2F1"]
       countdown: true
     sounds:
       start: {sound: "entity.ender_dragon.growl", volume: 0.8, pitch: 1.0}
@@ -389,6 +444,12 @@ events:
         sound-interval-ticks: 10
         trail: {shape: scatter, particle: CLOUD, count: 6, radius-min: 0.0, radius-max: 0.5, y-min: 0.0, y-max: 0.8, particles-min: 1, particles-max: 1}
         hologram-offset: 2.0
+        announce:                 # sent the moment a crate starts to fall: where it is coming down
+          show-title: true
+          chat:
+            text: "<g>{tier_plain} lootdrop is falling at {world} {x} {y} {z}. Lands in {time}s.</g>"
+            sound: {sound: "entity.firework_rocket.launch", volume: 0.8, pitch: 1.0}
+          title: {title: "<g>{tier_plain} lootdrop falling</g>", subtitle: "<g>{x} {y} {z}</g>"}
         flare: {shape: spiral, particle: END_ROD, count: 30, radius: 0.3, height: 0.0, rise: 25.0, turns: 6.0, spin: 12.0, particles-min: 1, particles-max: 1}
       parachute:                 # chickens leashed to an invisible slime, like Airdrop 4.x
         enabled: true
@@ -404,9 +465,9 @@ events:
           radius-start: 0.5
           radius-end: 7.0
           layer: {shape: ring, particle: CLOUD, count: 40, height: 0.2, particles-min: 1, particles-max: 1}
-        title: {title: "<g>airdrop landed</g>", subtitle: "<gray>{world} [{x}, {y}, {z}]</gray>"}
+        title: {title: "<g>{tier_plain} lootdrop landed</g>", subtitle: "<g>{x} {y} {z}</g>"}
         chat:
-          text: "{tier} <g>crate landed at {world} [{x}, {y}, {z}]</g>"
+          text: "<g>{tier_plain} lootdrop landed at {world} {x} {y} {z}</g>"
           sound: {sound: "block.note_block.bell", volume: 0.8, pitch: 1.0}
         broadcast-title: true
         lock-seconds: 3
@@ -418,7 +479,7 @@ events:
       open:
         sound: {sound: "block.shulker_box.open", volume: 1.0, pitch: 1.0}
         chat:
-          text: "<g>{player} opened a</g> {tier} <g>crate</g>"
+          text: "<g>{player} opened a {tier_plain} lootdrop</g>"
           sound: {sound: "entity.player.levelup", volume: 0.8, pitch: 1.2}
         particles:
           burst: {shape: burst, particle: DUST, color: "#ffffff", size: 1.0, count: 30, radius-min: 0.5, radius-max: 2.0, height: 0.8, particles-min: 1, particles-max: 1}

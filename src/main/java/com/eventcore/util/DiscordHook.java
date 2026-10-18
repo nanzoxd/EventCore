@@ -92,6 +92,13 @@ public final class DiscordHook {
     }
 
     // ---------- airdrop ----------
+    public void crateFalling(String tier, String world, String xyz, int seconds) {
+        if (!on("airdrop-falling")) return;
+        long land = Instant.now().getEpochSecond() + seconds;
+        post(true, "🪂 " + tier + " lootdrop falling", color("airdrop", "#d8b04a"),
+                "```yaml\ntier: " + clean(tier) + "\nworld: " + clean(world) + "\ncoords: " + xyz + "\n```\nLands " + rel(land));
+    }
+
     public void crateLanded(String tier, String world, String xyz, int hp) {
         if (!on("airdrop-landed")) return;
         post(true, "📦 " + tier + " lootdrop landed", color("airdrop", "#d8b04a"),

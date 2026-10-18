@@ -114,7 +114,22 @@ public final class Text {
 
     private String gradientClose() { return palette().size() == 1 ? "</color>" : "</gradient>"; }
 
-    public Component render(String tpl, Map<String, Object> ph) {
+    private static final java.util.regex.Pattern NAMED = java.util.regex.Pattern.compile(
+            "<(/?)(?:black|dark_blue|dark_green|dark_aqua|dark_red|dark_purple|gold|gray|grey|dark_gray|dark_grey|blue|green|aqua|red|light_purple|yellow|white)>");
+    private static final java.util.regex.Pattern HEXTAG = java.util.regex.Pattern.compile(
+            "<(/?)(?:#[0-9a-fA-F]{6}|color:#[0-9a-fA-F]{6})>");
+
+    /** Chat uses only the palette: every named or hex colour tag becomes style.text-color. Templates with <n> keep their colours. */
+    private String flattenColors(String t) {
+        if (!pl.cfg.config().getBoolean("style.flatten-colors", true) || t.contains("<n>")) return t;
+        String hex = pl.cfg.config().getString("style.text-color", "#ffd7ca");
+        t = NAMED.matcher(t).replaceAll(m -> m.group(1).isEmpty() ? "<color:" + hex + ">" : "</color>");
+        return HEXTAG.matcher(t).replaceAll(m -> m.group(1).isEmpty() ? "<color:" + hex + ">" : "</color>");
+    }
+
+    public Component render(String tpl, Map<String, Object> ph) { return render0(tpl, ph, true); }
+
+    private Component render0(String tpl, Map<String, Object> ph, boolean flatten) {
         if (tpl == null) tpl = "";
         if (ph == null) ph = Map.of();
         for (Map.Entry<String, Object> e : ph.entrySet())
@@ -122,6 +137,7 @@ public final class Text {
         if (smallCapsOn()) tpl = smallCapsTemplate(tpl);
         boolean strip = pl.cfg.config().getBoolean("style.strip-bold", true);
         if (strip) tpl = tpl.replaceAll("(?i)</?(b|bold)>", "");
+        if (flatten) tpl = flattenColors(tpl);
         tpl = tpl.replace("<g>", gradientOpen(0)).replace("</g>", gradientClose());
         tpl = tpl.replace("<bb>", bbOpen()).replace("</bb>", bbClose()).replace("<n>", "").replace("</n>", "");
         TagResolver.Builder tr = TagResolver.builder();
@@ -141,7 +157,7 @@ public final class Text {
 
     /** Item names / lore: like render() but never italic. */
     public Component item(String tpl, Map<String, Object> ph) {
-        return render(tpl, ph).decoration(TextDecoration.ITALIC, false);
+        return render0(tpl, ph, false).decoration(TextDecoration.ITALIC, false);
     }
 
     /** Fully expanded plain string (small caps applied, placeholders substituted, tags stripped). */

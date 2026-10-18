@@ -106,6 +106,7 @@ public final class AdminGui implements Listener {
             case "golden_trees" -> Material.GOLDEN_APPLE;
             case "anonymous" -> Material.PLAYER_HEAD;
             case "glow" -> Material.GLOWSTONE_DUST;
+            case "elo_buff" -> Material.EXPERIENCE_BOTTLE;
             case "locator_bar" -> Material.COMPASS;
             case "airdrop" -> Material.BEACON;
             default -> Material.PAPER;
@@ -113,10 +114,11 @@ public final class AdminGui implements Listener {
     }
 
     public void openEvents(Player p) {
-        open(p, "Events", 3, pg -> {
+        open(p, "Events", 4, pg -> {
             int slot = 10;
             for (GameEvent ev : pl.events.registry().values()) {
-                if (slot > 16) break;
+                if (slot == 17) slot = 19;
+                if (slot > 25) break;
                 boolean on = ev.sec().getBoolean("enabled", true);
                 ActiveEvent ae = pl.events.active(ev.id());
                 String state = ae != null ? "<color:%good%>Running " + Util.mmss(ae.secondsLeft()) : on ? "<color:%soft%>Idle" : "<color:%bad%>Disabled";
@@ -146,7 +148,13 @@ public final class AdminGui implements Listener {
                     pg.fill.run();
                 });
             }
-            back(pg, 22);
+            String dm = pl.cfg.config().getString("event-display", "BOSSBAR").toUpperCase(Locale.ROOT);
+            set(pg, 29, icon(Material.OAK_SIGN, "Event display", "Now: <white>" + dm, "BOSSBAR, ACTIONBAR or BOTH", "", "<color:%soft%>Click to switch"), (pl2, c) -> {
+                String next = dm.equals("BOSSBAR") ? "ACTIONBAR" : dm.equals("ACTIONBAR") ? "BOTH" : "BOSSBAR";
+                pl.cfg.set("config", "event-display", next);
+                pg.fill.run();
+            });
+            back(pg, 31);
         });
     }
 

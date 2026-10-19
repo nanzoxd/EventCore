@@ -17,8 +17,6 @@ import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Transformation;
 import org.joml.AxisAngle4f;
 import org.joml.Vector3f;
@@ -46,7 +44,6 @@ public final class RitualManager implements Listener {
         final String palette = currentPalette();
         String lastTimer = "";
         long cycle;
-        final Map<UUID, Long> curseNext = new java.util.concurrent.ConcurrentHashMap<>();
 
         Ritual(ItemStack item, Location loc, int seconds, String starter) {
             this.item = item; this.loc = loc; this.starter = starter; this.total = seconds; this.remaining = seconds;
@@ -145,47 +142,9 @@ public final class RitualManager implements Listener {
                 if (cur != this) { t.cancel(); return; }
                 remaining--;
                 updateBar(this);
-                curseTick();
                 if (remaining > 0 && remaining % Math.max(1, rc().getInt("persistence.save-interval-seconds", 10)) == 0) save();
                 if (remaining <= 0) complete();
             }, 20, 20);
-        }
-
-        /** Players standing close to the ritual randomly get a short curse (poison / slowness / nausea, sometimes glowing). */
-        void curseTick() {
-            ConfigurationSection c = rc().getConfigurationSection("curse");
-            if (c == null || !c.getBoolean("enabled", true)) return;
-            double radius = Math.max(1.0, c.getDouble("radius", 9.0));
-            long now = System.currentTimeMillis();
-            Location center = loc.clone();
-            for (Player p : Bukkit.getOnlinePlayers()) {
-                pl.sched.entity(p, () -> {
-                    if (cur != this || !p.isOnline() || p.isDead()) return;
-                    if (c.getBoolean("ignore-creative", true) && (p.getGameMode() == GameMode.CREATIVE || p.getGameMode() == GameMode.SPECTATOR)) return;
-                    Location pl0 = p.getLocation();
-                    if (pl0.getWorld() != center.getWorld() || pl0.distanceSquared(center) > radius * radius) { curseNext.remove(p.getUniqueId()); return; }
-                    Long next = curseNext.get(p.getUniqueId());
-                    if (next != null && now < next) return;
-                    curseNext.put(p.getUniqueId(), now + Math.max(1, c.getInt("interval-seconds", 6)) * 1000L);
-                    var rnd = java.util.concurrent.ThreadLocalRandom.current();
-                    List<String> names = new ArrayList<>();
-                    int dmin = Math.max(1, c.getInt("duration-min-seconds", 4)), dmax = Math.max(dmin, c.getInt("duration-max-seconds", 5));
-                    if (rnd.nextDouble() * 100.0 < c.getDouble("chance", 40.0)) {
-                        List<String> pool = c.getStringList("effects");
-                        if (pool.isEmpty()) pool = List.of("POISON", "SLOWNESS", "NAUSEA");
-                        PotionEffectType t = effectType(pool.get(rnd.nextInt(pool.size())));
-                        if (t != null) {
-                            p.addPotionEffect(new PotionEffect(t, rnd.nextInt(dmin, dmax + 1) * 20, 0, false, true, true));
-                            names.add(t.getKey().getKey().replace('_', ' '));
-                        }
-                    }
-                    if (rnd.nextDouble() * 100.0 < c.getDouble("glow-chance", 25.0)) {
-                        p.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, Math.max(1, c.getInt("glow-seconds", 5)) * 20, 0, false, false, false));
-                        names.add("glowing");
-                    }
-                    if (!names.isEmpty()) p.sendMessage(pl.msg("ritual.curse", "effect", String.join(", ", names)));   // only this player sees it
-                });
-            }
         }
 
         void cancelTasks() { Sched.cancel(spin); Sched.cancel(particles); Sched.cancel(countdown); }
@@ -204,11 +163,6 @@ public final class RitualManager implements Listener {
         this.pl = pl;
         this.KEY = new NamespacedKey(pl, "ritual_entity");
         this.dataFile = new File(new File(pl.getDataFolder(), "data"), "ritual.yml");
-    }
-
-    private static PotionEffectType effectType(String n) {
-        try { return Registry.POTION_EFFECT_TYPE.get(NamespacedKey.minecraft(n.toLowerCase(Locale.ROOT))); }
-        catch (Exception e) { return null; }
     }
 
     private ConfigurationSection rc() { return pl.cfg.rituals(); }

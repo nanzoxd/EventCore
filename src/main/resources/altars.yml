@@ -1,0 +1,88 @@
+# EventCore altars: custom crafting altars. Recipes (3x3 + output) are made in the GUI: /altar recipes
+# Players right-click the altar block, put the ingredients in the 3x3 grid and click the output to begin a ritual.
+# When the ritual ends the output drops on the altar.
+ritual:
+  default-minutes: 30            # used for new recipes (each recipe stores its own minutes, editable in the recipe GUI)
+  reveal-seconds: [0, 600, 900]  # when X, Y and Z of the altar are revealed (scaled if a recipe uses another length)
+  bossbar: {color: PURPLE, style: PROGRESS}
+  save-interval-seconds: 10
+sounds:                           # kept quiet on purpose
+  start: {sound: "block.beacon.activate", volume: 0.4, pitch: 1.0}
+  reveal: {sound: "block.note_block.chime", volume: 0.3, pitch: 1.0}
+  complete: {sound: "ui.toast.challenge_complete", volume: 0.4, pitch: 1.0}
+  stop: {sound: "block.beacon.deactivate", volume: 0.4, pitch: 1.0}
+hologram:
+  enabled: true
+  height: 2.3
+  scale: 1.0
+gui:
+  craft-title: "<g>altar crafting</g>"
+  list-title: "<g>altar recipes</g>"
+  edit-title: "<g>edit altar recipe</g>"
+presets:
+  default:
+    title: "<g>altar</g>"
+    recipe: ""            # recipe id this altar crafts (shown by the hologram); empty = every recipe works here
+    center: LODESTONE     # the block players right-click
+    blocks:               # "dx dy dz MATERIAL" relative to the center block
+      - "-2 -1 -2 POLISHED_BLACKSTONE_BRICKS"
+      - "-2 -1 -1 POLISHED_BLACKSTONE_BRICKS"
+      - "-2 -1 0 POLISHED_BLACKSTONE_BRICKS"
+      - "-2 -1 1 POLISHED_BLACKSTONE_BRICKS"
+      - "-2 -1 2 POLISHED_BLACKSTONE_BRICKS"
+      - "-1 -1 -2 POLISHED_BLACKSTONE_BRICKS"
+      - "-1 -1 -1 POLISHED_BLACKSTONE_BRICKS"
+      - "-1 -1 0 POLISHED_BLACKSTONE_BRICKS"
+      - "-1 -1 1 POLISHED_BLACKSTONE_BRICKS"
+      - "-1 -1 2 POLISHED_BLACKSTONE_BRICKS"
+      - "0 -1 -2 POLISHED_BLACKSTONE_BRICKS"
+      - "0 -1 -1 POLISHED_BLACKSTONE_BRICKS"
+      - "0 -1 0 POLISHED_BLACKSTONE_BRICKS"
+      - "0 -1 1 POLISHED_BLACKSTONE_BRICKS"
+      - "0 -1 2 POLISHED_BLACKSTONE_BRICKS"
+      - "1 -1 -2 POLISHED_BLACKSTONE_BRICKS"
+      - "1 -1 -1 POLISHED_BLACKSTONE_BRICKS"
+      - "1 -1 0 POLISHED_BLACKSTONE_BRICKS"
+      - "1 -1 1 POLISHED_BLACKSTONE_BRICKS"
+      - "1 -1 2 POLISHED_BLACKSTONE_BRICKS"
+      - "2 -1 -2 POLISHED_BLACKSTONE_BRICKS"
+      - "2 -1 -1 POLISHED_BLACKSTONE_BRICKS"
+      - "2 -1 0 POLISHED_BLACKSTONE_BRICKS"
+      - "2 -1 1 POLISHED_BLACKSTONE_BRICKS"
+      - "2 -1 2 POLISHED_BLACKSTONE_BRICKS"
+      - "-2 0 -2 CHISELED_POLISHED_BLACKSTONE"
+      - "-2 1 -2 SOUL_LANTERN"
+      - "-2 0 2 CHISELED_POLISHED_BLACKSTONE"
+      - "-2 1 2 SOUL_LANTERN"
+      - "2 0 -2 CHISELED_POLISHED_BLACKSTONE"
+      - "2 1 -2 SOUL_LANTERN"
+      - "2 0 2 CHISELED_POLISHED_BLACKSTONE"
+      - "2 1 2 SOUL_LANTERN"
+messages:
+  usage: "<g>/altar [spawn [preset]|remove [id]|list|recipes|bind [preset] [recipe or none]|stop [id or all]|reload]</g>"
+  spawned: "<g>altar #{id} ({preset}) placed.</g>"
+  removed: "<g>altar #{id} removed.</g>"
+  no-altar: "<red>no altar found there.</red>"
+  unknown-preset: "<red>unknown altar preset:</red> <gray>{input}</gray>"
+  unknown-recipe: "<red>unknown recipe:</red> <gray>{input}</gray>"
+  bound: "<g>preset {preset} now crafts {recipe}.</g>"
+  reloaded: "<g>altars reloaded.</g>"
+  stopped: "<g>stopped {count} altar ritual(s).</g>"
+  list-header: "<g>altars:</g>"
+  list-line: "<gray>#{id} {preset} | {world} {x} {y} {z} | {state}</gray>"
+  busy: "<red>this altar is already running a ritual.</red>"
+  no-recipe: "<red>these items do not match any recipe.</red>"
+  protected: "<red>this is an altar. use /altar remove.</red>"
+  saved: "<g>recipe {id} saved.</g>"
+  deleted: "<g>recipe {id} deleted.</g>"
+  need-output: "<red>put the output item in the output slot first.</red>"
+  need-ingredient: "<red>put at least one ingredient in the grid.</red>"
+  started-broadcast: "<gray>a</gray> <g>altar ritual</g> <gray>was started by</gray> <green>{player}</green><gray>: {item} ({minutes} minutes)</gray>"
+  reveal-broadcast: "<g>altar ritual</g> <gray>coordinates:</gray> {coords}"
+  reveal-title: {title: "<g>altar coordinates</g>", subtitle: "{coords}"}
+  complete-broadcast: "<g>altar ritual complete:</g> <gray>{item} dropped at</gray> {coords}"
+  stopped-broadcast: "<red>an altar ritual was cancelled.</red>"
+  bossbar: "<bb>✦ {item} | {time} |</bb> {coords}"
+  hologram-idle: "<gray>right-click to craft</gray>"
+  hologram-any: "<gray>right-click to open the altar</gray>"
+  hologram-busy: "<g>ritual {time}</g>"

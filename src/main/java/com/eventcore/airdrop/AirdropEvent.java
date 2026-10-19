@@ -3,10 +3,8 @@ package com.eventcore.airdrop;
 import com.eventcore.EventCorePlugin;
 import com.eventcore.event.EventManager.ActiveEvent;
 import com.eventcore.event.GameEvent;
-import com.eventcore.util.Sched;
 import com.eventcore.util.Text;
 import io.papermc.paper.event.player.PrePlayerAttackEntityEvent;
-import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import net.kyori.adventure.text.Component;
 import org.bukkit.*;
 import org.bukkit.block.Block;
@@ -35,7 +33,9 @@ public final class AirdropEvent extends GameEvent {
     private volatile int spawned;
     private volatile long nextDropAt;
     private long startedAt;
-    private ScheduledTask barTask;
+    private volatile boolean running;
+    private volatile int runId;
+    private net.kyori.adventure.text.Component lastBarName;
     private volatile boolean spawning;
     private volatile long spawningSince;
     private volatile int failStreak;
@@ -92,8 +92,12 @@ public final class AirdropEvent extends GameEvent {
     // ---------- lifecycle ----------
     @Override public boolean ownsBarTitle() { return true; }
 
-    @Override public Map<String, Object> extra(ActiveEvent ae) {
-        return Text.ph("code", code, "status", status(), "coords", coords(), "crates", crates.size());
+    @Override public Map<String, Object> extra(ActiveEvent ae) { return barPh(); }
+
+    private Map<String, Object> barPh() {
+        AirdropCrate f = focus();
+        return Text.ph("code", code, "status", status(), "coords", coords(), "crates", crates.size(),
+                "fall_time", f != null && f.state == State.FALLING ? fmtTime(f.secondsLeft()) : "");
     }
 
     /** The crate the bossbar talks about: a falling one first, otherwise any unopened one. */
@@ -131,10 +135,10 @@ public final class AirdropEvent extends GameEvent {
         return st == null ? key : st.getString(key, key);
     }
 
-    /** Incoming: seconds until the drop. Falling: time left to land. Landed: coordinates. */
+    /** Incoming: seconds until the drop. Falling and landed: the crate's coordinates. */
     private String coords() {
         AirdropCrate f = focus();
-        if (f != null) return f.state == State.FALLING ? fmtTime(f.secondsLeft()) : f.coords();
+        if (f != null) return f.coords();
         if (allDone()) return "-";
         return fmtTime((int) Math.max(0, (nextDropAt - System.currentTimeMillis() + 999) / 1000));
     }
@@ -147,31 +151,42 @@ public final class AirdropEvent extends GameEvent {
         spawning = false;
         failStreak = 0;
         barWarned = false;
-        int period = Math.max(1, settings().getInt("bossbar-update-ticks", 5));
-        barTask = pl.sched.globalTimer(t -> animateBar(ae, t), 1, period);
+        lastBarName = null;
+        runId++;            // callbacks of an earlier run can never place a crate in this one
+        running = true;
     }
 
     @Override public void onStop(ActiveEvent ae) {
-        Sched.cancel(barTask);
+        running = false;    // in-flight spawn attempts see this and drop out
+        runId++;
+        spawning = false;
         destroyAll();
     }
 
-    /** Keeps the bossbar text current and visible to every online player (idempotent), so it can never go missing. */
-    private void refreshBar(ActiveEvent ae) {
+    /**
+     * Ritual-style bossbar: the bar is created and shown once by EventManager (and shown to late joiners there), and
+     * from here only the title/progress are updated, once per second and only when they changed. Nothing re-shows
+     * the bar and nothing else touches its progress, so it cannot flicker.
+     */
+    private void updateBar(ActiveEvent ae) {
         try {
             if (ae.bar == null) {
                 if (!barWarned) { barWarned = true; pl.getLogger().warning("Airdrop: no bossbar (events.airdrop.bossbar.enabled or event-display is turning it off)."); }
                 return;
             }
-            ae.bar.name(displayText(ae));
-            for (Player p : Bukkit.getOnlinePlayers()) p.showBossBar(ae.bar);
+            Component name = displayText(ae);
+            if (!name.equals(lastBarName)) { lastBarName = name; ae.bar.name(name); }
+            AirdropCrate f = focus();
+            ae.bar.progress(f != null && f.state == State.FALLING ? com.eventcore.util.BossBars.clamp(f.fallProgress())
+                    : com.eventcore.util.BossBars.clamp(ae.secondsLeft() / (double) Math.max(1, ae.totalSec)));
         } catch (Throwable ex) {
-            pl.getLogger().warning("Airdrop: bossbar refresh failed: " + ex);
+            pl.getLogger().warning("Airdrop: bossbar update failed: " + ex);
         }
     }
 
     @Override public void onSecond(ActiveEvent ae, int left) {
-        refreshBar(ae);
+        if (!running || !isActiveAe(ae)) return;
+        updateBar(ae);
         long now = System.currentTimeMillis();
         if (spawning && now - spawningSince > 20_000L) {   // a spawn callback got lost: never block forever
             pl.getLogger().warning("Airdrop: spawn attempt timed out, retrying.");
@@ -184,8 +199,10 @@ public final class AirdropEvent extends GameEvent {
         if (tier == null) { nextDropAt = now + 30_000L; pl.getLogger().warning("Airdrop: no crate tiers configured."); return; }
         spawning = true;
         spawningSince = now;
+        final int run = runId;
         try {
-            spawnRandom(tier, ok -> {
+            spawnRandom(tier, run, ok -> {
+                if (run != runId || !running) return;   // event ended while the spawn was in flight
                 long t = System.currentTimeMillis();
                 spawning = false;
                 if (ok) { failStreak = 0; nextDropAt = t + settings().getInt("spawn.interval-seconds", 120) * 1000L; }
@@ -202,18 +219,11 @@ public final class AirdropEvent extends GameEvent {
     }
 
     @Override public Component displayText(ActiveEvent ae) {
-        return pl.text.bossbar(pl.text.expandPlain(settings().getString("bossbar-text", "Lootdrop {status} | {coords}"),
-                Text.ph("code", code, "status", status(), "coords", coords(), "crates", crates.size())));
-    }
-
-    /** Simple bossbar: "Lootdrop Falling | 10 20 30" in the bossbar gradient; the bar fills as the crate falls. */
-    private void animateBar(ActiveEvent ae, ScheduledTask t) {
-        if (!isActiveAe(ae)) { t.cancel(); return; }
-        if (ae.bar == null) return;
-        try { ae.bar.name(displayText(ae)); } catch (Throwable ex) { pl.getLogger().warning("Airdrop: bossbar title failed: " + ex); }
         AirdropCrate f = focus();
-        ae.bar.progress(f != null && f.state == State.FALLING ? com.eventcore.util.BossBars.clamp(f.fallProgress())
-                : com.eventcore.util.BossBars.clamp(ae.secondsLeft() / (double) Math.max(1, ae.totalSec)));
+        String tpl = f != null && f.state == State.FALLING
+                ? settings().getString("bossbar-text-falling", "Lootdrop {status} | {coords} | {fall_time}")
+                : settings().getString("bossbar-text", "Lootdrop {status} | {coords}");
+        return pl.text.bossbar(pl.text.expandPlain(tpl, barPh()));
     }
 
     private boolean isActiveAe(ActiveEvent ae) { return pl.events.active(id()) == ae; }
@@ -229,7 +239,7 @@ public final class AirdropEvent extends GameEvent {
         return null;
     }
 
-    private void spawnRandom(String tier, Consumer<Boolean> done) {
+    private void spawnRandom(String tier, int run, Consumer<Boolean> done) {
         ConfigurationSection sp = settings().getConfigurationSection("spawn");
         if (sp == null) { done.accept(false); return; }
         List<String> worlds = sp.getStringList("worlds");
@@ -239,7 +249,7 @@ public final class AirdropEvent extends GameEvent {
             if (w == null) { done.accept(false); return; }
             double cx = a.getDouble("center-x"), cz = a.getDouble("center-z");
             if (a.getBoolean("use-world-spawn", true)) { Location sp0 = w.getSpawnLocation(); cx = sp0.getX(); cz = sp0.getZ(); }
-            attempt(w, cx, cz, 0, a.getDouble("half-size", 4000), tier, 0, true, done);
+            attempt(w, cx, cz, 0, a.getDouble("half-size", 4000), tier, 0, true, run, done);
             return;
         }
         List<Player> candidates = new ArrayList<>();
@@ -250,11 +260,12 @@ public final class AirdropEvent extends GameEvent {
         Player p = candidates.get(ThreadLocalRandom.current().nextInt(candidates.size()));
         pl.sched.entity(p, () -> {
             Location l = p.getLocation();
-            attempt(l.getWorld(), l.getX(), l.getZ(), sp.getDouble("min-distance", 30), sp.getDouble("max-distance", 120), tier, 0, false, done);
+            attempt(l.getWorld(), l.getX(), l.getZ(), sp.getDouble("min-distance", 30), sp.getDouble("max-distance", 120), tier, 0, false, run, done);
         });
     }
 
-    private void attempt(World w, double cx, double cz, double minD, double maxD, String tier, int tries, boolean square, Consumer<Boolean> done) {
+    private void attempt(World w, double cx, double cz, double minD, double maxD, String tier, int tries, boolean square, int run, Consumer<Boolean> done) {
+        if (run != runId || !running) return;
         int maxTries = Math.max(1, settings().getInt("spawn.max-attempts", 8));
         if (tries >= maxTries) { done.accept(false); return; }
         ThreadLocalRandom r = ThreadLocalRandom.current();
@@ -270,7 +281,8 @@ public final class AirdropEvent extends GameEvent {
                 boolean bad = y <= w.getMinHeight()
                         || !w.getWorldBorder().isInside(new Location(w, x, y, z))
                         || (settings().getBoolean("spawn.avoid-liquids", true) && b.isLiquid() && !lastTry);   // last try accepts water
-                if (bad) { attempt(w, cx, cz, minD, maxD, tier, tries + 1, square, done); return; }
+                if (bad) { attempt(w, cx, cz, minD, maxD, tier, tries + 1, square, run, done); return; }
+                if (run != runId || !running) return;
                 done.accept(spawnCrate(tier, new Location(w, x + 0.5, y + 1, z + 0.5)));
             } catch (Throwable ex) {
                 pl.getLogger().warning("Airdrop: spawn error: " + ex);

@@ -463,8 +463,8 @@ events:
       gradient: ["#d8b04a", "#fff0cc"]
       countdown: true
     sounds:
-      start: {sound: "entity.ender_dragon.growl", volume: 0.8, pitch: 1.0}
-      end: {sound: "entity.player.levelup", volume: 0.8, pitch: 1.0}
+      start: {sound: "block.beacon.activate", volume: 0.35, pitch: 0.8}
+      end: {sound: "block.beacon.deactivate", volume: 0.35, pitch: 0.8}
     titles:
       start: {title: "<g>{event}</g>", subtitle: "<g>{description}</g>"}
       end: {title: "<g>{event} ended</g>", subtitle: ""}
@@ -476,10 +476,10 @@ events:
         - "chat shows who is hitting it and the top 3 hitters"
       start:
         text: "<g>{event} has started for {minutes} minutes: {description}</g>"
-        sound: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
+        sound: {sound: "block.note_block.chime", volume: 0.3, pitch: 1.0}
       end:
         text: "<g>{event} has ended.</g>"
-        sound: {sound: "block.note_block.bass", volume: 0.6, pitch: 1.0}
+        sound: {sound: "block.note_block.bass", volume: 0.3, pitch: 0.8}
     start-animation:
       enabled: true
       duration-ticks: 40
@@ -498,8 +498,8 @@ events:
       days: [ALL]          # ALL or MONDAY, TUESDAY ...
       interval-minutes: 180
     settings:
-      bossbar-text: "Lootdrop {status} | {coords}"   # {status} {coords}
-      bossbar-update-ticks: 5
+      bossbar-text: "Lootdrop {status} | {coords}"   # incoming: {coords} = countdown, landed: crate coordinates
+      bossbar-text-falling: "Lootdrop {status} | {coords} | {fall_time}"   # while a crate falls: coordinates + time to land
       status:
         waiting: "Incoming"
         falling: "Falling"
@@ -526,7 +526,8 @@ events:
         min-height: 100.0         # spawn height above the surface (never below 100)
         duration-minutes: 25.0    # smooth descent: the crate takes exactly this long to reach the ground
         trail-interval-ticks: 2
-        sound-range: 64.0         # blocks the falling sound carries (volume above 1 = farther)
+        sound-range: 0            # 0 = play at the plain volume below (quiet); above 0 raises the volume so it carries that far
+        sound-height: 25.0        # the falling sound only plays when the crate is this close above the ground
         marker:                   # ring on the surface that shows where the crate lands (tier coloured)
           enabled: true
           use-tier-color: true
@@ -535,15 +536,15 @@ events:
             ring: {shape: ring, particle: DUST, size: 1.6, radius: 4.0, count: 56, height: 0.15, particles-min: 1, particles-max: 1, force: true}
             inner: {shape: ring, particle: DUST, size: 1.2, radius: 2.0, count: 28, height: 0.15, particles-min: 1, particles-max: 1, force: true}
         easing: LINEAR         # LINEAR or EASE_IN
-        sound: {sound: "item.elytra.flying", volume: 1.0, pitch: 0.5}
-        sound-interval-ticks: 10
+        sound: {sound: "item.elytra.flying", volume: 0.35, pitch: 0.5}
+        sound-interval-ticks: 20
         trail: {shape: scatter, particle: CLOUD, count: 6, radius-min: 0.0, radius-max: 0.5, y-min: 0.0, y-max: 0.8, particles-min: 1, particles-max: 1}
         hologram-offset: 2.0
         announce:                 # sent the moment a crate starts to fall: where it is coming down
           show-title: true
           chat:
             text: "<g>{tier_plain} lootdrop is falling at {world} {x} {y} {z}. Lands in {time_fmt}.</g>"
-            sound: {sound: "entity.firework_rocket.launch", volume: 0.8, pitch: 1.0}
+            sound: {sound: "entity.firework_rocket.launch", volume: 0.3, pitch: 0.8}
           title: {title: "<g>{tier_plain} lootdrop falling</g>", subtitle: "<g>{x} {y} {z}</g>"}
         flare: {shape: spiral, particle: END_ROD, count: 30, radius: 0.3, height: 0.0, rise: 25.0, turns: 6.0, spin: 12.0, particles-min: 1, particles-max: 1}
       parachute:                 # chickens leashed to an invisible slime, like Airdrop 4.x
@@ -553,7 +554,7 @@ events:
         radius: 1.4
       land:
         smoke: {shape: spiral, particle: CLOUD, count: 24, radius: 0.4, height: 0.0, rise: 18.0, turns: 4.0, spin: 8.0, particles-min: 1, particles-max: 1}
-        sound: {sound: "entity.generic.explode", volume: 1.0, pitch: 0.8}
+        sound: {sound: "entity.generic.explode", volume: 0.5, pitch: 0.6}
         shockwave:
           enabled: true
           ticks: 12
@@ -563,14 +564,14 @@ events:
         title: {title: "<g>{tier_plain} lootdrop landed</g>", subtitle: "<g>{x} {y} {z}</g>"}
         chat:
           text: "<g>{tier_plain} lootdrop landed at {world} {x} {y} {z}</g>"
-          sound: {sound: "block.note_block.bell", volume: 0.8, pitch: 1.0}
+          sound: {sound: "block.note_block.bell", volume: 0.3, pitch: 0.8}
         broadcast-title: true
         lock-seconds: 3
         expire-seconds: 600
-        ambient-sound: {sound: "item.elytra.flying", volume: 1.0, pitch: 0.5}   # low-pitched elytra wind next to the landed crate
-        ambient-interval-ticks: 30
-        ambient-range: 100.0      # blocks the low elytra sound carries
-        sound-range: 160.0        # blocks the landing explosion carries
+        ambient-sound: {sound: "item.elytra.flying", volume: 0.3, pitch: 0.5}   # low-pitched elytra wind next to the landed crate
+        ambient-interval-ticks: 60
+        ambient-range: 0          # 0 = quiet plain volume
+        sound-range: 0            # 0 = plain volume (quiet); above 0 = carries that many blocks
       hit:
         damage-per-hit: 1
         announce-first-hit: true   # chat line the first time each player hits a crate
@@ -580,13 +581,13 @@ events:
         top-count: 3               # chat ranking when the crate opens: 1-2-3
         top-header: "<g>top hitters of the {tier_plain} lootdrop:</g>"
         top-line: "<g>#{rank} {player} - {damage} hits</g>"
-        sound: {sound: "block.anvil.hit", volume: 0.6, pitch: 1.6}
+        sound: {sound: "block.anvil.hit", volume: 0.35, pitch: 1.2}
         actionbar: "<n>{bar} <color:#fffbf0>{hp}</color><color:#ffd7ca>/{max}</color></n>"
       open:
-        sound: {sound: "block.shulker_box.open", volume: 1.0, pitch: 1.0}
+        sound: {sound: "block.shulker_box.open", volume: 0.6, pitch: 1.0}
         chat:
           text: "<g>{player} opened a {tier_plain} lootdrop</g>"
-          sound: {sound: "entity.player.levelup", volume: 0.8, pitch: 1.2}
+          sound: {sound: "entity.player.levelup", volume: 0.3, pitch: 1.0}
         particles:
           burst: {shape: burst, particle: DUST, color: "#fffbf0", size: 1.0, count: 30, radius-min: 0.5, radius-max: 2.0, height: 0.8, particles-min: 1, particles-max: 1}
       messages:
@@ -612,9 +613,9 @@ events:
           land-particles:
             ring: {shape: ring, particle: DUST, color: "#ffd7ca", size: 1.2, count: 30, radius: 2.0, height: 0.3, particles-min: 1, particles-max: 1}
           sounds:
-            land: {sound: "entity.generic.explode", volume: 1.0, pitch: 1.0}
-            hit: {sound: "block.anvil.hit", volume: 0.6, pitch: 1.8}
-            open: {sound: "block.shulker_box.open", volume: 1.0, pitch: 1.0}
+            land: {sound: "entity.generic.explode", volume: 0.5, pitch: 0.7}
+            hit: {sound: "block.anvil.hit", volume: 0.35, pitch: 1.8}
+            open: {sound: "block.shulker_box.open", volume: 0.6, pitch: 1.0}
         gold:
           display-name: "gold"
           rarity: "uncommon"
@@ -626,9 +627,9 @@ events:
           land-particles:
             ring: {shape: ring, particle: DUST, color: "#e8c670", size: 1.2, count: 30, radius: 2.0, height: 0.3, particles-min: 1, particles-max: 1}
           sounds:
-            land: {sound: "entity.generic.explode", volume: 1.0, pitch: 0.9}
-            hit: {sound: "block.anvil.hit", volume: 0.6, pitch: 1.5}
-            open: {sound: "block.shulker_box.open", volume: 1.0, pitch: 1.0}
+            land: {sound: "entity.generic.explode", volume: 0.5, pitch: 0.65}
+            hit: {sound: "block.anvil.hit", volume: 0.35, pitch: 1.5}
+            open: {sound: "block.shulker_box.open", volume: 0.6, pitch: 1.0}
         diamond:
           display-name: "diamond"
           rarity: "rare"
@@ -640,9 +641,9 @@ events:
           land-particles:
             ring: {shape: ring, particle: DUST, color: "#fff0cc", size: 1.2, count: 30, radius: 2.0, height: 0.3, particles-min: 1, particles-max: 1}
           sounds:
-            land: {sound: "entity.generic.explode", volume: 1.0, pitch: 0.8}
-            hit: {sound: "block.anvil.hit", volume: 0.6, pitch: 1.2}
-            open: {sound: "block.shulker_box.open", volume: 1.0, pitch: 1.0}
+            land: {sound: "entity.generic.explode", volume: 0.5, pitch: 0.6}
+            hit: {sound: "block.anvil.hit", volume: 0.35, pitch: 1.2}
+            open: {sound: "block.shulker_box.open", volume: 0.6, pitch: 1.0}
         netherite:
           display-name: "netherite"
           rarity: "legendary"
@@ -654,6 +655,6 @@ events:
           land-particles:
             ring: {shape: ring, particle: DUST, color: "#ffcfca", size: 1.2, count: 30, radius: 2.0, height: 0.3, particles-min: 1, particles-max: 1}
           sounds:
-            land: {sound: "entity.generic.explode", volume: 1.0, pitch: 0.6}
-            hit: {sound: "block.anvil.hit", volume: 0.6, pitch: 0.9}
-            open: {sound: "block.shulker_box.open", volume: 1.0, pitch: 1.0}
+            land: {sound: "entity.generic.explode", volume: 0.5, pitch: 0.5}
+            hit: {sound: "block.anvil.hit", volume: 0.35, pitch: 0.9}
+            open: {sound: "block.shulker_box.open", volume: 0.6, pitch: 1.0}

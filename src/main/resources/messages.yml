@@ -50,7 +50,6 @@ gui:
   loot-saved: "<g>loot pool saved.</g>"
   loot-need-item: "<red>click this slot while holding an item on your cursor.</red>"
 ritual:
-  curse: "<g>you got cursed by the ritual: {effect}</g>"
   no-active: "<red>there are no active rituals</red>"
   wait-active: "<red>please wait for the current active ritual to end</red>"
   broadcast: "<gray>a</gray> <g>ritual</g> <gray>was initiated by</gray> <green>{player}</green><gray>. location: {world} [{x}, {y}, {z}]</gray>"

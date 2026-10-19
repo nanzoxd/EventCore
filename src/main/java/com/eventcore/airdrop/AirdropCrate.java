@@ -124,7 +124,13 @@ public final class AirdropCrate {
         }
         owner.crates.put(shulker.getUniqueId(), this);
         task = pl.sched.regionTimer(ground, tk -> step(), 1, 1);
-        // tell everyone where it is coming down
+        // tell everyone where it is coming down (exactly once; a failure here must never destroy the crate,
+        // otherwise the event would retry and announce a second drop)
+        try { announceFalling(); }
+        catch (Throwable ex) { pl.getLogger().warning("Airdrop: falling announcement failed: " + ex); }
+    }
+
+    private void announceFalling() {
         ConfigurationSection an = s().getConfigurationSection("fall.announce");
         if (an != null) {
             Map<String, Object> ph = ph();
@@ -155,7 +161,8 @@ public final class AirdropCrate {
     private void playLoud(ConfigurationSection sec, double range, double x, double y, double z) {
         var so = pl.fx.sound(sec);
         if (so == null) return;
-        float vol = (float) Math.max(so.volume(), range / 16.0);
+        // range <= 0: play at the configured volume as-is (quiet). range > 0: volume is raised so it carries that far.
+        float vol = range <= 0 ? so.volume() : (float) Math.max(so.volume(), range / 16.0);
         ground.getWorld().playSound(net.kyori.adventure.sound.Sound.sound(so.name(), so.source(), vol, so.pitch()), x, y, z);
     }
 
@@ -226,8 +233,9 @@ public final class AirdropCrate {
             ConfigurationSection trail = owner.resolve(tier, "trail", "fall.trail");
             if (trail != null && tick % Math.max(1, s().getInt("fall.trail-interval-ticks", 2)) == 0) pl.particles.play(l.clone(), List.of(pl.particles.readLayer("trail", trail)), tick);
             if (tick % 10 == 0 && !flare.isEmpty()) pl.particles.play(ground.clone(), flare, tick);
-            int iv = Math.max(1, s().getInt("fall.sound-interval-ticks", 10));
-            if (tick % iv == 0) {
+            int iv = Math.max(1, s().getInt("fall.sound-interval-ticks", 20));
+            // quiet, low-pitched wind only during the last stretch above the ground
+            if (tick % iv == 0 && l.getY() - ground.getY() <= s().getDouble("fall.sound-height", 25.0)) {
                 playLoud(s().getConfigurationSection("fall.sound"), s().getDouble("fall.sound-range", 64.0), l.getX(), l.getY(), l.getZ());
             }
             if (tick >= fallTicks) land();

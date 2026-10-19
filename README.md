@@ -87,3 +87,18 @@ Players who join while an event runs get its bossbar and a one-time chat explana
 
 ## Ritual palettes
 gold, peach, fire, pink, blue, red, white (nether star in /ritualcreator cycles through every palette in rituals.yml).
+
+## Altars (custom crafting)
+
+`altars.yml` + `/altar` (permission `eventcore.altar`, players need `eventcore.altar.use`, default true).
+
+- `/altar recipes` opens the recipe GUI: **new recipe** -> put the ingredients in the 3x3 grid, the result in the output slot,
+  set the ritual minutes (clock, default 30) and press **save**. Left-click a recipe to edit, shift + right-click to delete.
+- `/altar spawn <preset>` builds an altar (presets and their block layout are in `altars.yml` -> `presets`). Right-click the
+  centre block to craft: ingredients in the 3x3 grid, click the output to start the ritual. The output drops on the altar when it ends.
+- `/altar bind <preset> <recipe|none>` makes a preset craft one recipe; the hologram above the altar then shows that recipe.
+- `/altar remove [id]`, `/altar list`, `/altar stop [id|all]`, `/altar reload`.
+- **Coordinate reveal:** the ritual bossbar/chat/title show the altar's coordinates one number at a time:
+  X when it starts, Y after 10 min, Z after 15 min (`ritual.reveal-seconds`, scaled for other ritual lengths).
+  Hidden numbers are obfuscated filler digits, the real value is never sent early.
+- Altar blocks are protected from breaking and explosions; running rituals survive restarts.

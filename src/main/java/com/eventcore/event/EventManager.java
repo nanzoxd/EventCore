@@ -243,8 +243,10 @@ public final class EventManager implements Listener {
             if (bar && ae.bar == null) ae.bar = createBar(ae, bb);
             else if (!bar && ae.bar != null) { pl.bars.hide(ae.bar); ae.bar = null; }
             if (ae.bar != null) {
-                if (!ae.ev.ownsBarTitle()) ae.bar.name(barText(ae));
-                ae.bar.progress(bb.getBoolean("countdown", true) ? com.eventcore.util.BossBars.clamp(left / (double) Math.max(1, ae.totalSec)) : 1f);
+                if (!ae.ev.ownsBarTitle()) {   // events that own their bar (airdrop) update title AND progress themselves
+                    ae.bar.name(barText(ae));
+                    ae.bar.progress(bb.getBoolean("countdown", true) ? com.eventcore.util.BossBars.clamp(left / (double) Math.max(1, ae.totalSec)) : 1f);
+                }
             }
             if (wantsAction(ae.ev)) {
                 Component c = barText(ae);

@@ -2,6 +2,9 @@ package com.eventcore;
 
 import com.eventcore.airdrop.AirdropEvent;
 import com.eventcore.airdrop.LootService;
+import com.eventcore.altar.AltarGui;
+import com.eventcore.altar.AltarManager;
+import com.eventcore.command.AltarCommand;
 import com.eventcore.command.EventCoreCommand;
 import com.eventcore.command.RitualCommand;
 import com.eventcore.event.*;
@@ -37,6 +40,8 @@ public final class EventCorePlugin extends JavaPlugin {
     public AdminGui adminGui;
     public LootGui lootGui;
     public AirdropEvent airdrop;
+    public AltarManager altar;
+    public AltarGui altarGui;
 
     @Override
     public void onEnable() {
@@ -58,6 +63,9 @@ public final class EventCorePlugin extends JavaPlugin {
         adminGui = new AdminGui(this);
         lootGui = new LootGui(this);
         scheduler = new EventScheduler(this);
+        altar = new AltarManager(this);
+        altarGui = new AltarGui(this, altar);
+        altar.gui = altarGui;
 
         airdrop = new AirdropEvent(this);
         events.register(new VulnerableEvent(this));
@@ -70,17 +78,21 @@ public final class EventCorePlugin extends JavaPlugin {
         events.register(new LocatorBarEvent(this));
         events.register(airdrop);
 
-        for (org.bukkit.event.Listener l : new org.bukkit.event.Listener[]{bars, chat, events, ritual, ritualGui, adminGui, lootGui})
+        for (org.bukkit.event.Listener l : new org.bukkit.event.Listener[]{bars, chat, events, ritual, ritualGui, adminGui, lootGui, altar, altarGui})
             Bukkit.getPluginManager().registerEvents(l, this);
 
         EventCoreCommand ecCmd = new EventCoreCommand(this);
         getCommand("eventcore").setExecutor(ecCmd);
         getCommand("eventcore").setTabCompleter(ecCmd);
+        AltarCommand altarCmd = new AltarCommand(this);
+        getCommand("altar").setExecutor(altarCmd);
+        getCommand("altar").setTabCompleter(altarCmd);
         getCommand("ritualcreator").setExecutor(new RitualCommand(this));
 
         events.startTicker();
         scheduler.start();
         ritual.restore();
+        altar.load();
         getLogger().info("EventCore enabled.");
     }
 
@@ -101,6 +113,7 @@ public final class EventCorePlugin extends JavaPlugin {
         if (events != null) events.shutdown();
         if (airdrop != null) airdrop.destroyAll();
         if (ritual != null) ritual.shutdown();
+        if (altar != null) altar.shutdown();
         if (teams != null) teams.shutdown();
         if (bars != null) bars.clear();
         // closing GUIs returns any item sitting in the ritual selection slot
@@ -130,6 +143,7 @@ public final class EventCorePlugin extends JavaPlugin {
         cfg.reload();
         scheduler.rebuild();
         who.sendMessage(msg("command.reloaded"));
+        altar.reload();
         ritual.warnReload(who);
     }
 }

@@ -18,6 +18,12 @@ commands:
     permission: eventcore.ritual
     permission-message: You do not have permission.
 
+  altar:
+    description: Custom crafting altars (spawn presets, recipe GUI)
+    usage: /<command> <spawn|remove|list|recipes|bind|stop|reload>
+    aliases: [altars]
+    permission: eventcore.altar
+
 permissions:
   eventcore.admin:
     description: All EventCore admin commands
@@ -33,6 +39,7 @@ permissions:
       eventcore.schedule: true
       eventcore.airdrop: true
       eventcore.ritual: true
+      eventcore.altar: true
   eventcore.start: {default: op}
   eventcore.force: {default: op}
   eventcore.rig: {default: op}
@@ -48,3 +55,9 @@ permissions:
   eventcore.bypass:
     description: Bypass event restrictions (blocked commands, anonymous reveal)
     default: op
+  eventcore.altar:
+    description: Manage altars and altar recipes
+    default: op
+  eventcore.altar.use:
+    description: Craft at an altar
+    default: true

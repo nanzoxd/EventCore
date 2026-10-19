@@ -102,3 +102,13 @@ gold, peach, fire, pink, blue, red, white (nether star in /ritualcreator cycles 
   X when it starts, Y after 10 min, Z after 15 min (`ritual.reveal-seconds`, scaled for other ritual lengths).
   Hidden numbers are obfuscated filler digits, the real value is never sent early.
 - Altar blocks are protected from breaking and explosions; running rituals survive restarts.
+
+## Altar crafting (hologram style)
+Right-click the altar (the centre block, a structure block in LOAD mode; existing altars need /altar remove + /altar spawn to change) with the ingredients in your inventory. The hologram above it lists every recipe
+(`altars.yml` preset `recipe:` binds a preset to one recipe, empty = all). The first recipe you have all items for starts a
+ritual: the ingredients are taken, the output floats above the pedestal, the boss bar counts down and the coordinates are
+revealed one number at a time (`ritual.reveal-seconds`). When the ritual ends the item drops above the pedestal and the altar
+vanishes after `ritual.remove-after-seconds` (`ritual.remove-altar: false` keeps it).
+Recipes live in `plugins/EventCore/altar-recipes.yml` (any input / output items, custom names, model data, enchants) or in game:
+`/altar recipe create <id> [minutes]`, `/altar recipe output <id>` (item in hand), `/altar recipe input <id> [amount]` (exact item in hand)
+or `/altar recipe input <id> <MATERIAL> <amount>`, `/altar recipe clear|minutes|delete|list`. `/altar reload` re-reads the file.

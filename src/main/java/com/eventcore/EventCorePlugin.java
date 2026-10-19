@@ -2,7 +2,6 @@ package com.eventcore;
 
 import com.eventcore.airdrop.AirdropEvent;
 import com.eventcore.airdrop.LootService;
-import com.eventcore.altar.AltarGui;
 import com.eventcore.altar.AltarManager;
 import com.eventcore.command.AltarCommand;
 import com.eventcore.command.EventCoreCommand;
@@ -41,7 +40,6 @@ public final class EventCorePlugin extends JavaPlugin {
     public LootGui lootGui;
     public AirdropEvent airdrop;
     public AltarManager altar;
-    public AltarGui altarGui;
 
     @Override
     public void onEnable() {
@@ -64,8 +62,6 @@ public final class EventCorePlugin extends JavaPlugin {
         lootGui = new LootGui(this);
         scheduler = new EventScheduler(this);
         altar = new AltarManager(this);
-        altarGui = new AltarGui(this, altar);
-        altar.gui = altarGui;
 
         airdrop = new AirdropEvent(this);
         events.register(new VulnerableEvent(this));

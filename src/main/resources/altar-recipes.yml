@@ -1,0 +1,30 @@
+# EventCore altar recipes. Players right-click the altar with the ingredients in their inventory; the hologram lists these.
+# Add / edit them here (then /altar reload) or in game: /altar recipe create|output|input ... (hold the item in your hand).
+#
+# inputs:  - material: NETHERITE_INGOT   amount: 4      (any item of that material)
+#          - material: PAPER  name: "<aqua>Frost Page"  custom-model-data: 5  amount: 2   (name / model data must match)
+#          - item: <base64>   amount: 1                  (exact item, written by /altar recipe input)
+# output:  material, amount, name, lore, custom-model-data, enchants, unbreakable   (or `item: <base64>` from /altar recipe output)
+# name / lore use MiniMessage (<red>, <gradient:#fff:#8fe3ff>...).  altar: restricts the recipe to one preset (empty = every altar).
+recipes:
+  nether_sword:
+    name: "<red>Nether Sword"
+    altar: ""
+    minutes: 30
+    inputs:
+      - material: NETHERITE_INGOT
+        amount: 4
+      - material: NETHER_STAR
+        amount: 1
+      - material: BLAZE_ROD
+        amount: 8
+    output:
+      material: NETHERITE_SWORD
+      amount: 1
+      name: "<gradient:#ff5f2e:#ffd27a>Nether Sword</gradient>"
+      lore:
+        - "<gray>forged at the altar"
+      enchants:
+        sharpness: 6
+        fire_aspect: 2
+      unbreakable: true

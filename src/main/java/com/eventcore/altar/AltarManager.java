@@ -15,6 +15,12 @@ import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Display;
+import org.bukkit.entity.ItemDisplay;
+import org.bukkit.enchantments.Enchantment;
+import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.util.Vector;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.TextDisplay;
 import org.bukkit.event.EventHandler;
@@ -48,22 +54,90 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class AltarManager implements Listener {
 
     // ---------------- data ----------------
+    /** One thing a recipe consumes. Matches by material (+ optional name / custom model data), or exactly (held item). */
+    public static final class Ingredient {
+        public final Material type;
+        public final int amount;
+        public final String rawName;     // MiniMessage name as written in the yaml (null = any)
+        final String name;               // plain version used for matching
+        public final Integer cmd;
+        public final ItemStack exact;    // not null = must be similar to this item (name, lore, model, enchants...)
+
+        Ingredient(Material type, int amount, String rawName, Integer cmd, ItemStack exact) {
+            this.type = type; this.amount = Math.max(1, amount); this.rawName = rawName; this.cmd = cmd; this.exact = exact;
+            this.name = rawName == null ? null : Text.plain(MiniMessage.miniMessage().deserialize(rawName));
+        }
+
+        public boolean matches(ItemStack s) {
+            if (s == null || s.getType().isAir()) return false;
+            if (exact != null) return s.isSimilar(exact);
+            if (s.getType() != type) return false;
+            ItemMeta m = s.getItemMeta();
+            if (name != null && (m == null || !m.hasDisplayName() || !Text.plain(m.displayName()).equalsIgnoreCase(name))) return false;
+            if (cmd != null && (m == null || !m.hasCustomModelData() || m.getCustomModelData() != cmd)) return false;
+            return true;
+        }
+
+        public String label() {
+            if (exact != null) return itemName(exact.asOne());
+            return name != null ? name : Util.pretty(type);
+        }
+
+        public String line() { return (amount > 1 ? amount + "x " : "") + label(); }
+    }
+
+    /** Ingredients (items from the player's inventory) -> one output item, after a ritual of N minutes. */
     public static final class Recipe {
         public final String id;
-        public final ItemStack[] grid = new ItemStack[9];
+        public final List<Ingredient> inputs = new ArrayList<>();
         public ItemStack output;
         public int minutes;
+        public String name = "";     // hologram title (MiniMessage); empty = the output's name
+        public String altar = "";    // restrict to one altar preset; empty = any altar
+        Map<String, Object> outRaw;  // output as written in the yaml (kept so a re-save stays readable)
 
         Recipe(String id, int minutes) { this.id = id; this.minutes = minutes; }
 
-        public boolean matches(ItemStack[] in) {
-            for (int i = 0; i < 9; i++) {
-                ItemStack need = grid[i], have = in[i];
-                boolean haveEmpty = have == null || have.getType().isAir();
-                if (need == null) { if (!haveEmpty) return false; continue; }
-                if (haveEmpty || !need.isSimilar(have) || have.getAmount() < need.getAmount()) return false;
-            }
+        static int count(PlayerInventory inv, Ingredient in) {
+            int n = 0;
+            for (ItemStack s : inv.getStorageContents()) if (in.matches(s)) n += s.getAmount();
+            return n;
+        }
+
+        public boolean craftable(PlayerInventory inv) {
+            if (inputs.isEmpty()) return false;
+            for (Ingredient in : inputs) if (count(inv, in) < in.amount) return false;
             return true;
+        }
+
+        public List<String> missing(PlayerInventory inv) {
+            List<String> out = new ArrayList<>();
+            for (Ingredient in : inputs) {
+                int have = count(inv, in);
+                if (have < in.amount) out.add("missing " + (in.amount - have) + "x " + in.label());
+            }
+            return out;
+        }
+
+        public void take(PlayerInventory inv) {
+            for (Ingredient in : inputs) {
+                int left = in.amount;
+                ItemStack[] c = inv.getStorageContents();
+                for (int i = 0; i < c.length && left > 0; i++) {
+                    ItemStack s = c[i];
+                    if (!in.matches(s)) continue;
+                    int t = Math.min(left, s.getAmount());
+                    if (t >= s.getAmount()) c[i] = null; else s.setAmount(s.getAmount() - t);
+                    left -= t;
+                }
+                inv.setStorageContents(c);
+            }
+        }
+
+        public String inputLine() {
+            StringBuilder sb = new StringBuilder();
+            for (Ingredient in : inputs) { if (sb.length() > 0) sb.append(" + "); sb.append(in.line()); }
+            return sb.toString();
         }
     }
 
@@ -74,12 +148,16 @@ public final class AltarManager implements Listener {
         final Set<String> blocks = ConcurrentHashMap.newKeySet();
         volatile TextDisplay holo;
         volatile boolean holoSpawning;
+        volatile ItemDisplay floating;
+        volatile boolean floatSpawning;
+        volatile int removeIn = -1;     // seconds until the finished altar vanishes (-1 = not closing)
+        float spin;
         String lastHolo = "";
         volatile Ritual ritual;
 
         Altar(int id, String preset, Location center) { this.id = id; this.preset = preset; this.center = center; }
 
-        public boolean busy() { return ritual != null; }
+        public boolean busy() { return ritual != null || removeIn >= 0; }
     }
 
     final class Ritual {
@@ -107,14 +185,13 @@ public final class AltarManager implements Listener {
     private int nextId = 1;
     private ScheduledTask ticker;
     private int saveTick;
-    public AltarGui gui;
 
     public AltarManager(EventCorePlugin pl) {
         this.pl = pl;
         this.KEY = new NamespacedKey(pl, "altar_holo");
         File data = new File(pl.getDataFolder(), "data");
         this.cfgFile = new File(pl.getDataFolder(), "altars.yml");
-        this.recipesFile = new File(data, "altar-recipes.yml");
+        this.recipesFile = new File(pl.getDataFolder(), "altar-recipes.yml");
         this.placedFile = new File(data, "altar-placed.yml");
         this.ritualsFile = new File(data, "altar-rituals.yml");
     }
@@ -172,6 +249,8 @@ public final class AltarManager implements Listener {
             if (r != null) pl.bars.hide(r.bar);
             TextDisplay h = a.holo;
             if (h != null) { try { h.remove(); } catch (Throwable ignored) { } }
+            ItemDisplay fl = a.floating;
+            if (fl != null) { try { fl.remove(); } catch (Throwable ignored) { } }
         }
     }
 
@@ -189,9 +268,46 @@ public final class AltarManager implements Listener {
     public Collection<Recipe> recipes() { synchronized (recipes) { return new ArrayList<>(recipes.values()); } }
     public Recipe recipe(String id) { return id == null ? null : recipes.get(id); }
 
+    private static Component noItalic(Component c) { return c.decoration(TextDecoration.ITALIC, false); }
+
+    /** Builds an item from a yaml section: `item` (base64 from /altar recipe output) or material/amount/name/lore/custom-model-data/enchants. */
+    private ItemStack buildItem(ConfigurationSection s) {
+        ItemStack held = dec(s.getString("item", ""));
+        if (held != null) { if (s.contains("amount")) held.setAmount(Math.max(1, s.getInt("amount"))); return held; }
+        Material m = Material.matchMaterial(s.getString("material", ""));
+        if (m == null || m.isAir()) return null;
+        ItemStack it = new ItemStack(m, Math.max(1, s.getInt("amount", 1)));
+        ItemMeta meta = it.getItemMeta();
+        if (meta != null) {
+            MiniMessage mm = MiniMessage.miniMessage();
+            if (s.contains("name")) meta.displayName(noItalic(mm.deserialize(s.getString("name", ""))));
+            List<String> lore = s.getStringList("lore");
+            if (!lore.isEmpty()) { List<Component> l = new ArrayList<>(); for (String x : lore) l.add(noItalic(mm.deserialize(x))); meta.lore(l); }
+            if (s.contains("custom-model-data")) meta.setCustomModelData(s.getInt("custom-model-data"));
+            if (s.getBoolean("unbreakable", false)) meta.setUnbreakable(true);
+            ConfigurationSection en = s.getConfigurationSection("enchants");
+            if (en != null) for (String k : en.getKeys(false)) {
+                Enchantment e = Registry.ENCHANTMENT.get(NamespacedKey.minecraft(k.toLowerCase(Locale.ROOT)));
+                if (e != null) meta.addEnchant(e, Math.max(1, en.getInt(k)), true);
+            }
+            it.setItemMeta(meta);
+        }
+        return it;
+    }
+
+    private Ingredient buildIngredient(ConfigurationSection s) {
+        int amt = Math.max(1, s.getInt("amount", 1));
+        ItemStack held = dec(s.getString("item", ""));
+        if (held != null) { ItemStack one = held.clone(); one.setAmount(1); return new Ingredient(one.getType(), amt, null, null, one); }
+        Material m = Material.matchMaterial(s.getString("material", ""));
+        if (m == null || m.isAir()) return null;
+        return new Ingredient(m, amt, s.contains("name") ? s.getString("name") : null,
+                s.contains("custom-model-data") ? s.getInt("custom-model-data") : null, null);
+    }
+
     private void loadRecipes() {
         recipes.clear();
-        if (!recipesFile.exists()) return;
+        if (!recipesFile.exists()) pl.saveResource("altar-recipes.yml", false);
         YamlConfiguration y = YamlConfiguration.loadConfiguration(recipesFile);
         ConfigurationSection root = y.getConfigurationSection("recipes");
         if (root == null) return;
@@ -199,9 +315,24 @@ public final class AltarManager implements Listener {
             ConfigurationSection s = root.getConfigurationSection(id);
             if (s == null) continue;
             Recipe r = new Recipe(id, Math.max(1, s.getInt("minutes", defaultMinutes())));
-            for (int i = 0; i < 9; i++) r.grid[i] = dec(s.getString("grid." + i, ""));
-            r.output = dec(s.getString("output", ""));
-            if (r.output != null) recipes.put(id, r);
+            r.name = s.getString("name", "");
+            r.altar = s.getString("altar", "");
+            ConfigurationSection out = s.getConfigurationSection("output");
+            if (out != null) {
+                r.output = buildItem(out);
+                Map<String, Object> raw = new LinkedHashMap<>();
+                for (Map.Entry<String, Object> e : out.getValues(true).entrySet()) if (!(e.getValue() instanceof ConfigurationSection)) raw.put(e.getKey(), e.getValue());
+                r.outRaw = raw;
+            }
+            for (Object o : s.getList("inputs", List.of())) {
+                if (!(o instanceof Map<?, ?> mp)) continue;
+                YamlConfiguration t = new YamlConfiguration();
+                for (Map.Entry<?, ?> e : mp.entrySet()) t.set(String.valueOf(e.getKey()), e.getValue());
+                Ingredient in = buildIngredient(t);
+                if (in != null) r.inputs.add(in);
+            }
+            if (r.output != null && !r.inputs.isEmpty()) recipes.put(id, r);
+            else pl.getLogger().warning("altar recipe '" + id + "' needs an output and at least one valid input - skipped");
         }
     }
 
@@ -209,44 +340,55 @@ public final class AltarManager implements Listener {
         YamlConfiguration y = new YamlConfiguration();
         for (Recipe r : recipes()) {
             String p = "recipes." + r.id + ".";
+            y.set(p + "name", r.name);
+            y.set(p + "altar", r.altar);
             y.set(p + "minutes", r.minutes);
-            y.set(p + "output", enc(r.output));
-            for (int i = 0; i < 9; i++) y.set(p + "grid." + i, enc(r.grid[i]));
+            List<Map<String, Object>> ins = new ArrayList<>();
+            for (Ingredient in : r.inputs) {
+                Map<String, Object> m = new LinkedHashMap<>();
+                if (in.exact != null) m.put("item", enc(in.exact));
+                else {
+                    m.put("material", in.type.name());
+                    if (in.rawName != null) m.put("name", in.rawName);
+                    if (in.cmd != null) m.put("custom-model-data", in.cmd);
+                }
+                m.put("amount", in.amount);
+                ins.add(m);
+            }
+            y.set(p + "inputs", ins);
+            if (r.outRaw != null) for (Map.Entry<String, Object> e : r.outRaw.entrySet()) y.set(p + "output." + e.getKey(), e.getValue());
+            else if (r.output != null) { y.set(p + "output.item", enc(r.output)); y.set(p + "output.amount", r.output.getAmount()); }
         }
         pl.sched.async(() -> {
             try { recipesFile.getParentFile().mkdirs(); y.save(recipesFile); } catch (Exception ex) { pl.getLogger().warning("altar recipes save: " + ex); }
         });
     }
 
-    /** Creates or replaces a recipe. */
-    public Recipe putRecipe(String id, ItemStack[] grid, ItemStack output, int minutes) {
-        if (id == null) {
-            int n = 1;
-            while (recipes.containsKey("recipe_" + n)) n++;
-            id = "recipe_" + n;
-        }
+    public Recipe createRecipe(String id, int minutes) {
         Recipe r = new Recipe(id, Math.max(1, minutes));
-        for (int i = 0; i < 9; i++) r.grid[i] = grid[i] == null || grid[i].getType().isAir() ? null : grid[i].clone();
-        r.output = output.clone();
         recipes.put(id, r);
-        saveRecipes();
         return r;
     }
 
-    public void deleteRecipe(String id) {
-        recipes.remove(id);
-        saveRecipes();
-    }
+    /** Output = the item in the admin's hand (kept exactly: name, lore, model data, enchants). */
+    public void setOutput(Recipe r, ItemStack held) { r.output = held.clone(); r.outRaw = null; saveRecipes(); }
+    public void addInput(Recipe r, Ingredient in) { r.inputs.add(in); saveRecipes(); }
+    public Ingredient inputFromHeld(ItemStack held, int amount) { ItemStack one = held.clone(); one.setAmount(1); return new Ingredient(one.getType(), amount, null, null, one); }
+    public Ingredient inputFromMaterial(Material m, int amount) { return new Ingredient(m, amount, null, null, null); }
+    public void clearInputs(Recipe r) { r.inputs.clear(); saveRecipes(); }
+    public void deleteRecipe(String id) { recipes.remove(id); saveRecipes(); }
 
-    /** Recipe for the items in the grid on this altar (the preset's own recipe, or any when the preset has none). */
-    public Recipe find(Altar a, ItemStack[] in) {
+    /** Recipes this altar offers: the preset's bound recipe, or every recipe not restricted to another preset. */
+    public List<Recipe> recipesFor(Altar a) {
+        List<Recipe> out = new ArrayList<>();
         String bound = cfg.getString("presets." + a.preset + ".recipe", "");
         if (bound != null && !bound.isBlank()) {
             Recipe r = recipes.get(bound);
-            return r != null && r.matches(in) ? r : null;
+            if (r != null) out.add(r);
+            return out;
         }
-        for (Recipe r : recipes()) if (r.matches(in)) return r;
-        return null;
+        for (Recipe r : recipes()) if (r.output != null && (r.altar == null || r.altar.isBlank() || r.altar.equalsIgnoreCase(a.preset))) out.add(r);
+        return out;
     }
 
     public boolean bind(String preset, String recipe) {
@@ -284,8 +426,8 @@ public final class AltarManager implements Listener {
     }
 
     private Material centerMaterial(String preset) {
-        Material m = Material.matchMaterial(cfg.getString("presets." + preset + ".center", "LODESTONE"));
-        return m == null || !m.isBlock() ? Material.LODESTONE : m;
+        Material m = Material.matchMaterial(cfg.getString("presets." + preset + ".center", "STRUCTURE_BLOCK"));
+        return m == null || !m.isBlock() ? Material.STRUCTURE_BLOCK : m;
     }
 
     private void index(Altar a) {
@@ -314,7 +456,13 @@ public final class AltarManager implements Listener {
     private void build(Altar a) {
         for (Object[] o : structure(a.preset))
             a.center.clone().add((int) o[0], (int) o[1], (int) o[2]).getBlock().setType((Material) o[3], false);
-        a.center.getBlock().setType(centerMaterial(a.preset), false);
+        Block cb = a.center.getBlock();
+        cb.setType(centerMaterial(a.preset), false);
+        // structure block: LOAD mode is the one the resource pack turns into the ice altar
+        if (cb.getBlockData() instanceof org.bukkit.block.data.type.StructureBlock sb) {
+            sb.setMode(org.bukkit.block.data.type.StructureBlock.Mode.LOAD);
+            cb.setBlockData(sb, false);
+        }
     }
 
     public void remove(Altar a) {
@@ -324,6 +472,8 @@ public final class AltarManager implements Listener {
         for (String k : a.blocks) byBlock.remove(k);
         TextDisplay h = a.holo;
         if (h != null) pl.sched.entity(h, h::remove);
+        ItemDisplay fl = a.floating;
+        if (fl != null) pl.sched.entity(fl, fl::remove);
         List<Object[]> st = structure(a.preset);
         pl.sched.region(a.center, () -> {
             for (Object[] o : st) a.center.clone().add((int) o[0], (int) o[1], (int) o[2]).getBlock().setType(Material.AIR, false);
@@ -454,15 +604,30 @@ public final class AltarManager implements Listener {
         a.ritual = null;
         pl.bars.hide(r.bar);
         r.stage = 3;
-        Location drop = a.center.clone().add(0.5, 1.2, 0.5);
+        int rm = cfg.getInt("ritual.remove-after-seconds", 60);
+        a.removeIn = cfg.getBoolean("ritual.remove-altar", true) && rm >= 0 ? rm : -1;
+        ItemDisplay fl = a.floating;
+        a.floating = null;
+        if (fl != null) pl.sched.entity(fl, fl::remove);
+        Location drop = a.center.clone().add(0.5, cfg.getDouble("ritual.drop-height", 1.6), 0.5);
         pl.sched.region(drop, () -> {
-            drop.getWorld().dropItem(drop, r.recipe.output.clone());
-            drop.getWorld().spawnParticle(Particle.END_ROD, drop, 40, 0.4, 0.4, 0.4, 0.05);
+            World w = drop.getWorld();
+            w.dropItem(drop, r.recipe.output.clone(), it -> { it.setVelocity(new Vector(0, 0.08, 0)); it.setGlowing(true); });
+            w.spawnParticle(Particle.END_ROD, drop, 40, 0.4, 0.4, 0.4, 0.05);
         });
         pl.fx.playAll(cfg.getConfigurationSection("sounds.complete"));
         Bukkit.getServer().sendMessage(m("complete-broadcast", ph(r)));
         pl.discord.ritualComplete(itemName(r.recipe.output));
         saveRituals();
+    }
+
+    private void closeAltar(Altar a) {
+        Location l = a.center.clone().add(0.5, 1.0, 0.5);
+        pl.sched.region(l, () -> {
+            l.getWorld().spawnParticle(Particle.SNOWFLAKE, l, 60, 1, 1, 1, 0.02);
+            l.getWorld().playSound(l, Sound.BLOCK_AMETHYST_BLOCK_BREAK, 1f, 0.6f);
+        });
+        remove(a);
     }
 
     /** Cancels the ritual of an altar (ingredients are not returned). */
@@ -496,8 +661,12 @@ public final class AltarManager implements Listener {
                     checkReveal(r);
                     if (r.remaining <= 0) complete(r);
                     else updateBar(r);
+                } else if (a.removeIn >= 0) {
+                    if (a.removeIn == 0) { closeAltar(a); continue; }
+                    a.removeIn--;
                 }
                 updateHolo(a);
+                updateFloating(a);
             } catch (Throwable ex) {
                 pl.getLogger().warning("Altar #" + a.id + ": " + ex);
             }
@@ -505,29 +674,68 @@ public final class AltarManager implements Listener {
         if (save) saveRituals();
     }
 
+    // ---------------- floating output item ----------------
+    private void updateFloating(Altar a) {
+        Ritual r = a.ritual;
+        ItemDisplay d = a.floating;
+        if (r == null) {
+            if (d != null) { a.floating = null; pl.sched.entity(d, d::remove); }
+            return;
+        }
+        float sc = (float) cfg.getDouble("display.scale", 1.0);
+        if (d == null || !d.isValid()) {
+            if (a.floatSpawning) return;
+            a.floatSpawning = true;
+            pl.sched.region(a.center, () -> {
+                try {
+                    if (!a.center.getWorld().isChunkLoaded(a.center.getBlockX() >> 4, a.center.getBlockZ() >> 4)) return;
+                    double h = cfg.getDouble("display.height", 1.5);
+                    a.floating = a.center.getWorld().spawn(a.center.clone().add(0.5, h, 0.5), ItemDisplay.class, e -> {
+                        e.setItemStack(r.recipe.output.clone());
+                        e.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.GROUND);
+                        e.setBillboard(Display.Billboard.FIXED);
+                        e.setPersistent(false);
+                        e.setGlowing(cfg.getBoolean("display.glow", true));
+                        try { e.setGlowColorOverride(Color.fromRGB(Integer.parseInt(cfg.getString("display.glow-color", "8fe3ff").replace("#", ""), 16))); } catch (Exception ignored) { }
+                        e.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(), new Vector3f(sc, sc, sc), new AxisAngle4f()));
+                        e.getPersistentDataContainer().set(KEY, PersistentDataType.BYTE, (byte) 1);
+                    });
+                } catch (Throwable ex) {
+                    pl.getLogger().warning("Altar floating item: " + ex);
+                } finally { a.floatSpawning = false; }
+            });
+            return;
+        }
+        a.spin += (float) (Math.PI / 3);
+        final float spin = a.spin;
+        final float bob = (float) (Math.sin(r.remaining * 0.6) * 0.08);
+        pl.sched.entity(d, () -> {
+            d.setInterpolationDelay(0);
+            d.setInterpolationDuration(20);
+            d.setTransformation(new Transformation(new Vector3f(0, bob, 0), new AxisAngle4f(spin, 0, 1, 0), new Vector3f(sc, sc, sc), new AxisAngle4f()));
+        });
+    }
+
     // ---------------- hologram ----------------
     private Component holoText(Altar a) {
         ConfigurationSection ps = cfg.getConfigurationSection("presets." + a.preset);
         Component c = pl.text.render(ps == null ? "altar" : ps.getString("title", "altar"), Map.of());
-        String bound = ps == null ? "" : ps.getString("recipe", "");
-        Recipe rec = bound == null || bound.isBlank() ? null : recipes.get(bound);
-        if (rec != null) {
-            for (int row = 0; row < 3; row++) {
-                StringBuilder sb = new StringBuilder();
-                for (int col = 0; col < 3; col++) {
-                    if (col > 0) sb.append("  |  ");
-                    ItemStack it = rec.grid[row * 3 + col];
-                    sb.append(it == null ? "-" : itemName(it));
-                }
-                c = c.append(Component.newline()).append(Component.text(sb.toString(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
-            }
-            c = c.append(Component.newline()).append(Component.text("-> " + itemName(rec.output), TextColor.color(0xf1d58f)).decoration(TextDecoration.ITALIC, false));
-        }
         Ritual r = a.ritual;
-        Component foot = r != null
-                ? pl.text.render(cfg.getString("messages.hologram-busy", ""), Text.ph("time", Util.mmss(r.remaining)))
-                : pl.text.render(cfg.getString(rec != null ? "messages.hologram-idle" : "messages.hologram-any", ""), Map.of());
-        return c.append(Component.newline()).append(foot);
+        if (r != null) {
+            return c.append(Component.newline()).append(Component.text("✦ " + itemName(r.recipe.output), TextColor.color(0xf1d58f)).decoration(TextDecoration.ITALIC, false))
+                    .append(Component.newline()).append(pl.text.render(cfg.getString("messages.hologram-busy", ""), Text.ph("time", Util.mmss(r.remaining))));
+        }
+        if (a.removeIn >= 0) return c.append(Component.newline()).append(pl.text.render(cfg.getString("messages.hologram-closing", ""), Map.of()));
+        int shown = 0, max = Math.max(1, cfg.getInt("hologram.max-recipes", 6));
+        List<Recipe> list = recipesFor(a);
+        for (Recipe rec : list) {
+            if (shown++ >= max) break;
+            String title = rec.name == null || rec.name.isBlank() ? itemName(rec.output) : Text.plain(MiniMessage.miniMessage().deserialize(rec.name));
+            c = c.append(Component.newline()).append(Component.text("✦ " + title, TextColor.color(0xf1d58f)).decoration(TextDecoration.ITALIC, false));
+            c = c.append(Component.newline()).append(Component.text(rec.inputLine(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+        }
+        String foot = list.isEmpty() ? "messages.hologram-empty" : "messages.hologram-idle";
+        return c.append(Component.newline()).append(pl.text.render(cfg.getString(foot, ""), Map.of()));
     }
 
     private void updateHolo(Altar a) {
@@ -571,7 +779,7 @@ public final class AltarManager implements Listener {
         YamlConfiguration y = new YamlConfiguration();
         for (Altar a : altars.values()) {
             Ritual r = a.ritual;
-            if (r == null) continue;
+            if (r == null) { if (a.removeIn >= 0) y.set("cleanup." + a.id, a.removeIn); continue; }
             String p = "rituals." + a.id + ".";
             y.set(p + "recipe", r.recipe.id);
             y.set(p + "remaining", r.remaining);
@@ -595,6 +803,10 @@ public final class AltarManager implements Listener {
     private void restoreRituals() {
         if (!ritualsFile.exists()) return;
         YamlConfiguration y = YamlConfiguration.loadConfiguration(ritualsFile);
+        ConfigurationSection cl = y.getConfigurationSection("cleanup");
+        if (cl != null) for (String k : cl.getKeys(false)) {
+            try { Altar a = altars.get(Integer.parseInt(k)); if (a != null) a.removeIn = Math.max(0, cl.getInt(k)); } catch (NumberFormatException ignored) { }
+        }
         ConfigurationSection root = y.getConfigurationSection("rituals");
         if (root == null) return;
         for (String k : root.getKeys(false)) {
@@ -620,7 +832,26 @@ public final class AltarManager implements Listener {
         if (a == null) return;
         e.setCancelled(true);
         if (!e.getPlayer().hasPermission("eventcore.altar.use")) return;
-        gui.openCraft(e.getPlayer(), a);
+        craftAt(e.getPlayer(), a);
+    }
+
+    /** Right-click on the altar: uses the first recipe whose items are all in the player's inventory. */
+    private void craftAt(Player p, Altar a) {
+        if (a.busy()) { p.sendMessage(m("busy", Map.of())); return; }
+        List<Recipe> list = recipesFor(a);
+        if (list.isEmpty()) { p.sendMessage(m("no-recipes", Map.of())); return; }
+        PlayerInventory inv = p.getInventory();
+        Recipe use = null;
+        for (Recipe r : list) if (r.craftable(inv)) { use = r; break; }
+        if (use == null) {
+            p.sendMessage(m("missing", Map.of()));
+            if (list.size() == 1) for (String line : list.get(0).missing(inv)) p.sendMessage(Component.text(" - " + line, NamedTextColor.GRAY));
+            p.playSound(p.getLocation(), Sound.ENTITY_VILLAGER_NO, 0.6f, 1f);
+            return;
+        }
+        use.take(inv);
+        p.playSound(p.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 0.6f, 1.2f);
+        startRitual(a, use, p);
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)

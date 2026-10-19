@@ -2,6 +2,9 @@
 # Players right-click the altar block, put the ingredients in the 3x3 grid and click the output to begin a ritual.
 # When the ritual ends the output drops on the altar.
 ritual:
+  remove-altar: true             # after the ritual ends and the item dropped, the altar pedestal disappears
+  remove-after-seconds: 60       # how long the altar stays after the item dropped
+  drop-height: 1.6               # the finished item drops this many blocks above the altar centre
   default-minutes: 30            # used for new recipes (each recipe stores its own minutes, editable in the recipe GUI)
   reveal-seconds: [0, 600, 900]  # when X, Y and Z of the altar are revealed (scaled if a recipe uses another length)
   bossbar: {color: PURPLE, style: PROGRESS}
@@ -11,9 +14,15 @@ sounds:                           # kept quiet on purpose
   reveal: {sound: "block.note_block.chime", volume: 0.3, pitch: 1.0}
   complete: {sound: "ui.toast.challenge_complete", volume: 0.4, pitch: 1.0}
   stop: {sound: "block.beacon.deactivate", volume: 0.4, pitch: 1.0}
+display:                         # the floating output item shown above the altar during a ritual
+  height: 1.5
+  scale: 1.0
+  glow: true
+  glow-color: "#8fe3ff"
 hologram:
+  max-recipes: 6                 # how many recipes the hologram lists
   enabled: true
-  height: 2.3
+  height: 2.7
   scale: 1.0
 gui:
   craft-title: "<g>altar crafting</g>"
@@ -23,7 +32,7 @@ presets:
   default:
     title: "<g>altar</g>"
     recipe: ""            # recipe id this altar crafts (shown by the hologram); empty = every recipe works here
-    center: LODESTONE     # the block players right-click
+    center: STRUCTURE_BLOCK  # the block players right-click (not obtainable in survival; placed in LOAD mode)
     blocks:               # "dx dy dz MATERIAL" relative to the center block
       - "-2 -1 -2 POLISHED_BLACKSTONE_BRICKS"
       - "-2 -1 -1 POLISHED_BLACKSTONE_BRICKS"
@@ -59,7 +68,17 @@ presets:
       - "2 0 2 CHISELED_POLISHED_BLACKSTONE"
       - "2 1 2 SOUL_LANTERN"
 messages:
-  usage: "<g>/altar [spawn [preset]|remove [id]|list|recipes|bind [preset] [recipe or none]|stop [id or all]|reload]</g>"
+  usage: "<g>/altar [spawn [preset]|remove [id]|list|recipe|bind [preset] [recipe or none]|stop [id or all]|reload]</g>"
+  usage-recipe: "<g>/altar recipe [list | create <id> [minutes] | output <id> | input <id> [amount | MATERIAL amount] | clear <id> | minutes <id> <n> | delete <id>]</g>"
+  recipe-header: "<g>altar recipes:</g>"
+  recipe-line: "<gray>{id}: {inputs} -> {output} ({minutes} min)</gray>"
+  recipe-created: "<g>recipe {id} created. hold the result item: /altar recipe output {id}, then add inputs with /altar recipe input {id}.</g>"
+  recipe-updated: "<g>recipe {id} updated.</g>"
+  no-held-item: "<red>hold the item in your main hand first.</red>"
+  no-recipes: "<red>this altar has no recipes.</red>"
+  missing: "<red>you do not have the items for any recipe here.</red>"
+  hologram-closing: "<gray>the altar fades...</gray>"
+  hologram-empty: "<gray>no recipes set</gray>"
   spawned: "<g>altar #{id} ({preset}) placed.</g>"
   removed: "<g>altar #{id} removed.</g>"
   no-altar: "<red>no altar found there.</red>"
@@ -83,6 +102,6 @@ messages:
   complete-broadcast: "<g>altar ritual complete:</g> <gray>{item} dropped at</gray> {coords}"
   stopped-broadcast: "<red>an altar ritual was cancelled.</red>"
   bossbar: "<bb>✦ {item} | {time} |</bb> {coords}"
-  hologram-idle: "<gray>right-click to craft</gray>"
+  hologram-idle: "<gray>right-click with the items in your inventory</gray>"
   hologram-any: "<gray>right-click to open the altar</gray>"
   hologram-busy: "<g>ritual {time}</g>"

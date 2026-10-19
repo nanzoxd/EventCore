@@ -19,7 +19,7 @@ commands:
     permission-message: You do not have permission.
 
   altar:
-    description: Custom crafting altars (spawn presets, recipe GUI)
+    description: Custom crafting altars (spawn presets, recipes)
     usage: /<command> <spawn|remove|list|recipes|bind|stop|reload>
     aliases: [altars]
     permission: eventcore.altar

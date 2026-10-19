@@ -8,6 +8,7 @@ import com.eventcore.command.EventCoreCommand;
 import com.eventcore.command.RitualCommand;
 import com.eventcore.event.*;
 import com.eventcore.gui.AdminGui;
+import com.eventcore.gui.AltarGui;
 import com.eventcore.gui.LootGui;
 import com.eventcore.gui.RitualGui;
 import com.eventcore.ritual.RitualManager;
@@ -40,6 +41,7 @@ public final class EventCorePlugin extends JavaPlugin {
     public LootGui lootGui;
     public AirdropEvent airdrop;
     public AltarManager altar;
+    public AltarGui altarGui;
 
     @Override
     public void onEnable() {
@@ -62,6 +64,7 @@ public final class EventCorePlugin extends JavaPlugin {
         lootGui = new LootGui(this);
         scheduler = new EventScheduler(this);
         altar = new AltarManager(this);
+        altarGui = new AltarGui(this);
 
         airdrop = new AirdropEvent(this);
         events.register(new VulnerableEvent(this));
@@ -74,7 +77,7 @@ public final class EventCorePlugin extends JavaPlugin {
         events.register(new LocatorBarEvent(this));
         events.register(airdrop);
 
-        for (org.bukkit.event.Listener l : new org.bukkit.event.Listener[]{bars, chat, events, ritual, ritualGui, adminGui, lootGui, altar})
+        for (org.bukkit.event.Listener l : new org.bukkit.event.Listener[]{bars, chat, events, ritual, ritualGui, adminGui, lootGui, altar, altarGui})
             Bukkit.getPluginManager().registerEvents(l, this);
 
         EventCoreCommand ecCmd = new EventCoreCommand(this);

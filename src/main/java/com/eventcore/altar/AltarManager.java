@@ -151,6 +151,8 @@ public final class AltarManager implements Listener {
         volatile ItemDisplay floating;
         volatile boolean floatSpawning;
         volatile int removeIn = -1;     // seconds until the finished altar vanishes (-1 = not closing)
+        volatile ItemStack floatSource; // the recipe output the floating item currently shows
+        int tick;                       // seconds the floating item has been shown (bobbing / recipe cycling)
         float spin;
         String lastHolo = "";
         volatile Ritual ritual;
@@ -378,6 +380,46 @@ public final class AltarManager implements Listener {
     public void clearInputs(Recipe r) { r.inputs.clear(); saveRecipes(); }
     public void deleteRecipe(String id) { recipes.remove(id); saveRecipes(); }
 
+    // ---- helpers for the recipe GUI (AltarGui) ----
+    /** Plain items (no custom data) match by material, anything with custom data must match exactly. */
+    public Ingredient fromStack(ItemStack s) {
+        int amt = Math.max(1, s.getAmount());
+        if (!s.hasItemMeta()) return new Ingredient(s.getType(), amt, null, null, null);
+        ItemStack one = s.clone(); one.setAmount(1);
+        return new Ingredient(s.getType(), amt, null, null, one);
+    }
+
+    public Ingredient withAmount(Ingredient in, int amount) { return new Ingredient(in.type, amount, in.rawName, in.cmd, in.exact); }
+
+    /** What an ingredient looks like in the editor grid (amount capped at 64 for display). */
+    public ItemStack stackOf(Ingredient in) {
+        int amt = Math.max(1, Math.min(64, in.amount));
+        if (in.exact != null) { ItemStack s = in.exact.clone(); s.setAmount(amt); return s; }
+        ItemStack s = new ItemStack(in.type.isItem() ? in.type : Material.BARRIER, amt);
+        if (in.rawName != null || in.cmd != null) {
+            ItemMeta meta = s.getItemMeta();
+            if (meta != null) {
+                if (in.rawName != null) meta.displayName(noItalic(MiniMessage.miniMessage().deserialize(in.rawName)));
+                if (in.cmd != null) meta.setCustomModelData(in.cmd);
+                s.setItemMeta(meta);
+            }
+        }
+        return s;
+    }
+
+    /** Creates or overwrites a recipe from the editor. */
+    public Recipe saveRecipe(String id, List<Ingredient> ins, ItemStack out, int minutes) {
+        Recipe r = recipes.get(id);
+        if (r == null) r = createRecipe(id, minutes);
+        r.minutes = Math.max(1, minutes);
+        r.inputs.clear();
+        r.inputs.addAll(ins);
+        r.output = out.clone();
+        r.outRaw = null;
+        saveRecipes();
+        return r;
+    }
+
     /** Recipes this altar offers: the preset's bound recipe, or every recipe not restricted to another preset. */
     public List<Recipe> recipesFor(Altar a) {
         List<Recipe> out = new ArrayList<>();
@@ -403,6 +445,19 @@ public final class AltarManager implements Listener {
         var meta = it.getItemMeta();
         String n = meta != null && meta.hasDisplayName() ? Text.plain(meta.displayName()) : Util.pretty(it.getType());
         return it.getAmount() > 1 ? n + " x" + it.getAmount() : n;
+    }
+
+    /** Item name without the amount. */
+    public static String plainName(ItemStack it) {
+        var meta = it.getItemMeta();
+        return meta != null && meta.hasDisplayName() ? Text.plain(meta.displayName()) : Util.pretty(it.getType());
+    }
+
+    /** "[64] Diamond, [2] Netherite Ingot" - the outputs an altar crafts (shown in /altar spawn). */
+    public String outputNames(Altar a) {
+        List<String> n = new ArrayList<>();
+        for (Recipe r : recipesFor(a)) if (r.output != null) n.add("[" + Math.max(1, r.output.getAmount()) + "] " + plainName(r.output));
+        return n.isEmpty() ? "no recipe set" : String.join(", ", n);
     }
 
     // ---------------- altars ----------------
@@ -675,13 +730,26 @@ public final class AltarManager implements Listener {
     }
 
     // ---------------- floating output item ----------------
-    private void updateFloating(Altar a) {
+    /** The recipe whose output floats above the altar: the running ritual's, otherwise the altar's recipe (cycling if there are several). */
+    private Recipe showcase(Altar a) {
         Ritual r = a.ritual;
+        if (r != null) return r.recipe;
+        if (a.removeIn >= 0 || !cfg.getBoolean("display.idle", true)) return null;
+        List<Recipe> l = recipesFor(a);
+        if (l.isEmpty()) return null;
+        int every = Math.max(1, cfg.getInt("display.cycle-seconds", 4));
+        return l.get((a.tick / every) % l.size());
+    }
+
+    private void updateFloating(Altar a) {
+        Recipe rec = showcase(a);
         ItemDisplay d = a.floating;
-        if (r == null) {
-            if (d != null) { a.floating = null; pl.sched.entity(d, d::remove); }
+        if (rec == null || rec.output == null) {
+            if (d != null) { a.floating = null; a.floatSource = null; pl.sched.entity(d, d::remove); }
             return;
         }
+        a.tick++;
+        final ItemStack out = rec.output;
         float sc = (float) cfg.getDouble("display.scale", 1.0);
         if (d == null || !d.isValid()) {
             if (a.floatSpawning) return;
@@ -691,7 +759,7 @@ public final class AltarManager implements Listener {
                     if (!a.center.getWorld().isChunkLoaded(a.center.getBlockX() >> 4, a.center.getBlockZ() >> 4)) return;
                     double h = cfg.getDouble("display.height", 1.5);
                     a.floating = a.center.getWorld().spawn(a.center.clone().add(0.5, h, 0.5), ItemDisplay.class, e -> {
-                        e.setItemStack(r.recipe.output.clone());
+                        e.setItemStack(out.clone());
                         e.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.GROUND);
                         e.setBillboard(Display.Billboard.FIXED);
                         e.setPersistent(false);
@@ -700,16 +768,20 @@ public final class AltarManager implements Listener {
                         e.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(), new Vector3f(sc, sc, sc), new AxisAngle4f()));
                         e.getPersistentDataContainer().set(KEY, PersistentDataType.BYTE, (byte) 1);
                     });
+                    a.floatSource = out;
                 } catch (Throwable ex) {
                     pl.getLogger().warning("Altar floating item: " + ex);
                 } finally { a.floatSpawning = false; }
             });
             return;
         }
+        final boolean swap = a.floatSource != out;   // recipe changed (cycle, ritual start, GUI edit)
+        if (swap) a.floatSource = out;
         a.spin += (float) (Math.PI / 3);
         final float spin = a.spin;
-        final float bob = (float) (Math.sin(r.remaining * 0.6) * 0.08);
+        final float bob = (float) (Math.sin(a.tick * 0.6) * 0.08);
         pl.sched.entity(d, () -> {
+            if (swap) d.setItemStack(out.clone());
             d.setInterpolationDelay(0);
             d.setInterpolationDuration(20);
             d.setTransformation(new Transformation(new Vector3f(0, bob, 0), new AxisAngle4f(spin, 0, 1, 0), new Vector3f(sc, sc, sc), new AxisAngle4f()));
@@ -717,22 +789,46 @@ public final class AltarManager implements Listener {
     }
 
     // ---------------- hologram ----------------
+    /**
+     * "[64] Diamond": the amount in brackets, then the item's own name exactly as it is on the item (gradient, colours,
+     * bold...). Items without a custom name (or with a plain uncoloured one) get a bold name.
+     */
+    private Component itemLine(ItemStack out) { return itemLine(out, out.getAmount()); }
+
+    private Component itemLine(ItemStack out, int count) {
+        ItemMeta m = out.getItemMeta();
+        Component name;
+        if (m != null && m.hasDisplayName() && m.displayName() != null) {
+            name = m.displayName().decorationIfAbsent(TextDecoration.ITALIC, TextDecoration.State.FALSE);
+            if (name.color() == null && name.children().isEmpty() && name.decoration(TextDecoration.BOLD) == TextDecoration.State.NOT_SET)
+                name = name.decoration(TextDecoration.BOLD, true);
+        } else {
+            name = Component.text(Util.pretty(out.getType()), NamedTextColor.WHITE)
+                    .decoration(TextDecoration.BOLD, true).decoration(TextDecoration.ITALIC, false);
+        }
+        Component amount = Component.text("[" + Math.max(1, count) + "] ", TextColor.color(0xf1d58f))
+                .decoration(TextDecoration.BOLD, false).decoration(TextDecoration.ITALIC, false);
+        return Component.empty().append(amount).append(name);
+    }
+
     private Component holoText(Altar a) {
         ConfigurationSection ps = cfg.getConfigurationSection("presets." + a.preset);
         Component c = pl.text.render(ps == null ? "altar" : ps.getString("title", "altar"), Map.of());
         Ritual r = a.ritual;
         if (r != null) {
-            return c.append(Component.newline()).append(Component.text("✦ " + itemName(r.recipe.output), TextColor.color(0xf1d58f)).decoration(TextDecoration.ITALIC, false))
+            return c.append(Component.newline()).append(itemLine(r.recipe.output))
                     .append(Component.newline()).append(pl.text.render(cfg.getString("messages.hologram-busy", ""), Text.ph("time", Util.mmss(r.remaining))));
         }
         if (a.removeIn >= 0) return c.append(Component.newline()).append(pl.text.render(cfg.getString("messages.hologram-closing", ""), Map.of()));
         int shown = 0, max = Math.max(1, cfg.getInt("hologram.max-recipes", 6));
         List<Recipe> list = recipesFor(a);
         for (Recipe rec : list) {
+            if (rec.output == null) continue;
             if (shown++ >= max) break;
-            String title = rec.name == null || rec.name.isBlank() ? itemName(rec.output) : Text.plain(MiniMessage.miniMessage().deserialize(rec.name));
-            c = c.append(Component.newline()).append(Component.text("✦ " + title, TextColor.color(0xf1d58f)).decoration(TextDecoration.ITALIC, false));
-            c = c.append(Component.newline()).append(Component.text(rec.inputLine(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            if (shown > 1) c = c.append(Component.newline());   // blank line between recipes
+            c = c.append(Component.newline()).append(itemLine(rec.output));
+            // one ingredient per line, same "[amount] Name" format: [4] Netherite Ingot / [1] Nether Star
+            for (Ingredient in : rec.inputs) c = c.append(Component.newline()).append(itemLine(stackOf(in), in.amount));
         }
         String foot = list.isEmpty() ? "messages.hologram-empty" : "messages.hologram-idle";
         return c.append(Component.newline()).append(pl.text.render(cfg.getString(foot, ""), Map.of()));
@@ -768,7 +864,7 @@ public final class AltarManager implements Listener {
             return;
         }
         Component text = holoText(a);
-        String sig = Text.plain(text);
+        String sig = MiniMessage.miniMessage().serialize(text);   // includes colours/gradients, so a restyled name refreshes too
         if (sig.equals(a.lastHolo)) return;
         a.lastHolo = sig;
         pl.sched.entity(h, () -> h.text(text));

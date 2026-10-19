@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/** /altar spawn|remove|list|recipe ...|bind|stop|reload */
+/** /altar spawn|remove|list|recipes (GUI)|recipe ...|bind|stop|reload */
 public final class AltarCommand implements CommandExecutor, TabCompleter {
     private final EventCorePlugin pl;
 
@@ -36,7 +36,7 @@ public final class AltarCommand implements CommandExecutor, TabCompleter {
                 String preset = a.length > 1 ? a[1] : "default";
                 Altar al = am().spawn(p, preset);
                 if (al == null) s.sendMessage(am().m("unknown-preset", Text.ph("input", preset)));
-                else s.sendMessage(am().m("spawned", Text.ph("id", al.id, "preset", al.preset)));
+                else s.sendMessage(am().m("spawned-recipe", Text.ph("id", al.id, "preset", al.preset, "item", am().outputNames(al))));
             }
             case "remove" -> {
                 Altar al = null;
@@ -55,7 +55,11 @@ public final class AltarCommand implements CommandExecutor, TabCompleter {
                             "x", al.center.getBlockX(), "y", al.center.getBlockY(), "z", al.center.getBlockZ(),
                             "state", al.busy() ? "ritual running" : "idle")));
             }
-            case "recipes", "recipe", "editor", "gui" -> recipeCmd(s, a);
+            case "recipes", "recipe", "editor", "gui" -> {
+                // no sub-command: the recipe GUI (players) / the list (console)
+                if (a.length == 1 && s instanceof Player pp) pl.altarGui.openList(pp, 0);
+                else recipeCmd(s, a);
+            }
             case "bind" -> {
                 if (a.length < 3) { s.sendMessage(am().m("usage", Map.of())); return true; }
                 boolean none = a[2].equalsIgnoreCase("none");
@@ -91,6 +95,10 @@ public final class AltarCommand implements CommandExecutor, TabCompleter {
         }
         if (a.length < 3) { s.sendMessage(am().m("usage-recipe", Map.of())); return; }
         String id = a[2];
+        if (sub.equals("edit")) {
+            if (s instanceof Player pp) pl.altarGui.openEdit(pp, id); else s.sendMessage(pl.msg("errors.player-only"));
+            return;
+        }
         if (sub.equals("create")) {
             am().createRecipe(id, a.length > 3 ? num(a[3], am().defaultMinutes()) : am().defaultMinutes());
             s.sendMessage(am().m("recipe-created", Text.ph("id", id)));
@@ -131,8 +139,8 @@ public final class AltarCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender s, Command c, String label, String[] a) {
         List<String> out = new ArrayList<>();
         if (!s.hasPermission("eventcore.altar")) return out;
-        if (a.length == 1) out.addAll(List.of("spawn", "remove", "list", "recipe", "bind", "stop", "reload"));
-        else if (a.length == 2 && a[0].equalsIgnoreCase("recipe")) out.addAll(List.of("list", "create", "output", "input", "clear", "minutes", "delete"));
+        if (a.length == 1) out.addAll(List.of("spawn", "remove", "list", "recipes", "recipe", "bind", "stop", "reload"));
+        else if (a.length == 2 && a[0].equalsIgnoreCase("recipe")) out.addAll(List.of("list", "edit", "create", "output", "input", "clear", "minutes", "delete"));
         else if (a.length == 3 && a[0].equalsIgnoreCase("recipe") && !a[1].equalsIgnoreCase("create") && !a[1].equalsIgnoreCase("list"))
             for (AltarManager.Recipe r : am().recipes()) out.add(r.id);
         else if (a.length == 2 && (a[0].equalsIgnoreCase("spawn") || a[0].equalsIgnoreCase("bind"))) out.addAll(am().presetNames());

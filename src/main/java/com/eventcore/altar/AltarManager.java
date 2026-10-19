@@ -44,6 +44,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Custom altar crafting. Recipes (3x3 grid + output) are edited in a GUI, altars are placed from presets with
@@ -151,6 +152,7 @@ public final class AltarManager implements Listener {
         volatile ItemDisplay floating;
         volatile boolean floatSpawning;
         volatile int removeIn = -1;     // seconds until the finished altar vanishes (-1 = not closing)
+        public volatile String recipeId = "";   // altar placed with /altar spawn <recipe>: crafts only this recipe
         volatile ItemStack floatSource; // the recipe output the floating item currently shows
         int tick;                       // seconds the floating item has been shown (bobbing / recipe cycling)
         float spin;
@@ -186,6 +188,7 @@ public final class AltarManager implements Listener {
     private final Map<String, Altar> byBlock = new ConcurrentHashMap<>();
     private int nextId = 1;
     private ScheduledTask ticker;
+    private ScheduledTask fxTicker;
     private int saveTick;
 
     public AltarManager(EventCorePlugin pl) {
@@ -224,6 +227,12 @@ public final class AltarManager implements Listener {
 
     public int defaultMinutes() { return Math.max(1, cfg.getInt("ritual.default-minutes", 30)); }
 
+    /** The structure used by /altar spawn <recipe>: preset "default" or the first preset. */
+    public String defaultPreset() {
+        Set<String> n = presetNames();
+        return n.contains("default") ? "default" : n.isEmpty() ? null : n.iterator().next();
+    }
+
     public Set<String> presetNames() {
         ConfigurationSection s = cfg.getConfigurationSection("presets");
         return s == null ? Set.of() : s.getKeys(false);
@@ -235,6 +244,7 @@ public final class AltarManager implements Listener {
         loadRecipes();
         loadAltars();
         ticker = pl.sched.globalTimer(t -> tick(), 20, 20);
+        fxTicker = pl.sched.globalTimer(t -> fxTick(), 20, Math.max(1, cfg.getInt("ritual.particles.interval-ticks", 4)));
         restoreRituals();
     }
 
@@ -245,6 +255,7 @@ public final class AltarManager implements Listener {
 
     public void shutdown() {
         Sched.cancel(ticker);
+        Sched.cancel(fxTicker);
         saveRitualsBlocking();
         for (Altar a : altars.values()) {
             Ritual r = a.ritual;
@@ -423,6 +434,11 @@ public final class AltarManager implements Listener {
     /** Recipes this altar offers: the preset's bound recipe, or every recipe not restricted to another preset. */
     public List<Recipe> recipesFor(Altar a) {
         List<Recipe> out = new ArrayList<>();
+        if (a.recipeId != null && !a.recipeId.isBlank()) {   // /altar spawn <recipe>: this altar = this one recipe
+            Recipe own = recipes.get(a.recipeId);
+            if (own != null) out.add(own);
+            return out;
+        }
         String bound = cfg.getString("presets." + a.preset + ".recipe", "");
         if (bound != null && !bound.isBlank()) {
             Recipe r = recipes.get(bound);
@@ -498,10 +514,20 @@ public final class AltarManager implements Listener {
     }
 
     /** Places the altar of a preset on the block the admin stands in. Returns null for an unknown preset. */
-    public Altar spawn(Player p, String preset) {
-        if (!presetNames().contains(preset)) return null;
+    public Altar spawn(Player p, String arg) {
+        String preset = null, rid = "";
+        if (arg == null || arg.isBlank()) preset = defaultPreset();
+        else {
+            for (String n : presetNames()) if (n.equalsIgnoreCase(arg)) preset = n;
+            if (preset == null) {                       // /altar spawn <recipe id>: default structure, crafts only that recipe
+                for (Recipe r : recipes()) if (r.id.equalsIgnoreCase(arg)) rid = r.id;
+                if (!rid.isEmpty()) preset = defaultPreset();
+            }
+        }
+        if (preset == null || !presetNames().contains(preset)) return null;
         Location c = p.getLocation().getBlock().getLocation();
         Altar a = new Altar(nextId++, preset, c);
+        a.recipeId = rid;
         index(a);
         saveAltars();
         pl.sched.region(c, () -> build(a));
@@ -554,6 +580,7 @@ public final class AltarManager implements Listener {
         for (Altar a : altars.values()) {
             String p = "altars." + a.id + ".";
             y.set(p + "preset", a.preset);
+            y.set(p + "recipe", a.recipeId == null ? "" : a.recipeId);
             y.set(p + "world", a.center.getWorld().getName());
             y.set(p + "x", a.center.getBlockX()); y.set(p + "y", a.center.getBlockY()); y.set(p + "z", a.center.getBlockZ());
         }
@@ -575,6 +602,7 @@ public final class AltarManager implements Listener {
             if (w == null) continue;
             try {
                 Altar a = new Altar(Integer.parseInt(k), s.getString("preset", "default"), new Location(w, s.getInt("x"), s.getInt("y"), s.getInt("z")));
+                a.recipeId = s.getString("recipe", "");
                 index(a);
                 nextId = Math.max(nextId, a.id + 1);
             } catch (NumberFormatException ignored) { }
@@ -729,6 +757,35 @@ public final class AltarManager implements Listener {
         if (save) saveRituals();
     }
 
+    // ---------------- ritual particles ----------------
+    /** While a ritual runs: snow falls over the whole ritual area and enchanting glyphs swirl around the floating item. */
+    private void fxTick() {
+        if (!cfg.getBoolean("ritual.particles.enabled", true)) return;
+        for (Altar a : altars.values()) {
+            if (a.ritual == null) continue;
+            pl.sched.region(a.center, () -> {
+                try { ritualParticles(a); } catch (Throwable ignored) { }
+            });
+        }
+    }
+
+    private void ritualParticles(Altar a) {
+        World w = a.center.getWorld();
+        if (w == null || !w.isChunkLoaded(a.center.getBlockX() >> 4, a.center.getBlockZ() >> 4)) return;
+        double radius = Math.max(1, cfg.getDouble("ritual.particles.radius", 6.0));
+        double height = cfg.getDouble("ritual.particles.height", 4.0);
+        int snow = cfg.getInt("ritual.particles.snow", 14), ench = cfg.getInt("ritual.particles.enchant", 6);
+        double cx = a.center.getX() + 0.5, cy = a.center.getY(), cz = a.center.getZ() + 0.5;
+        ThreadLocalRandom r = ThreadLocalRandom.current();
+        for (int i = 0; i < snow; i++) {   // random spots inside the circle, drifting down
+            double ang = r.nextDouble() * Math.PI * 2, d = radius * Math.sqrt(r.nextDouble());
+            w.spawnParticle(Particle.SNOWFLAKE, cx + Math.cos(ang) * d, cy + height + r.nextDouble() * 1.5, cz + Math.sin(ang) * d,
+                    0, (r.nextDouble() - 0.5) * 0.2, -0.6, (r.nextDouble() - 0.5) * 0.2, 0.15);
+        }
+        if (ench > 0)
+            w.spawnParticle(Particle.ENCHANT, cx, cy + cfg.getDouble("display.height", 1.5) + 0.3, cz, ench, 1.5, 0.8, 1.5, 0.5);
+    }
+
     // ---------------- floating output item ----------------
     /** The recipe whose output floats above the altar: the running ritual's, otherwise the altar's recipe (cycling if there are several). */
     private Recipe showcase(Altar a) {
@@ -763,8 +820,6 @@ public final class AltarManager implements Listener {
                         e.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.GROUND);
                         e.setBillboard(Display.Billboard.FIXED);
                         e.setPersistent(false);
-                        e.setGlowing(cfg.getBoolean("display.glow", true));
-                        try { e.setGlowColorOverride(Color.fromRGB(Integer.parseInt(cfg.getString("display.glow-color", "8fe3ff").replace("#", ""), 16))); } catch (Exception ignored) { }
                         e.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(), new Vector3f(sc, sc, sc), new AxisAngle4f()));
                         e.getPersistentDataContainer().set(KEY, PersistentDataType.BYTE, (byte) 1);
                     });
@@ -793,9 +848,7 @@ public final class AltarManager implements Listener {
      * "[64] Diamond": the amount in brackets, then the item's own name exactly as it is on the item (gradient, colours,
      * bold...). Items without a custom name (or with a plain uncoloured one) get a bold name.
      */
-    private Component itemLine(ItemStack out) { return itemLine(out, out.getAmount()); }
-
-    private Component itemLine(ItemStack out, int count) {
+    private Component nameOf(ItemStack out) {
         ItemMeta m = out.getItemMeta();
         Component name;
         if (m != null && m.hasDisplayName() && m.displayName() != null) {
@@ -806,9 +859,27 @@ public final class AltarManager implements Listener {
             name = Component.text(Util.pretty(out.getType()), NamedTextColor.WHITE)
                     .decoration(TextDecoration.BOLD, true).decoration(TextDecoration.ITALIC, false);
         }
+        return name;
+    }
+
+    /** Ingredient line: "[4] Netherite Ingot". */
+    private Component itemLine(ItemStack out, int count) {
+        Component name = nameOf(out);
         Component amount = Component.text("[" + Math.max(1, count) + "] ", TextColor.color(0xf1d58f))
                 .decoration(TextDecoration.BOLD, false).decoration(TextDecoration.ITALIC, false);
         return Component.empty().append(amount).append(name);
+    }
+
+    /** The output name (no amount) with a line under it. */
+    private Component outputBlock(Component c, ItemStack out) {
+        c = c.append(Component.newline()).append(nameOf(out));
+        if (cfg.getBoolean("hologram.underline", true)) {
+            // spaces with strikethrough draw a solid line, sized to the name
+            int n = Math.max(8, Math.min(30, (int) Math.ceil(plainName(out).length() * 1.4) + 2));
+            c = c.append(Component.newline()).append(Component.text(" ".repeat(n), TextColor.color(0xf1d58f))
+                    .decoration(TextDecoration.STRIKETHROUGH, true).decoration(TextDecoration.ITALIC, false));
+        }
+        return c;
     }
 
     private Component holoText(Altar a) {
@@ -816,7 +887,7 @@ public final class AltarManager implements Listener {
         Component c = pl.text.render(ps == null ? "altar" : ps.getString("title", "altar"), Map.of());
         Ritual r = a.ritual;
         if (r != null) {
-            return c.append(Component.newline()).append(itemLine(r.recipe.output))
+            return outputBlock(c, r.recipe.output)
                     .append(Component.newline()).append(pl.text.render(cfg.getString("messages.hologram-busy", ""), Text.ph("time", Util.mmss(r.remaining))));
         }
         if (a.removeIn >= 0) return c.append(Component.newline()).append(pl.text.render(cfg.getString("messages.hologram-closing", ""), Map.of()));
@@ -826,7 +897,7 @@ public final class AltarManager implements Listener {
             if (rec.output == null) continue;
             if (shown++ >= max) break;
             if (shown > 1) c = c.append(Component.newline());   // blank line between recipes
-            c = c.append(Component.newline()).append(itemLine(rec.output));
+            c = outputBlock(c, rec.output);
             // one ingredient per line, same "[amount] Name" format: [4] Netherite Ingot / [1] Nether Star
             for (Ingredient in : rec.inputs) c = c.append(Component.newline()).append(itemLine(stackOf(in), in.amount));
         }

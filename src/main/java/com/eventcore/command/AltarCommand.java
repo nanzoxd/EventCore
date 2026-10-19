@@ -33,9 +33,9 @@ public final class AltarCommand implements CommandExecutor, TabCompleter {
         switch (a[0].toLowerCase(Locale.ROOT)) {
             case "spawn" -> {
                 if (!(s instanceof Player p)) { s.sendMessage(pl.msg("errors.player-only")); return true; }
-                String preset = a.length > 1 ? a[1] : "default";
-                Altar al = am().spawn(p, preset);
-                if (al == null) s.sendMessage(am().m("unknown-preset", Text.ph("input", preset)));
+                String what = a.length > 1 ? a[1] : "";   // a recipe id (own altar for that recipe) or a preset name
+                Altar al = am().spawn(p, what);
+                if (al == null) s.sendMessage(am().m("unknown-spawn", Text.ph("input", what.isEmpty() ? "default" : what)));
                 else s.sendMessage(am().m("spawned-recipe", Text.ph("id", al.id, "preset", al.preset, "item", am().outputNames(al))));
             }
             case "remove" -> {
@@ -51,7 +51,7 @@ public final class AltarCommand implements CommandExecutor, TabCompleter {
             case "list" -> {
                 s.sendMessage(am().m("list-header", Map.of()));
                 for (Altar al : am().altars())
-                    s.sendMessage(am().m("list-line", Text.ph("id", al.id, "preset", al.preset, "world", al.center.getWorld().getName(),
+                    s.sendMessage(am().m("list-line", Text.ph("id", al.id, "preset", al.recipeId.isBlank() ? al.preset : al.recipeId, "world", al.center.getWorld().getName(),
                             "x", al.center.getBlockX(), "y", al.center.getBlockY(), "z", al.center.getBlockZ(),
                             "state", al.busy() ? "ritual running" : "idle")));
             }
@@ -140,10 +140,13 @@ public final class AltarCommand implements CommandExecutor, TabCompleter {
         List<String> out = new ArrayList<>();
         if (!s.hasPermission("eventcore.altar")) return out;
         if (a.length == 1) out.addAll(List.of("spawn", "remove", "list", "recipes", "recipe", "bind", "stop", "reload"));
-        else if (a.length == 2 && a[0].equalsIgnoreCase("recipe")) out.addAll(List.of("list", "edit", "create", "output", "input", "clear", "minutes", "delete"));
-        else if (a.length == 3 && a[0].equalsIgnoreCase("recipe") && !a[1].equalsIgnoreCase("create") && !a[1].equalsIgnoreCase("list"))
+        else if (a.length == 2 && (a[0].equalsIgnoreCase("recipe") || a[0].equalsIgnoreCase("recipes"))) out.addAll(List.of("list", "edit", "create", "output", "input", "clear", "minutes", "delete"));
+        else if (a.length == 3 && (a[0].equalsIgnoreCase("recipe") || a[0].equalsIgnoreCase("recipes")) && !a[1].equalsIgnoreCase("create") && !a[1].equalsIgnoreCase("list"))
             for (AltarManager.Recipe r : am().recipes()) out.add(r.id);
-        else if (a.length == 2 && (a[0].equalsIgnoreCase("spawn") || a[0].equalsIgnoreCase("bind"))) out.addAll(am().presetNames());
+        else if (a.length == 2 && a[0].equalsIgnoreCase("spawn")) {   // recipe ids first (one altar per output), then presets
+            for (AltarManager.Recipe r : am().recipes()) out.add(r.id);
+            out.addAll(am().presetNames());
+        } else if (a.length == 2 && a[0].equalsIgnoreCase("bind")) out.addAll(am().presetNames());
         else if (a.length == 2 && (a[0].equalsIgnoreCase("remove") || a[0].equalsIgnoreCase("stop"))) {
             for (Altar al : am().altars()) out.add(String.valueOf(al.id));
             if (a[0].equalsIgnoreCase("stop")) out.add("all");

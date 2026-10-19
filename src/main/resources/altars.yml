@@ -9,6 +9,13 @@ ritual:
   reveal-seconds: [0, 600, 900]  # when X, Y and Z of the altar are revealed (scaled if a recipe uses another length)
   bossbar: {color: PURPLE, style: PROGRESS}
   save-interval-seconds: 10
+  particles:                     # while a ritual runs: snow falls over the ritual area + enchanting glyphs around the item
+    enabled: true
+    radius: 6.0                  # blocks around the altar where the snow falls
+    height: 4.0                  # blocks above the altar the snow starts falling from
+    snow: 14                     # snowflakes per batch (a batch every interval-ticks)
+    enchant: 6                   # enchanting-table glyphs per batch (0 = off)
+    interval-ticks: 4
 sounds:                           # kept quiet on purpose
   start: {sound: "block.beacon.activate", volume: 0.4, pitch: 1.0}
   reveal: {sound: "block.note_block.chime", volume: 0.3, pitch: 1.0}
@@ -19,13 +26,12 @@ display:                         # the rotating output item above the altar
   cycle-seconds: 4               # an altar with several recipes switches the shown item every N seconds
   height: 1.5
   scale: 1.0
-  glow: true
-  glow-color: "#8fe3ff"
 hologram:
   max-recipes: 6                 # how many recipes the hologram lists
   enabled: true
   height: 2.7
   scale: 1.0
+  underline: true                # a line under the output name
 gui:
   craft-title: "<g>altar crafting</g>"
   list-title: "<g>altar recipes</g>"
@@ -70,7 +76,7 @@ presets:
       - "2 0 2 CHISELED_POLISHED_BLACKSTONE"
       - "2 1 2 SOUL_LANTERN"
 messages:
-  usage: "<g>/altar [spawn [preset]|remove [id]|list|recipes (gui)|recipe|bind [preset] [recipe or none]|stop [id or all]|reload]</g>"
+  usage: "<g>/altar [spawn [recipe or preset]|remove [id]|list|recipes (gui)|recipe|bind [preset] [recipe or none]|stop [id or all]|reload]</g>"
   usage-recipe: "<g>/altar recipe [list | edit <id> | create <id> [minutes] | output <id> | input <id> [amount | MATERIAL amount] | clear <id> | minutes <id> <n> | delete <id>]</g>"
   recipe-header: "<g>altar recipes:</g>"
   recipe-line: "<gray>{id}: {inputs} -> {output} ({minutes} min)</gray>"
@@ -85,6 +91,7 @@ messages:
   spawned-recipe: "<g>altar #{id} ({preset}) placed.</g> <gray>crafts:</gray> <white>{item}</white>"
   removed: "<g>altar #{id} removed.</g>"
   no-altar: "<red>no altar found there.</red>"
+  unknown-spawn: "<red>no recipe or altar preset called</red> <gray>{input}</gray>"
   unknown-preset: "<red>unknown altar preset:</red> <gray>{input}</gray>"
   unknown-recipe: "<red>unknown recipe:</red> <gray>{input}</gray>"
   bound: "<g>preset {preset} now crafts {recipe}.</g>"

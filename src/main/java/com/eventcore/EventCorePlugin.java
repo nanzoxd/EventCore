@@ -74,7 +74,7 @@ public final class EventCorePlugin extends JavaPlugin {
         events.register(new LocatorBarEvent(this));
         events.register(airdrop);
 
-        for (org.bukkit.event.Listener l : new org.bukkit.event.Listener[]{bars, chat, events, ritual, ritualGui, adminGui, lootGui, altar, altarGui})
+        for (org.bukkit.event.Listener l : new org.bukkit.event.Listener[]{bars, chat, events, ritual, ritualGui, adminGui, lootGui, altar})
             Bukkit.getPluginManager().registerEvents(l, this);
 
         EventCoreCommand ecCmd = new EventCoreCommand(this);

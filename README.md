@@ -96,6 +96,11 @@ gold, peach, fire, pink, blue, red, white (nether star in /ritualcreator cycles 
   set the ritual minutes (clock, default 30) and press **save**. Left-click a recipe to edit, shift + right-click to delete.
 - `/altar spawn <preset>` builds an altar (presets and their block layout are in `altars.yml` -> `presets`). Right-click the
   centre block to craft: ingredients in the 3x3 grid, click the output to start the ritual. The output drops on the altar when it ends.
+- The pedestal always shows the recipe's **output item rotating above it** (before the ritual too, `display.idle`; several recipes
+  cycle every `display.cycle-seconds`). The hologram lists each output as `[64] Diamond` / `[2] Netherite Ingot`, centred: the item's
+  own name with its gradient/colours kept, bold for items without a custom name. `/altar spawn` prints what the altar crafts.
+- `/altar recipe edit <id>` opens the editor directly. Editor: cursor item on a grid slot = ingredient (copy, nothing is taken),
+  click an inventory item = next free slot, shift-click an inventory item = output, empty cursor on a slot: left +1 / right -1 / shift clear.
 - `/altar bind <preset> <recipe|none>` makes a preset craft one recipe; the hologram above the altar then shows that recipe.
 - `/altar remove [id]`, `/altar list`, `/altar stop [id|all]`, `/altar reload`.
 - **Coordinate reveal:** the ritual bossbar/chat/title show the altar's coordinates one number at a time:

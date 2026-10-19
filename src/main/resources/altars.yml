@@ -14,7 +14,9 @@ sounds:                           # kept quiet on purpose
   reveal: {sound: "block.note_block.chime", volume: 0.3, pitch: 1.0}
   complete: {sound: "ui.toast.challenge_complete", volume: 0.4, pitch: 1.0}
   stop: {sound: "block.beacon.deactivate", volume: 0.4, pitch: 1.0}
-display:                         # the floating output item shown above the altar during a ritual
+display:                         # the rotating output item above the altar
+  idle: true                     # also show it BEFORE a ritual starts (the altar's recipe output); false = only during a ritual
+  cycle-seconds: 4               # an altar with several recipes switches the shown item every N seconds
   height: 1.5
   scale: 1.0
   glow: true
@@ -68,8 +70,8 @@ presets:
       - "2 0 2 CHISELED_POLISHED_BLACKSTONE"
       - "2 1 2 SOUL_LANTERN"
 messages:
-  usage: "<g>/altar [spawn [preset]|remove [id]|list|recipe|bind [preset] [recipe or none]|stop [id or all]|reload]</g>"
-  usage-recipe: "<g>/altar recipe [list | create <id> [minutes] | output <id> | input <id> [amount | MATERIAL amount] | clear <id> | minutes <id> <n> | delete <id>]</g>"
+  usage: "<g>/altar [spawn [preset]|remove [id]|list|recipes (gui)|recipe|bind [preset] [recipe or none]|stop [id or all]|reload]</g>"
+  usage-recipe: "<g>/altar recipe [list | edit <id> | create <id> [minutes] | output <id> | input <id> [amount | MATERIAL amount] | clear <id> | minutes <id> <n> | delete <id>]</g>"
   recipe-header: "<g>altar recipes:</g>"
   recipe-line: "<gray>{id}: {inputs} -> {output} ({minutes} min)</gray>"
   recipe-created: "<g>recipe {id} created. hold the result item: /altar recipe output {id}, then add inputs with /altar recipe input {id}.</g>"
@@ -80,6 +82,7 @@ messages:
   hologram-closing: "<gray>the altar fades...</gray>"
   hologram-empty: "<gray>no recipes set</gray>"
   spawned: "<g>altar #{id} ({preset}) placed.</g>"
+  spawned-recipe: "<g>altar #{id} ({preset}) placed.</g> <gray>crafts:</gray> <white>{item}</white>"
   removed: "<g>altar #{id} removed.</g>"
   no-altar: "<red>no altar found there.</red>"
   unknown-preset: "<red>unknown altar preset:</red> <gray>{input}</gray>"

@@ -50,9 +50,21 @@ public final class DiscordHook {
         return b.toString();
     }
 
+    private String imageJson(String key) {
+        if (key == null) return "";
+        ConfigurationSection c = c();
+        StringBuilder b = new StringBuilder();
+        String th = c.getString("thumbnails." + key, "");
+        if (th.startsWith("http")) b.append("\"thumbnail\":{\"url\":\"").append(esc(th)).append("\"},");
+        return b.toString();
+    }
+
     private static String clean(String s) { return s.replace("```", "'''"); }
 
-    private void post(boolean mention, String title, int color, String description) {
+    private void post(boolean mention, String title, int color, String description) { post(mention, title, color, description, null); }
+
+    /** imageKey: discord.thumbnails.<key> (small corner image, optional). */
+    private void post(boolean mention, String title, int color, String description, String imageKey) {
         ConfigurationSection c = c();
         String ping = mention ? c.getString("mention", "") : "";
         StringBuilder j = new StringBuilder("{");
@@ -61,9 +73,9 @@ public final class DiscordHook {
         if (!av.isBlank()) j.append("\"avatar_url\":\"").append(esc(av)).append("\",");
         j.append("\"content\":\"").append(esc(ping)).append("\",");
         j.append("\"allowed_mentions\":{\"parse\":").append(ping.isBlank() ? "[]" : "[\"roles\",\"everyone\"]").append("},");
-        j.append("\"embeds\":[{\"title\":\"").append(esc(title)).append("\",\"description\":\"").append(esc(description))
+        j.append("\"embeds\":[{").append(title.isEmpty() ? "" : "\"title\":\"" + esc(title) + "\",").append("\"description\":\"").append(esc(description))
                 .append("\",\"color\":").append(color).append(",\"timestamp\":\"").append(Instant.now()).append("\",")
-                .append("\"footer\":{\"text\":\"").append(esc(c.getString("server-name", "Minecraft Server"))).append(" • EventCore\"}}]}");
+                .append(imageJson(imageKey)).append("\"footer\":{\"text\":\"").append(esc(c.getString("server-name", "Minecraft Server"))).append(" • EventCore\"}}]}");
         HttpRequest req = HttpRequest.newBuilder(URI.create(c.getString("webhook-url")))
                 .timeout(Duration.ofSeconds(10)).header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(j.toString())).build();
@@ -75,59 +87,60 @@ public final class DiscordHook {
         });
     }
 
+    /** Start-only webhooks: each key is sent once until reset(key) (event end / new run). */
+    private final java.util.Map<String, Long> sent = new java.util.concurrent.ConcurrentHashMap<>();
+    private boolean once(String key) {
+        long now = System.currentTimeMillis();
+        Long prev = sent.putIfAbsent(key, now);
+        if (prev == null) return true;
+        if (now - prev > 15_000L && !key.startsWith("lootdrop")) { sent.put(key, now); return true; }
+        return false;
+    }
+    public void reset(String key) { sent.remove(key); }
+
     private static String rel(long epochSec) { return "<t:" + epochSec + ":R>"; }
 
-    // ---------- events ----------
+    // ---------- start webhooks only (unicode symbols, no emoji) ----------
+    /** MiniEvents start. */
     public void eventStarted(String name, String description, int minutes) {
-        if (!on("event-start")) return;
+        if (!on("event-start") || !once("event:" + name)) return;
         long end = Instant.now().getEpochSecond() + minutes * 60L;
-        post(true, "🟢 Mini event started: " + name, color("start", "#2EFF2E"),
-                "> " + clean(description) + "\n```diff\n+ Event     " + clean(name) + "\n+ Duration  " + minutes + " minutes\n```\nEnds " + rel(end));
+        post(true, "", color("start", "#2EFF2E"),
+                "⌘ **MiniEvents** › " + clean(name) + "\n⛨ **Ends** " + rel(end)
+                + (description == null || description.isBlank() ? "" : "\n\n❖ " + clean(description)), "event");
     }
 
-    public void warning(String name, String in) {
-        if (!on("schedule-warning")) return;
-        post(false, "⏰ Starting soon: " + name, color("warn", "#FFFF5C"),
-                "```ini\n[Event]  " + clean(name) + "\n[Starts] in " + in + "\n```");
-    }
-
-    // ---------- airdrop ----------
+    /** Lootdrop start: only the first falling crate of a run is announced. */
     public void crateFalling(String tier, String world, String xyz, int seconds) {
-        if (!on("airdrop-falling")) return;
+        if (!on("airdrop-falling") || !once("lootdrop")) return;
         long land = Instant.now().getEpochSecond() + seconds;
-        post(true, "🪂 " + tier + " lootdrop falling", color("airdrop", "#d8b04a"),
-                "```yaml\ntier: " + clean(tier) + "\nworld: " + clean(world) + "\ncoords: " + xyz + "\n```\nLands " + rel(land));
+        post(true, "", color("airdrop", "#d8b04a"),
+                "⌘ **Lootdrop Falling**\n⛨ **Complete** " + rel(land)
+                + "\n\n❖ " + clean(tier) + " crate at " + clean(world) + " " + xyz + "\n❖ Punch the Crate until it's open", "lootdrop");
     }
 
-    public void crateLanded(String tier, String world, String xyz, int hp) {
-        if (!on("airdrop-landed")) return;
-        post(true, "📦 " + tier + " lootdrop landed", color("airdrop", "#d8b04a"),
-                "```yaml\ntier: " + clean(tier) + "\nworld: " + clean(world) + "\ncoords: " + xyz + "\nhealth: " + hp + "\n```\nPunch the crate until it opens.");
-    }
-
-    public void crateOpened(String tier, String player, String xyz) {
-        if (!on("airdrop-opened")) return;
-        post(false, "🎁 " + tier + " lootdrop opened", color("airdrop", "#d8b04a"),
-                "```fix\n" + clean(player) + " opened the " + clean(tier) + " crate at " + xyz + "\n```");
-    }
-
-    // ---------- ritual ----------
+    /** Ritual start. */
     public void ritualStarted(String item, String player, String world, String xyz, int minutes) {
-        if (!on("ritual-start")) return;
+        if (!on("ritual-start") || !once("ritual:" + item + ":" + player)) return;
         long end = Instant.now().getEpochSecond() + minutes * 60L;
-        post(true, "🔮 Ritual started: " + item, color("ritual", "#ffd7ca"),
-                "```css\n[Item]     " + clean(item) + "\n[Started]  " + clean(player) + "\n[Where]    " + clean(world) + " " + xyz + "\n[Time]     " + minutes + " minutes\n```\nCompletes " + rel(end));
+        post(true, "", color("ritual", "#ffd7ca"),
+                "⌘ **Ritual Started** › " + clean(item) + "\n⛨ **Ends** " + rel(end)
+                + "\n\n❖ " + clean(world) + " " + xyz, "ritual");
     }
 
-    public void ritualComplete(String item) {
-        if (!on("ritual-complete")) return;
-        post(false, "✅ Ritual complete: " + item, color("start", "#2EFF2E"),
-                "```diff\n+ " + clean(item) + " was crafted. The item dropped.\n```");
+    /** Altar ritual: sent once, when all three coordinates (X, Y, Z) have been revealed. */
+    public void altarCoordsRevealed(String item, String player, String world, String xyz, int secondsLeft) {
+        if (!on("ritual-start") || !once("altar:" + item + ":" + player)) return;
+        long end = Instant.now().getEpochSecond() + secondsLeft;
+        post(true, "", color("ritual", "#ffd7ca"),
+                "⌘ **Altar Ritual** › " + clean(item) + "\n⛨ **Ends** " + rel(end)
+                + "\n\n❖ All coordinates revealed\n❖ " + clean(world) + " " + xyz, "altar");
     }
 
-    public void ritualStopped(String item) {
-        if (!on("ritual-stop")) return;
-        post(false, "🛑 Ritual stopped: " + item, color("end", "#FF2E4A"),
-                "```diff\n- The ritual for " + clean(item) + " was cancelled.\n```");
-    }
+    // The rest never send a webhook: one webhook per start, nothing else.
+    public void warning(String name, String in) { }
+    public void crateLanded(String tier, String world, String xyz, int hp) { }
+    public void crateOpened(String tier, String player, String xyz) { }
+    public void ritualComplete(String item) { sent.keySet().removeIf(k -> k.startsWith("ritual:") || k.startsWith("altar:")); }
+    public void ritualStopped(String item) { sent.keySet().removeIf(k -> k.startsWith("ritual:")); }
 }

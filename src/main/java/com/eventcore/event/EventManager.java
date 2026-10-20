@@ -140,11 +140,11 @@ public final class EventManager implements Listener {
         Map<String, Object> ph = placeholders(ae);
 
         ConfigurationSection bb = s.getConfigurationSection("bossbar");
-        if (bb != null && bb.getBoolean("enabled", true) && wantsBar(ev)) ae.bar = createBar(ae, bb);
+        if (ev.forceBar() || (bb != null && bb.getBoolean("enabled", true) && wantsBar(ev))) ae.bar = createBar(ae, bb);
         pl.fx.playAll(s.getConfigurationSection("sounds.start"));
         pl.fx.title(Bukkit.getServer(), s.getConfigurationSection("titles.start"), ph);
         pl.fx.broadcast(s, "messages.start", ph, pl.cfg.messages().getString("prefix", ""));
-        pl.discord.eventStarted(Util.title(ev.displayName()), s.getString("description", ""), minutes);
+        if (!ev.id().equals("airdrop")) pl.discord.eventStarted(Util.title(ev.displayName()), s.getString("description", ""), minutes);
 
         ConfigurationSection anim = s.getConfigurationSection("start-animation");
         if (anim != null && anim.getBoolean("enabled", true))
@@ -182,8 +182,10 @@ public final class EventManager implements Listener {
     }
 
     private BossBar createBar(ActiveEvent ae, ConfigurationSection bb) {
-        BossBar.Color col = com.eventcore.util.BossBars.enumOf(BossBar.Color.class, bb.getString("color", "YELLOW"), BossBar.Color.YELLOW);
-        BossBar.Overlay ov = com.eventcore.util.BossBars.enumOf(BossBar.Overlay.class, bb.getString("style", "PROGRESS"), BossBar.Overlay.PROGRESS);
+        String colS = bb == null ? "YELLOW" : bb.getString("color", "YELLOW");
+        String styS = bb == null ? "NOTCHED_6" : bb.getString("style", "PROGRESS");
+        BossBar.Color col = com.eventcore.util.BossBars.enumOf(BossBar.Color.class, colS, BossBar.Color.YELLOW);
+        BossBar.Overlay ov = com.eventcore.util.BossBars.enumOf(BossBar.Overlay.class, styS, BossBar.Overlay.PROGRESS);
         BossBar b = BossBar.bossBar(barText(ae), 1f, col, ov);
         pl.bars.show(b);
         return b;
@@ -239,13 +241,14 @@ public final class EventManager implements Listener {
         for (ActiveEvent ae : new ArrayList<>(active.values())) {
             int left = ae.secondsLeft();
             ConfigurationSection bb = ae.ev.sec().getConfigurationSection("bossbar");
-            boolean bar = bb != null && bb.getBoolean("enabled", true) && wantsBar(ae.ev);
+            boolean bar = ae.ev.forceBar() || (bb != null && bb.getBoolean("enabled", true) && wantsBar(ae.ev));
             if (bar && ae.bar == null) ae.bar = createBar(ae, bb);
             else if (!bar && ae.bar != null) { pl.bars.hide(ae.bar); ae.bar = null; }
             if (ae.bar != null) {
+                if (left % 5 == 0) pl.bars.showAll(ae.bar);   // re-sync: anyone who missed the bar gets it
                 if (!ae.ev.ownsBarTitle()) {   // events that own their bar (airdrop) update title AND progress themselves
                     ae.bar.name(barText(ae));
-                    ae.bar.progress(bb.getBoolean("countdown", true) ? com.eventcore.util.BossBars.clamp(left / (double) Math.max(1, ae.totalSec)) : 1f);
+                    ae.bar.progress(bb == null || bb.getBoolean("countdown", true) ? com.eventcore.util.BossBars.clamp(left / (double) Math.max(1, ae.totalSec)) : 1f);
                 }
             }
             if (wantsAction(ae.ev)) {

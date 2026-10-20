@@ -28,13 +28,25 @@ public final class BossBars implements Listener {
 
     public void show(BossBar bar) {
         bars.add(bar);
-        for (Player p : Bukkit.getOnlinePlayers()) p.showBossBar(bar);
+        showAll(bar);
+    }
+
+    /** Shows the bar to everyone online on each player's own thread (Folia-safe). Safe to call repeatedly. */
+    public void showAll(BossBar bar) {
+        if (bar == null) return;
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            try { pl.sched.entity(p, () -> p.showBossBar(bar)); }
+            catch (Throwable t) { try { p.showBossBar(bar); } catch (Throwable ignored) { } }
+        }
     }
 
     public void hide(BossBar bar) {
         if (bar == null) return;
         bars.remove(bar);
-        for (Player p : Bukkit.getOnlinePlayers()) p.hideBossBar(bar);
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            try { pl.sched.entity(p, () -> p.hideBossBar(bar)); }
+            catch (Throwable t) { try { p.hideBossBar(bar); } catch (Throwable ignored) { } }
+        }
     }
 
     public void clear() { for (BossBar b : bars.toArray(new BossBar[0])) hide(b); }

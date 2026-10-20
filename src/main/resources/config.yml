@@ -49,18 +49,23 @@ discord:
   enabled: false
   webhook-url: ""
   username: "EventCore"
-  avatar-url: ""
+  avatar-url: "https://kommodo.ai/i/VdcG7kcMYqx3eFvPyeTB"
   server-name: "My Server"
   mention: ""              # pinged on event start / lootdrop landed / ritual start, e.g. "<@&123456789>" or "@everyone"
-  notify:
+  notify:            # start webhooks only, one per event
     event-start: true
-    schedule-warning: true
     airdrop-falling: true
-    airdrop-landed: true
-    airdrop-opened: true
     ritual-start: true
-    ritual-complete: true
-    ritual-stop: true
+    schedule-warning: false
+    airdrop-landed: false
+    airdrop-opened: false
+    ritual-complete: false
+    ritual-stop: false
+  thumbnails:        # small image in the corner (thumbnail only; altar webhook is sent once all 3 coords are revealed)
+    event: "https://kommodo.ai/i/VdcG7kcMYqx3eFvPyeTB"
+    ritual: "https://plain-apac-prod-public.komododecks.com/202610/19/hOZKF5MLRfe4SxIfm8ol/image.png"
+    lootdrop: "https://plain-apac-prod-public.komododecks.com/202610/19/f7kFK2IL9wvWHa3ogStY/image.png"
+    altar: "https://plain-apac-prod-public.komododecks.com/202610/19/oZ1H7gY55K5VoKy5bR7q/image.png"
   colors:
     start: "#f1d58f"
     end: "#ffcfca"

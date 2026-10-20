@@ -29,7 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * One crate. FALLING (timed descent under a chicken parachute, locked, invulnerable) -> LOCKED (optional grace) ->
  * READY (virtual HP, spam-hit to open) -> OPENED (loot straight into the opener's inventory).
  * The fall always takes exactly fall.duration-minutes, whatever the height. Parachute idea taken from Airdrop 4.x:
- * chickens leashed to an invisible slime above the crate. All entity work runs on the region scheduler of the
+ * chickens leashed to the crate (shulker). All entity work runs on the region scheduler of the
  * landing spot (x/z never change during the fall, so the region never changes).
  */
 public final class AirdropCrate {
@@ -42,7 +42,6 @@ public final class AirdropCrate {
     private final Location ground;
     private Shulker shulker;
     private TextDisplay holo;
-    private Slime leash;
     private final List<Chicken> chickens = new ArrayList<>();
     private ScheduledTask task;
     public volatile State state = State.FALLING;
@@ -182,27 +181,28 @@ public final class AirdropCrate {
     private void spawnParachute(World w, Location start) {
         int n = chuteCount();
         if (n == 0 || !s().getBoolean("parachute.enabled", true)) return;
-        leash = w.spawn(start.clone().add(0, 1.6, 0), Slime.class, sl -> {
-            sl.setSize(1); sl.setAI(false); sl.setGravity(false); sl.setInvisible(true); sl.setInvulnerable(true);
-            sl.setSilent(true); sl.setPersistent(false); sl.setCollidable(false);
-            sl.getPersistentDataContainer().set(CHUTE, PersistentDataType.BYTE, (byte) 1);
-        });
         for (int i = 0; i < n; i++) {
             Chicken c = w.spawn(chickenPos(start, i, n), Chicken.class, ch -> {
                 ch.setAI(false); ch.setGravity(false); ch.setInvulnerable(true); ch.setSilent(true);
                 ch.setPersistent(false); ch.setCollidable(false);
+                ch.setEggLayTime(Integer.MAX_VALUE); // parachute chickens never lay eggs
                 ch.getPersistentDataContainer().set(CHUTE, PersistentDataType.BYTE, (byte) 1);
             });
-            try { c.setLeashHolder(leash); } catch (Throwable ignored) { }
+            try { c.setLeashHolder(shulker); } catch (Throwable ignored) { }
             chickens.add(c);
         }
     }
 
     private void moveParachute(Location base) {
-        if (leash != null && leash.isValid()) leash.teleportAsync(base.clone().add(0, 1.6, 0));
         for (int i = 0; i < chickens.size(); i++) {
             Chicken c = chickens.get(i);
-            if (c.isValid()) c.teleportAsync(chickenPos(base, i, chickens.size()));
+            if (!c.isValid()) continue;
+            c.teleportAsync(chickenPos(base, i, chickens.size()));
+            c.setEggLayTime(Integer.MAX_VALUE);
+            // the lead is tied to the crate (shulker); put it back if it ever vanished
+            if (tick % 10 == 0 && shulker != null && shulker.isValid() && (!c.isLeashed() || c.getLeashHolder() != shulker)) {
+                try { c.setLeashHolder(shulker); } catch (Throwable ignored) { }
+            }
         }
     }
 
@@ -214,7 +214,6 @@ public final class AirdropCrate {
             c.remove();
         }
         chickens.clear();
-        if (leash != null) { leash.remove(); leash = null; }
     }
 
     // ---------- tick ----------

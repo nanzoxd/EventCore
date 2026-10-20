@@ -91,6 +91,17 @@ public final class AirdropEvent extends GameEvent {
 
     // ---------- lifecycle ----------
     @Override public boolean ownsBarTitle() { return true; }
+    @Override public boolean forceBar() { return true; }
+
+    /** Cancels every crate that is still falling (landed ones stay). Returns how many were cancelled. */
+    public int cancelFalling() {
+        int n = 0;
+        for (AirdropCrate c : new ArrayList<>(crates.values())) {
+            if (c.state == State.FALLING) { c.destroy(false); n++; }
+        }
+        if (n > 0) nextDropAt = System.currentTimeMillis() + incomingSeconds() * 1000L;
+        return n;
+    }
 
     @Override public Map<String, Object> extra(ActiveEvent ae) { return barPh(); }
 
@@ -152,6 +163,7 @@ public final class AirdropEvent extends GameEvent {
         failStreak = 0;
         barWarned = false;
         lastBarName = null;
+        pl.discord.reset("lootdrop");
         runId++;            // callbacks of an earlier run can never place a crate in this one
         running = true;
     }
@@ -361,5 +373,16 @@ public final class AirdropEvent extends GameEvent {
     public void onDamage(EntityDamageEvent e) {
         if (crates.containsKey(e.getEntity().getUniqueId())
                 || e.getEntity().getPersistentDataContainer().has(AirdropCrate.CHUTE, org.bukkit.persistence.PersistentDataType.BYTE)) e.setCancelled(true);
+    }
+
+    /** Parachute chickens: no dropped lead items and no laid eggs. */
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onChuteUnleash(org.bukkit.event.entity.EntityUnleashEvent e) {
+        if (e.getEntity().getPersistentDataContainer().has(AirdropCrate.CHUTE, org.bukkit.persistence.PersistentDataType.BYTE)) e.setDropLeash(false);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onChuteDrop(org.bukkit.event.entity.EntityDropItemEvent e) {
+        if (e.getEntity().getPersistentDataContainer().has(AirdropCrate.CHUTE, org.bukkit.persistence.PersistentDataType.BYTE)) e.setCancelled(true);
     }
 }

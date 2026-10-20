@@ -32,6 +32,9 @@ hologram:
   height: 2.7
   scale: 1.0
   underline: true                # a line under the output name
+  show-title: false              # the preset title ("altar") above the item name
+protection:
+  place-radius: 3                # blocks around the altar centre where nobody can place blocks / empty buckets
 gui:
   craft-title: "<g>altar crafting</g>"
   list-title: "<g>altar recipes</g>"
@@ -101,6 +104,7 @@ messages:
   list-line: "<gray>#{id} {preset} | {world} {x} {y} {z} | {state}</gray>"
   busy: "<red>this altar is already running a ritual.</red>"
   no-recipe: "<red>these items do not match any recipe.</red>"
+  no-build: "<red>you can't build next to an altar.</red>"
   protected: "<red>this is an altar. use /altar remove.</red>"
   saved: "<g>recipe {id} saved.</g>"
   deleted: "<g>recipe {id} deleted.</g>"

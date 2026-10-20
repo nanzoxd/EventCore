@@ -33,6 +33,8 @@ command:
   schedule-line: "<white>{event}</white> <gray>{at} (in {in})</gray>"
   schedule-none: "<gray>nothing is scheduled.</gray>"
   airdrop-spawned: "<g>dropping a {tier} crate.</g>"
+  airdrop-cancelled: "<g>cancelled {count} falling lootdrop(s).</g>"
+  airdrop-nothing-falling: "<red>no lootdrop is falling right now.</red>"
 event-join:      # sent once to players who join while an event is running (rules come from events.<id>.messages.join)
   header: "<g>{event} is running ({time} left)</g>"
   bullet: "<g>-</g> "

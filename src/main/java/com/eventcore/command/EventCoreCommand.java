@@ -98,6 +98,11 @@ public final class EventCoreCommand implements TabExecutor {
             }
             case "airdrop" -> {
                 String what = a.length >= 2 ? a[1].toLowerCase(Locale.ROOT) : "";
+                if (what.equals("cancel")) {
+                    int n = pl.airdrop.cancelFalling();
+                    s.sendMessage(pl.msg(n == 0 ? "command.airdrop-nothing-falling" : "command.airdrop-cancelled", "count", n));
+                    return true;
+                }
                 if (!(s instanceof Player p)) { err(s, "player-only"); return true; }
                 if (what.equals("loot")) {
                     if (a.length >= 3 && pl.airdrop.tierSec(a[2].toLowerCase(Locale.ROOT)) != null) pl.lootGui.openEntries(p, a[2].toLowerCase(Locale.ROOT), 0);
@@ -122,7 +127,7 @@ public final class EventCoreCommand implements TabExecutor {
                 case "start" -> { out.addAll(pl.events.allNames()); out.addAll(List.of("1", "2", "3")); }
                 case "force", "stop" -> out.addAll(pl.events.allNames());
                 case "rig" -> { out.addAll(pl.events.allNames()); out.add("clear"); }
-                case "airdrop" -> out.addAll(List.of("spawn", "loot"));
+                case "airdrop" -> out.addAll(List.of("spawn", "loot", "cancel"));
                 default -> { }
             }
         } else if (a.length == 3) {

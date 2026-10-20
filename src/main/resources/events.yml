@@ -547,7 +547,7 @@ events:
             sound: {sound: "entity.firework_rocket.launch", volume: 0.3, pitch: 0.8}
           title: {title: "<g>{tier_plain} lootdrop falling</g>", subtitle: "<g>{x} {y} {z}</g>"}
         flare: {shape: spiral, particle: END_ROD, count: 30, radius: 0.3, height: 0.0, rise: 25.0, turns: 6.0, spin: 12.0, particles-min: 1, particles-max: 1}
-      parachute:                 # chickens leashed to an invisible slime, like Airdrop 4.x
+      parachute:                 # chickens leashed to the crate (shulker)
         enabled: true
         chickens: 5
         height: 3.2

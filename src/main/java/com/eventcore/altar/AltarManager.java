@@ -29,6 +29,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockExplodeEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
@@ -680,6 +682,9 @@ public final class AltarManager implements Listener {
         Bukkit.getServer().sendMessage(m("reveal-broadcast", ph));
         pl.fx.title(Bukkit.getServer(), cfg.getConfigurationSection("messages.reveal-title"), ph);
         pl.fx.playAll(cfg.getConfigurationSection("sounds.reveal"));
+        // webhook only once all three coordinates (X, Y, Z) are revealed
+        if (st >= 3) pl.discord.altarCoordsRevealed(itemName(r.recipe.output), r.starter, r.altar.center.getWorld().getName(),
+                r.altar.center.getBlockX() + " " + r.altar.center.getBlockY() + " " + r.altar.center.getBlockZ(), Math.max(0, r.remaining));
     }
 
     private void complete(Ritual r) {
@@ -871,38 +876,46 @@ public final class AltarManager implements Listener {
     }
 
     /** The output name (no amount) with a line under it. */
-    private Component outputBlock(Component c, ItemStack out) {
-        c = c.append(Component.newline()).append(nameOf(out));
+    private void outputBlock(List<Component> lines, ItemStack out) {
+        lines.add(nameOf(out));
         if (cfg.getBoolean("hologram.underline", true)) {
             // spaces with strikethrough draw a solid line, sized to the name
             int n = Math.max(8, Math.min(30, (int) Math.ceil(plainName(out).length() * 1.4) + 2));
-            c = c.append(Component.newline()).append(Component.text(" ".repeat(n), TextColor.color(0xf1d58f))
+            lines.add(Component.text(" ".repeat(n), TextColor.color(0xf1d58f))
                     .decoration(TextDecoration.STRIKETHROUGH, true).decoration(TextDecoration.ITALIC, false));
         }
-        return c;
     }
 
     private Component holoText(Altar a) {
+        List<Component> lines = new ArrayList<>();
         ConfigurationSection ps = cfg.getConfigurationSection("presets." + a.preset);
-        Component c = pl.text.render(ps == null ? "altar" : ps.getString("title", "altar"), Map.of());
+        if (cfg.getBoolean("hologram.show-title", false))   // the "altar" title line is off by default
+            lines.add(pl.text.render(ps == null ? "altar" : ps.getString("title", "altar"), Map.of()));
         Ritual r = a.ritual;
         if (r != null) {
-            return outputBlock(c, r.recipe.output)
-                    .append(Component.newline()).append(pl.text.render(cfg.getString("messages.hologram-busy", ""), Text.ph("time", Util.mmss(r.remaining))));
+            outputBlock(lines, r.recipe.output);
+            lines.add(pl.text.render(cfg.getString("messages.hologram-busy", ""), Text.ph("time", Util.mmss(r.remaining))));
+        } else if (a.removeIn >= 0) {
+            lines.add(pl.text.render(cfg.getString("messages.hologram-closing", ""), Map.of()));
+        } else {
+            int shown = 0, max = Math.max(1, cfg.getInt("hologram.max-recipes", 6));
+            List<Recipe> list = recipesFor(a);
+            for (Recipe rec : list) {
+                if (rec.output == null) continue;
+                if (shown++ >= max) break;
+                if (shown > 1) lines.add(Component.empty());   // blank line between recipes
+                outputBlock(lines, rec.output);
+                // one ingredient per line, same "[amount] Name" format: [4] Netherite Ingot / [1] Nether Star
+                for (Ingredient in : rec.inputs) lines.add(itemLine(stackOf(in), in.amount));
+            }
+            lines.add(pl.text.render(cfg.getString(list.isEmpty() ? "messages.hologram-empty" : "messages.hologram-idle", ""), Map.of()));
         }
-        if (a.removeIn >= 0) return c.append(Component.newline()).append(pl.text.render(cfg.getString("messages.hologram-closing", ""), Map.of()));
-        int shown = 0, max = Math.max(1, cfg.getInt("hologram.max-recipes", 6));
-        List<Recipe> list = recipesFor(a);
-        for (Recipe rec : list) {
-            if (rec.output == null) continue;
-            if (shown++ >= max) break;
-            if (shown > 1) c = c.append(Component.newline());   // blank line between recipes
-            c = outputBlock(c, rec.output);
-            // one ingredient per line, same "[amount] Name" format: [4] Netherite Ingot / [1] Nether Star
-            for (Ingredient in : rec.inputs) c = c.append(Component.newline()).append(itemLine(stackOf(in), in.amount));
+        Component c = Component.empty();
+        for (int i = 0; i < lines.size(); i++) {
+            if (i > 0) c = c.append(Component.newline());
+            c = c.append(lines.get(i));
         }
-        String foot = list.isEmpty() ? "messages.hologram-empty" : "messages.hologram-idle";
-        return c.append(Component.newline()).append(pl.text.render(cfg.getString(foot, ""), Map.of()));
+        return c;
     }
 
     private void updateHolo(Altar a) {
@@ -1026,6 +1039,33 @@ public final class AltarManager implements Listener {
         if (byBlock.containsKey(key(e.getBlock()))) {
             e.setCancelled(true);
             e.getPlayer().sendMessage(m("protected", Map.of()));
+        }
+    }
+
+    /** No building next to an altar: the altar blocks plus protection.place-radius blocks around the centre (a few blocks up / down). */
+    private boolean nearAltar(Location l) {
+        int r = Math.max(0, cfg.getInt("protection.place-radius", 3));
+        for (Altar a : altars.values()) {
+            if (a.center.getWorld() != l.getWorld()) continue;
+            if (Math.abs(a.center.getBlockX() - l.getBlockX()) <= r && Math.abs(a.center.getBlockZ() - l.getBlockZ()) <= r
+                    && l.getBlockY() >= a.center.getBlockY() - 2 && l.getBlockY() <= a.center.getBlockY() + 4) return true;
+        }
+        return false;
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPlace(BlockPlaceEvent e) {
+        if (byBlock.containsKey(key(e.getBlock())) || nearAltar(e.getBlock().getLocation())) {
+            e.setCancelled(true);
+            e.getPlayer().sendMessage(m("no-build", Map.of()));
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onBucket(PlayerBucketEmptyEvent e) {
+        if (byBlock.containsKey(key(e.getBlock())) || nearAltar(e.getBlock().getLocation())) {
+            e.setCancelled(true);
+            e.getPlayer().sendMessage(m("no-build", Map.of()));
         }
     }
 

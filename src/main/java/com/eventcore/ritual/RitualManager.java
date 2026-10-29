@@ -228,6 +228,17 @@ public final class RitualManager implements Listener {
         return true;
     }
 
+    /** Starts a scheduled ritual at a saved spot. Call on the spot's region thread. False while another ritual is running. */
+    public boolean startScheduled(Location loc, ItemStack item, int minutes, String starter) {
+        if (cur != null) return false;
+        Ritual r = new Ritual(item.clone(), loc.clone(), Math.max(1, minutes) * 60, starter);
+        cur = r;
+        r.spawn();
+        begin(r, true, null);
+        save();
+        return true;
+    }
+
     private void begin(Ritual r, boolean announce, Player starter) {
         Map<String, Object> ph = r.ph();
         if (announce) {

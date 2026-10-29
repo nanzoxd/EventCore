@@ -16,7 +16,9 @@ import java.util.Map;
 public final class GuiUtil {
     private GuiUtil() { }
 
-    public static ItemStack item(EventCorePlugin pl, ConfigurationSection s, Map<String, Object> ph) {
+    public static ItemStack item(EventCorePlugin pl, ConfigurationSection s, Map<String, Object> ph0) {
+        Map<String, Object> ph = new java.util.LinkedHashMap<>(com.eventcore.util.Mouse.ph(pl));   // {ml_raw} {mr_raw} ... mouse icons
+        if (ph0 != null) ph.putAll(ph0);
         Material m = Material.matchMaterial(s.getString("material", "STONE"));
         if (m == null || !m.isItem() || m.isAir()) m = Material.STONE;
         ItemStack it = new ItemStack(m);

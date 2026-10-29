@@ -3,15 +3,25 @@ package com.eventcore;
 import com.eventcore.airdrop.AirdropEvent;
 import com.eventcore.airdrop.LootService;
 import com.eventcore.altar.AltarManager;
+import com.eventcore.bounty.BountyManager;
 import com.eventcore.command.AltarCommand;
+import com.eventcore.command.BountyCommand;
+import com.eventcore.command.HuntCommand;
 import com.eventcore.command.EventCoreCommand;
 import com.eventcore.command.RitualCommand;
 import com.eventcore.event.*;
 import com.eventcore.gui.AdminGui;
+import com.eventcore.gui.BountyGui;
+import com.eventcore.gui.ConfigGui;
+import com.eventcore.gui.HuntBountyGui;
+import com.eventcore.hunt.HuntManager;
 import com.eventcore.gui.AltarGui;
 import com.eventcore.gui.LootGui;
 import com.eventcore.gui.RitualGui;
 import com.eventcore.ritual.RitualManager;
+import com.eventcore.ritual.RitualScheduler;
+import com.eventcore.gui.RitualScheduleGui;
+import com.eventcore.command.RitualScheduleCommand;
 import com.eventcore.util.*;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
@@ -37,15 +47,27 @@ public final class EventCorePlugin extends JavaPlugin {
     public EventScheduler scheduler;
     public RitualManager ritual;
     public RitualGui ritualGui;
+    public RitualScheduler ritualSchedule;
+    public RitualScheduleGui ritualScheduleGui;
     public AdminGui adminGui;
     public LootGui lootGui;
     public AirdropEvent airdrop;
     public AltarManager altar;
     public AltarGui altarGui;
+    public HuntManager hunt;
+    public BountyManager bounty;
+    public BountyGui bountyGui;
+    public ConfigGui configGui;
+    public HuntBountyGui huntGui;
 
     @Override
     public void onEnable() {
         cfg = new Cfg(this);
+        if (!cfg.config().getBoolean("timezone-ist-applied", false)) {      // one-time: EventCore times are IST now (change timezone later if you like)
+            cfg.config().set("timezone", "Asia/Kolkata");
+            cfg.config().set("timezone-ist-applied", true);
+            getLogger().info("Timezone set to Asia/Kolkata (IST). Scheduled event times are now read as IST.");
+        }
         cfg.save("config"); cfg.save("messages"); cfg.save("events"); cfg.save("rituals"); cfg.save("gui");
         migrate();
         text = new Text(this);
@@ -60,11 +82,18 @@ public final class EventCorePlugin extends JavaPlugin {
         events = new EventManager(this);
         ritual = new RitualManager(this);
         ritualGui = new RitualGui(this);
+        ritualSchedule = new RitualScheduler(this);
+        ritualScheduleGui = new RitualScheduleGui(this);
         adminGui = new AdminGui(this);
         lootGui = new LootGui(this);
         scheduler = new EventScheduler(this);
         altar = new AltarManager(this);
         altarGui = new AltarGui(this);
+        hunt = new HuntManager(this);
+        bounty = new BountyManager(this);
+        bountyGui = new BountyGui(this);
+        configGui = new ConfigGui(this);
+        huntGui = new HuntBountyGui(this);
 
         airdrop = new AirdropEvent(this);
         events.register(new VulnerableEvent(this));
@@ -77,7 +106,7 @@ public final class EventCorePlugin extends JavaPlugin {
         events.register(new LocatorBarEvent(this));
         events.register(airdrop);
 
-        for (org.bukkit.event.Listener l : new org.bukkit.event.Listener[]{bars, chat, events, ritual, ritualGui, adminGui, lootGui, altar, altarGui})
+        for (org.bukkit.event.Listener l : new org.bukkit.event.Listener[]{bars, chat, events, ritual, ritualGui, ritualScheduleGui, adminGui, lootGui, altar, altarGui, hunt, bounty, bountyGui})
             Bukkit.getPluginManager().registerEvents(l, this);
 
         EventCoreCommand ecCmd = new EventCoreCommand(this);
@@ -87,11 +116,24 @@ public final class EventCorePlugin extends JavaPlugin {
         getCommand("altar").setExecutor(altarCmd);
         getCommand("altar").setTabCompleter(altarCmd);
         getCommand("ritualcreator").setExecutor(new RitualCommand(this));
+        RitualScheduleCommand ritualCmd = new RitualScheduleCommand(this);
+        getCommand("ritual").setExecutor(ritualCmd);
+        getCommand("ritual").setTabCompleter(ritualCmd);
+        HuntCommand huntCmd = new HuntCommand(this);
+        getCommand("playerhunt").setExecutor(huntCmd);
+        getCommand("playerhunt").setTabCompleter(huntCmd);
+        BountyCommand bountyCmd = new BountyCommand(this);
+        for (String n : new String[]{"bountyadd", "bountystop", "bountylist"}) {
+            getCommand(n).setExecutor(bountyCmd);
+            getCommand(n).setTabCompleter(bountyCmd);
+        }
 
         events.startTicker();
         scheduler.start();
         ritual.restore();
+        ritualSchedule.start();
         altar.load();
+        bounty.start();
         getLogger().info("EventCore enabled.");
     }
 
@@ -111,8 +153,11 @@ public final class EventCorePlugin extends JavaPlugin {
         if (scheduler != null) scheduler.stop();
         if (events != null) events.shutdown();
         if (airdrop != null) airdrop.destroyAll();
+        if (ritualSchedule != null) ritualSchedule.shutdown();
         if (ritual != null) ritual.shutdown();
         if (altar != null) altar.shutdown();
+        if (hunt != null) hunt.shutdown();
+        if (bounty != null) bounty.shutdown();
         if (teams != null) teams.shutdown();
         if (bars != null) bars.clear();
         // closing GUIs returns any item sitting in the ritual selection slot
@@ -134,6 +179,7 @@ public final class EventCorePlugin extends JavaPlugin {
     /** Called after any config edit in the GUI. Everything reads config live, so only derived state is rebuilt. */
     public void afterConfigChange(String file) {
         if (file.equals("events") || file.equals("config")) scheduler.rebuild();
+        if (file.equals("config")) hunt.rebuild();
         teams.refreshLater();
     }
 

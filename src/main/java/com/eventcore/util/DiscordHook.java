@@ -137,6 +137,19 @@ public final class DiscordHook {
                 + "\n\n❖ All coordinates revealed\n❖ " + clean(world) + " " + xyz, "altar");
     }
 
+    /** Player hunt start. Uses the existing discord.thumbnails.event image and the existing webhook; off unless notify.hunt-start is true. */
+    public void huntStarted(java.util.List<String> names) {
+        if (!on("hunt-start") || !once("hunt:" + String.join(",", names))) return;
+        post(true, "", color("start", "#f1d58f"), "⌘ **Player Hunt**\n❖ " + clean(String.join(", ", names)), "event");
+    }
+
+    /** Bounty start. Same existing webhook and discord.thumbnails.event image; off unless notify.bounty-start is true. */
+    public void bountyStarted(String target, String reward, int minutes) {
+        if (!on("bounty-start") || !once("bounty:" + target)) return;
+        long end = Instant.now().getEpochSecond() + minutes * 60L;
+        post(true, "", color("start", "#f1d58f"), "⌘ **Bounty** › " + clean(target) + "\n⛨ **Ends** " + rel(end) + "\n\n❖ Reward: " + clean(reward), "event");
+    }
+
     // The rest never send a webhook: one webhook per start, nothing else.
     public void warning(String name, String in) { }
     public void crateLanded(String tier, String world, String xyz, int hp) { }

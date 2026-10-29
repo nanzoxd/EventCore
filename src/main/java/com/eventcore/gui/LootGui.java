@@ -114,8 +114,8 @@ public final class LootGui implements Listener {
         ItemMeta gm = glass.getItemMeta(); gm.displayName(Component.text(" ")); glass.setItemMeta(gm);
         for (int s = LOOT_SLOTS; s < 54; s++) h.inv.setItem(s, glass);
         h.inv.setItem(45, button(Material.PAPER, "How it works",
-                "Left click: chance +" + (int) CHANCE_STEP, "Right click: chance -" + (int) CHANCE_STEP,
-                "Shift-left: amount +1", "Shift-right: amount -1", "Q: remove the entry",
+                com.eventcore.util.Mouse.left(pl, "chance +" + (int) CHANCE_STEP), com.eventcore.util.Mouse.right(pl, "chance -" + (int) CHANCE_STEP),
+                com.eventcore.util.Mouse.shiftLeft(pl, "amount +1"), com.eventcore.util.Mouse.shiftRight(pl, "amount -1"), com.eventcore.util.Mouse.drop(pl, "remove the entry"),
                 "Add: click an empty slot with an item", "on your cursor, or shift-click one", "in your inventory"));
         h.inv.setItem(48, button(Material.ARROW, "Back", "Return to the tier list"));
         h.inv.setItem(49, button(Material.LIME_CONCRETE, "Save", "Save this loot pool"));
@@ -128,7 +128,7 @@ public final class LootGui implements Listener {
         ItemMeta meta = it.getItemMeta();
         meta.displayName(plain(name, WHITE));
         List<Component> l = new ArrayList<>();
-        for (String s : lore) l.add(plain(s, SOFT));
+        for (String s : lore) l.add(s.startsWith("<color:") ? pl.text.item(s, java.util.Map.of()) : plain(s, SOFT));
         meta.lore(l);
         it.setItemMeta(meta);
         return it;
@@ -146,7 +146,11 @@ public final class LootGui implements Listener {
         extra.add(plain("Chance: " + fmt(d.chance()) + "%", GOLD));
         if (!d.cmdOnly()) extra.add(plain("Amount: " + (d.min() == d.max() ? d.min() : d.min() + "-" + d.max()), GOLD));
         for (String c : d.cmds()) extra.add(plain("/" + (c.length() > 34 ? c.substring(0, 31) + "..." : c), DARK));
-        extra.add(plain("L/R: chance  Shift: amount  Q: remove", MUTED));
+        extra.add(pl.text.item(com.eventcore.util.Mouse.left(pl, "chance +" + (int) CHANCE_STEP), java.util.Map.of()));
+        extra.add(pl.text.item(com.eventcore.util.Mouse.right(pl, "chance -" + (int) CHANCE_STEP), java.util.Map.of()));
+        extra.add(pl.text.item(com.eventcore.util.Mouse.shiftLeft(pl, "amount +1"), java.util.Map.of()));
+        extra.add(pl.text.item(com.eventcore.util.Mouse.shiftRight(pl, "amount -1"), java.util.Map.of()));
+        extra.add(pl.text.item(com.eventcore.util.Mouse.drop(pl, "remove"), java.util.Map.of()));
         lore.addAll(extra);
         meta.lore(lore);
         PersistentDataContainer p = meta.getPersistentDataContainer();

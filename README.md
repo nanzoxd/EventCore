@@ -119,3 +119,31 @@ vanishes after `ritual.remove-after-seconds` (`ritual.remove-altar: false` keeps
 Recipes live in `plugins/EventCore/altar-recipes.yml` (any input / output items, custom names, model data, enchants) or in game:
 `/altar recipe create <id> [minutes]`, `/altar recipe output <id>` (item in hand), `/altar recipe input <id> [amount]` (exact item in hand)
 or `/altar recipe input <id> <MATERIAL> <amount>`, `/altar recipe clear|minutes|delete|list`. `/altar reload` re-reads the file.
+
+## Player Hunt
+`/playerhunt <player1> <player2> ...` (alias `/phunt`, permission `eventcore.playerhunt`) hunts any number of online players at once.
+Every target gets a bossbar with the name and live coordinates (`hunt.bossbar`), and one chat update with everybody's coordinates goes out every
+`playerhunt.broadcast-seconds` (30). `/playerhunt stop [player|all]`, `/playerhunt list`. Targets who log out show "offline" and resume on rejoin.
+
+## Bounty Hunt
+`/bountyadd <player>` (alias `/bounty`, permission `eventcore.bounty`) opens the GUI: put ANY item in the middle slot (enchanted, custom named, shulkers, books...
+it is stored exactly as placed), set the survival timer with the clock (left +, right -, shift x5) and press start.
+* Bossbar: target, reward, live coordinates and time left. Coordinates in chat every `bounty.broadcast-seconds` (30).
+* Target survives the timer: the target gets the reward. Another player kills the target: the killer gets it. Victory / defeat titles go to both.
+* Target offline longer than `bounty.disconnect.grace-seconds` (120): the bounty moves to a random eligible online player (not creative/spectator,
+  not `eventcore.bounty.exempt`); with no one eligible, or `action: CANCEL`, the reward goes back to its creator.
+* Rewards leave a bounty through one guarded step (atomic done flag, one file write), then sit in a pending list in `bounties.yml` until they are in the winner's
+  inventory, so they are never paid twice and never lost to an offline player or a restart. A full inventory drops the item at the winner's feet, owned by them, never despawning.
+* Active bounties and pending rewards are saved in `plugins/EventCore/bounties.yml` (on every change, every 10 s and on shutdown).
+* `/bountystop [player|all]` and `/bountylist`. Settings: `bounty:` in config.yml, texts: `bounty:` in messages.yml, GUI: `bounty-gui:` in gui.yml.
+* Discord: no new webhook. `discord.notify.hunt-start` / `bounty-start` (off by default) would reuse your webhook and the existing `event` thumbnail.
+
+## Admin GUI
+`/eventcore gui` now has: Events, Airdrop, Loot tables, Ritual creator, Ritual settings, Altar recipes, Config editor, Player hunt, Bounty, Reload.
+The Config editor lists every key of every yml file with a widget for its type (toggle, steppers, type in chat, list add/remove/YAML).
+Every tooltip shows controls as mouse icons: a lit half of `▆ ▆` is the pressed button (colours in config.yml `lore.mouse`).
+
+## Ritual scheduling and IST
+All EventCore times use `timezone` in config.yml, now `Asia/Kolkata` (IST). On first start the plugin switches an existing config to IST once, so event schedules in events.yml are read as IST from then on.
+`/ritual schedule` opens the scheduler: date, hour and minute (IST), the ritual item in the middle slot, ritual length, and a button that sets the location to where you stand.
+`/ritual list` and `/ritual cancel <id>` (returns the item). A schedule waits if another ritual is running at its time. Saved in `data/ritual-schedule.yml`, so it survives restarts. `/ritual` alone opens the Ritual Creator.

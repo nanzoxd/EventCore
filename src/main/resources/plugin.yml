@@ -3,7 +3,7 @@ version: '${project.version}'
 main: com.eventcore.EventCorePlugin
 api-version: '1.21'
 folia-supported: true
-description: Scheduled server events, the Ritual Creator and airdrop crates.
+description: Scheduled server events, the Ritual Creator and airdrop crates, altars, player hunts and bounties.
 authors: [EventCore]
 
 commands:
@@ -11,6 +11,10 @@ commands:
     description: EventCore admin command
     usage: /<command> <start|force|rig|stop|list|reload|gui|schedule|airdrop>
     aliases: [ec]
+  ritual:
+    description: Ritual menu - /ritual schedule opens the ritual scheduler
+    usage: /<command> [schedule | list | cancel <id>]
+    permission: eventcore.ritual
   ritualcreator:
     description: Open the Ritual Creator
     usage: /<command>
@@ -23,6 +27,25 @@ commands:
     usage: /<command> <spawn|remove|list|recipes|bind|stop|reload>
     aliases: [altars]
     permission: eventcore.altar
+
+  playerhunt:
+    description: Hunt players - live coordinates in a bossbar and in chat
+    usage: /<command> [player ...] | stop [player|all] | list
+    aliases: [phunt]
+    permission: eventcore.playerhunt
+  bountyadd:
+    description: Place a bounty on a player (opens the reward GUI)
+    usage: /<command> <player>
+    aliases: [bounty]
+    permission: eventcore.bounty
+  bountystop:
+    description: Cancel a bounty (reward goes back to its creator)
+    usage: /<command> [player|all]
+    permission: eventcore.bounty
+  bountylist:
+    description: List active bounties
+    usage: /<command>
+    permission: eventcore.bounty
 
 permissions:
   eventcore.admin:
@@ -40,6 +63,8 @@ permissions:
       eventcore.airdrop: true
       eventcore.ritual: true
       eventcore.altar: true
+      eventcore.playerhunt: true
+      eventcore.bounty: true
   eventcore.start: {default: op}
   eventcore.force: {default: op}
   eventcore.rig: {default: op}
@@ -61,3 +86,12 @@ permissions:
   eventcore.altar.use:
     description: Craft at an altar
     default: true
+  eventcore.playerhunt:
+    description: Start, stop and list player hunts
+    default: op
+  eventcore.bounty:
+    description: Place, cancel and list bounties
+    default: op
+  eventcore.bounty.exempt:
+    description: Never chosen as the new target when a bounty is transferred
+    default: false

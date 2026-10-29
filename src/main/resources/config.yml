@@ -31,7 +31,7 @@ style:
     stay: 70
     fade-out: 20
 # Timezone for scheduled events (IANA name, e.g. Europe/Berlin, America/New_York)
-timezone: "UTC"
+timezone: "Asia/Kolkata"   # IST. Event schedules, /ritual schedule and countdown times use this zone
 # How running events are shown to players: BOSSBAR, ACTIONBAR or BOTH (an event can override with display-mode)
 event-display: BOSSBAR
 max-concurrent-events: 2
@@ -61,6 +61,8 @@ discord:
     airdrop-opened: false
     ritual-complete: false
     ritual-stop: false
+    hunt-start: false      # reuses the webhook above and the 'event' thumbnail; no new webhook or image
+    bounty-start: false
   thumbnails:        # small image in the corner (thumbnail only; altar webhook is sent once all 3 coords are revealed)
     event: "https://kommodo.ai/i/VdcG7kcMYqx3eFvPyeTB"
     ritual: "https://plain-apac-prod-public.komododecks.com/202610/19/hOZKF5MLRfe4SxIfm8ol/image.png"
@@ -72,3 +74,42 @@ discord:
     warn: "#e8c670"
     airdrop: "#d8b04a"
     ritual: "#ffd7ca"
+
+# Mouse-control icons in every tooltip: "▆ ▆" with the pressed button lit (palette colours only)
+lore:
+  mouse:
+    active: "#d8b04a"
+    inactive: "#ffe4d5"
+    text: "#fffbf0"
+# Player Hunt: /playerhunt <player ...> | stop [player|all] | list
+playerhunt:
+  enabled: true
+  max-targets: 10
+  update-ticks: 20          # bossbar coordinates refresh
+  broadcast-seconds: 30     # chat update with every target's coordinates
+  stop-on-death: false      # end the hunt on a target when they die
+  bossbar: {color: YELLOW, style: PROGRESS}
+  sound: {sound: "block.note_block.chime", volume: 0.5, pitch: 1.2}
+# Bounty Hunt: /bountyadd <player> (GUI) | /bountystop [player|all] | /bountylist
+bounty:
+  enabled: true
+  max-active: 5
+  broadcast-seconds: 30       # coordinates in chat
+  save-interval-seconds: 10   # bounties.yml (also saved on every change and on shutdown)
+  environment-death: CONTINUE # target dies without a killer: CONTINUE the bounty or RETURN the reward to its creator
+  timer: {default-minutes: 30, min-minutes: 1, max-minutes: 240, step-minutes: 1}
+  disconnect:
+    grace-seconds: 120        # target offline longer than this -> bounty moves to someone else
+    pause-timer: true         # the survival timer stands still while the target is offline
+    action: TRANSFER          # TRANSFER to another player, or CANCEL (reward returns to its creator)
+  transfer:
+    keep-remaining-time: true # false = the new target gets the full timer
+    exclude-creative: true
+    exclude-spectator: true
+    exclude-permission: "eventcore.bounty.exempt"
+  bossbar: {color: PINK, style: PROGRESS}
+  sounds:
+    start: {sound: "block.beacon.activate", volume: 0.5, pitch: 1.0}
+    victory: {sound: "ui.toast.challenge_complete", volume: 0.6, pitch: 1.0}
+    defeat: {sound: "entity.wither.spawn", volume: 0.3, pitch: 1.4}
+    coords: {sound: "block.note_block.chime", volume: 0.5, pitch: 1.2}

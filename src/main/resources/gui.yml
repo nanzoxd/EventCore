@@ -9,29 +9,56 @@ ritual-main:
       slot: 10
       material: RED_CONCRETE
       name: "<color:#ffcfca>✖ stop all ritual</color>"
-      lore: ["<color:#fffbf0>click to stop the active ritual</color>", "<color:#ffd7ca>(no completion reward)</color>"]
+      lore: ["{ml_raw}  <color:#fffbf0>LMB to stop the active ritual</color>", "<color:#ffd7ca>(no completion reward)</color>"]
     time:
       slot: 12
       material: CLOCK
       name: "<color:#e8c670>◷ ritual timer: <color:#fff0cc>{minutes} minutes</color></color>"
-      lore: ["<color:#fffbf0>left click: <color:#f1d58f>+1 minute</color></color>", "<color:#fffbf0>right click: <color:#ffcfca>-1 minute</color></color>"]
+      lore: ["{ml_raw}  <color:#fffbf0>LMB to +1 minute</color>", "{mr_raw}  <color:#fffbf0>RMB to -1 minute</color>"]
     creation:
       slot: 13
       material: BEACON
       name: "<color:#d8b04a>✦ ritualcreator</color>"
-      lore: ["<color:#fffbf0>place item to create ritual</color>", "<color:#ffd7ca>click to open the item selector</color>"]
+      lore: ["<color:#fffbf0>place item to create ritual</color>", "{ml_raw}  <color:#fffbf0>LMB to open the item selector</color>"]
     palette:
       slot: 14
       material: NETHER_STAR
       name: "<color:{palette_color_raw}>■ {palette_label}</color>"
-      lore: ["<color:#fffbf0>click to cycle particle colors</color>", "<color:#d8b04a>■ <color:#fffbf0>gold</color></color>", "<color:#ffd7ca>■ <color:#fffbf0>peach</color></color>"]
+      lore: ["{ml_raw}  <color:#fffbf0>LMB to cycle particle colors</color>", "<color:#d8b04a>■ <color:#fffbf0>gold</color></color>", "<color:#ffd7ca>■ <color:#fffbf0>peach</color></color>"]
     submit:
       slot: 16
       material: GREEN_CONCRETE
       name: "<color:#f1d58f>✔ end all ritual</color>"
-      lore: ["<color:#fffbf0>click to instantly <color:#f1d58f>complete</color> the active ritual</color>"]
+      lore: ["{ml_raw}  <color:#fffbf0>LMB to complete the active ritual now</color>"]
 ritual-select:
   title: "<gradient:#d8b04a:#fff0cc:#ffd7ca>please select an item</gradient>"
   rows: 3
   input-slot: 13
   filler: {material: BLACK_STAINED_GLASS_PANE, name: " "}
+# Bounty reward GUI (/bountyadd). The reward slot is empty: admins place any item there.
+bounty-gui:
+  title: "<gradient:#d8b04a:#fff0cc:#ffd7ca>bounty | {player}</gradient>"
+  rows: 3
+  reward-slot: 13
+  filler: {material: BLACK_STAINED_GLASS_PANE, name: " "}
+  items:
+    head:
+      slot: 4
+      material: PLAYER_HEAD
+      name: "<color:#d8b04a>⚔ {player}</color>"
+      lore: ["<color:#fffbf0>place the reward in the middle slot</color>"]
+    timer:
+      slot: 10
+      material: CLOCK
+      name: "<color:#e8c670>◷ survive: <color:#fff0cc>{minutes} minutes</color></color>"
+      lore: ["{ml_raw}  <color:#fffbf0>LMB to +{step} minute</color>", "{mr_raw}  <color:#fffbf0>RMB to -{step} minute</color>", "{ml_raw}  <color:#fffbf0>SHIFT + LMB to +{step5} minutes</color>", "{mr_raw}  <color:#fffbf0>SHIFT + RMB to -{step5} minutes</color>"]
+    start:
+      slot: 16
+      material: GREEN_CONCRETE
+      name: "<color:#f1d58f>✔ start bounty</color>"
+      lore: ["<color:#fffbf0>target survives: keeps the reward</color>", "<color:#fffbf0>killed by a player: killer gets it</color>", "{ml_raw}  <color:#fffbf0>LMB to start</color>"]
+    cancel:
+      slot: 22
+      material: RED_CONCRETE
+      name: "<color:#ffcfca>✖ cancel</color>"
+      lore: ["<color:#ffd7ca>the reward item is returned to you</color>", "{ml_raw}  <color:#fffbf0>LMB to close</color>"]

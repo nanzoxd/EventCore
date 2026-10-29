@@ -37,8 +37,10 @@ public final class RitualGui implements Listener {
     public RitualGui(EventCorePlugin pl) { this.pl = pl; }
 
     private Map<String, Object> ph() {
-        return Text.ph("minutes", pl.ritual.minutes(), "min", pl.ritual.minMinutes(), "max", pl.ritual.maxMinutes(),
-                "palette_label", pl.ritual.paletteLabel(), "palette_color_raw", pl.ritual.paletteColor());
+        Map<String, Object> m = new HashMap<>(com.eventcore.util.Mouse.ph(pl));
+        m.putAll(Text.ph("minutes", pl.ritual.minutes(), "min", pl.ritual.minMinutes(), "max", pl.ritual.maxMinutes(),
+                "palette_label", pl.ritual.paletteLabel(), "palette_color_raw", pl.ritual.paletteColor()));
+        return m;
     }
 
     /** Nether star: the lore lists EVERY palette (current one marked), not just the two written in gui.yml. */

@@ -33,8 +33,8 @@ public final class EventScheduler {
     public void rebuild() { pending.clear(); warned.clear(); }
 
     public ZoneId zone() {
-        try { return ZoneId.of(pl.cfg.config().getString("timezone", "UTC")); }
-        catch (Exception e) { return ZoneId.of("UTC"); }
+        try { return ZoneId.of(pl.cfg.config().getString("timezone", "Asia/Kolkata")); }
+        catch (Exception e) { return ZoneId.of("Asia/Kolkata"); }
     }
 
     private void tick() {

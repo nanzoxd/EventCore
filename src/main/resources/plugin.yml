@@ -3,6 +3,7 @@ version: '${project.version}'
 main: com.eventcore.EventCorePlugin
 api-version: '1.21'
 folia-supported: true
+softdepend: [SkinsRestorer]
 description: Scheduled server events, the Ritual Creator and airdrop crates, altars, player hunts and bounties.
 authors: [EventCore]
 

@@ -17,7 +17,8 @@ import java.math.RoundingMode;
 import java.util.*;
 
 /**
- * Config editor: every key of config / messages / events / rituals / loot / gui as a widget for its type.
+ * Key browser used by "Ritual settings" (the rituals file). It is no longer reachable as a general "Config editor" from the admin menu.
+ * Every key as a widget for its type.
  * boolean: toggle | number: steppers (or type a value) | text: type in chat | list: add, remove last, or replace with YAML.
  */
 public final class ConfigGui {
@@ -41,28 +42,11 @@ public final class ConfigGui {
         return esc(cut(String.valueOf(v).replace('\n', ' '), 48));
     }
 
-    // ---------- file list ----------
-    public void openFiles(Player p) {
-        AdminGui a = pl.adminGui;
-        a.open(p, "Config editor", 3, pg -> {
-            String[][] files = {{"config", "Palette, style, discord, hunt and bounty settings", "COMPARATOR"}, {"messages", "Every chat message and title", "WRITABLE_BOOK"},
-                    {"events", "Events, scheduler, airdrop", "NETHER_STAR"}, {"rituals", "Ritual creator: timer, sigil, particle palettes", "BEACON"},
-                    {"loot", "Crate loot pools", "CHEST"}, {"gui", "GUI layouts (ritual, bounty)", "ITEM_FRAME"}};
-            int slot = 10;
-            for (String[] f : files) {
-                Material m = Material.matchMaterial(f[2]);
-                String name = f[0];
-                a.set(pg, slot++, a.icon(m == null ? Material.PAPER : m, name + ".yml", f[1], "", Mouse.left(pl, "browse")), (pl2, c) -> open(pl2, name, "", 0));
-            }
-            a.back(pg, 22);
-        });
-    }
-
     // ---------- section browser ----------
     public void open(Player p, String file, String path, int page) {
         YamlConfiguration y = pl.cfg.get(file);
         ConfigurationSection sec = y == null ? null : path.isEmpty() ? y : y.getConfigurationSection(path);
-        if (sec == null) { openFiles(p); return; }
+        if (sec == null) { pl.adminGui.openMain(p); return; }
         List<String> keys = new ArrayList<>(sec.getKeys(false));
         int pages = Math.max(1, (keys.size() + PER_PAGE - 1) / PER_PAGE);
         int pageNo = Math.max(0, Math.min(pages - 1, page));
@@ -80,10 +64,9 @@ public final class ConfigGui {
                 } else widget(pg, i, file, full, key, v, pageNo);
             }
             a.set(pg, 45, a.icon(Material.ARROW, "Up", Mouse.left(pl, "go up")), (pl2, c) -> {
-                if (path.isEmpty()) openFiles(pl2);
+                if (path.isEmpty()) pl.adminGui.openMain(pl2);
                 else open(pl2, file, path.contains(".") ? path.substring(0, path.lastIndexOf('.')) : "", 0);
             });
-            a.set(pg, 46, a.icon(Material.BOOKSHELF, "Files", Mouse.left(pl, "all files")), (pl2, c) -> openFiles(pl2));
             if (pageNo > 0) a.set(pg, 48, a.icon(Material.ARROW, "Previous page", Mouse.left(pl, "previous")), (pl2, c) -> open(pl2, file, path, pageNo - 1));
             a.set(pg, 49, a.icon(Material.PAPER, "Page " + (pageNo + 1) + " / " + pages, keys.size() + " keys"), null);
             if (pageNo < pages - 1) a.set(pg, 50, a.icon(Material.ARROW, "Next page", Mouse.left(pl, "next")), (pl2, c) -> open(pl2, file, path, pageNo + 1));

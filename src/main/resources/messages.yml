@@ -44,6 +44,14 @@ events:
   shield-blocked: "<red>shields are disabled right now.</red>"
   invisibility-blocked: "<red>invisibility is disabled right now.</red>"
   command-blocked: "<red>{command} is blocked during this event.</red>"
+random-target:
+  # {targethead} = the target's head (needs Paper 1.21.9+ and a 1.21.9+ client, otherwise a symbol), {player}, {distance}
+  actionbar: "<g>target</g> {targethead} {player} <g>:</g> {distance}"
+  no-target: "<g>target</g> <gray>waiting for another player</gray>"
+  offline: "offline"
+  other-world: "other dimension"
+  winner-title: {title: "<g>{player} is top killer</g> 🏆", subtitle: "<g>{kills} kills</g>"}
+  no-winner-title: {title: "<g>nobody got a kill</g>", subtitle: ""}
 gui:
   invalid: "<red>invalid value:</red> <gray>{reason}</gray>"
   prompt-edit: "<g>type a new value for {path} in chat</g> <gray>(current: {value}, type cancel to abort)</gray>"

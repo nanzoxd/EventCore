@@ -125,6 +125,20 @@ or `/altar recipe input <id> <MATERIAL> <amount>`, `/altar recipe clear|minutes|
 Every target gets a bossbar with the name and live coordinates (`hunt.bossbar`), and one chat update with everybody's coordinates goes out every
 `playerhunt.broadcast-seconds` (30). `/playerhunt stop [player|all]`, `/playerhunt list`. Targets who log out show "offline" and resume on rejoin.
 
+## RandomTarget event (`/eventcore start random_target`)
+A scheduled event like the others (events.yml `events.random_target`, admin GUI, aliases `randomtarget`, `rtarget`, `target`). Formerly called "Player Hunt"; existing configs are migrated automatically. Not the same thing as the `/playerhunt` command above.
+* Every online player gets a random other player as target (two players can hunt each other). Action bar: `Target [head] name : 200m`
+  (`random-target.actionbar` in messages.yml). A target offline for `settings.reassign-after-seconds` (120) is replaced by another random online player.
+* Player head: SkinsRestorer (soft dependency) supplies the skin the player really wears and the premium UUID, so heads are right on offline-mode servers;
+  without SkinsRestorer the skin from the live profile is used. Heads are Adventure object components: they need Paper 1.21.9+ and a 1.21.9+ client.
+  On older servers a symbol (`settings.head-fallback`) is shown instead. Set `settings.head: false` to turn heads off.
+* Locator bar: the gamerule is switched on for the event (and restored after). Each hunter's `waypoint_receive_range` is set to the distance to the target (+`locator-margin`),
+  so the bar shows the target. **Limit:** vanilla has no per-viewer waypoint filter, so a player standing closer to the hunter than the target still appears too.
+  `settings.locator-filter: false` turns the filtering off. It cannot run together with the Locator Bar event (added to `incompatible-events`).
+* Sidebar scoreboard with the top 3 killers: small-caps centred title, #1 gold, #2 gray, #3 bronze (`settings.scoreboard.colors`). Any player kill counts.
+* When the event ends a title says `<name> is top killer 🏆` (`random-target.winner-title`), or that nobody got a kill.
+* Built with Paper 1.21.8 API; heads, SkinsRestorer and the scoreboard number format are reached by reflection, so the plugin still loads everywhere.
+
 ## Bounty Hunt
 `/bountyadd <player>` (alias `/bounty`, permission `eventcore.bounty`) opens the GUI: put ANY item in the middle slot (enchanted, custom named, shulkers, books...
 it is stored exactly as placed), set the survival timer with the clock (left +, right -, shift x5) and press start.
@@ -139,8 +153,8 @@ it is stored exactly as placed), set the survival timer with the clock (left +, 
 * Discord: no new webhook. `discord.notify.hunt-start` / `bounty-start` (off by default) would reuse your webhook and the existing `event` thumbnail.
 
 ## Admin GUI
-`/eventcore gui` now has: Events, Airdrop, Loot tables, Ritual creator, Ritual settings, Altar recipes, Config editor, Player hunt, Bounty, Reload.
-The Config editor lists every key of every yml file with a widget for its type (toggle, steppers, type in chat, list add/remove/YAML).
+`/eventcore gui` has: Events, Airdrop, Loot tables, Ritual creator, Ritual settings, Altar recipes, Player hunt, Bounty, Reload.
+(The general "Config editor" button was removed; edit the yml files directly. Ritual settings still opens the in-game key browser for rituals.yml.)
 Every tooltip shows controls as mouse icons: a lit half of `▆ ▆` is the pressed button (colours in config.yml `lore.mouse`).
 
 ## Ritual scheduling and IST

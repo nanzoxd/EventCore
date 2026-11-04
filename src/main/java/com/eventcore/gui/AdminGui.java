@@ -27,7 +27,7 @@ import java.util.function.Consumer;
 
 /**
  * Admin menu (/eventcore gui), peach + gold theme from config.yml theme.*:
- *   main -> Events | Airdrop | Loot tables | Ritual creator | Ritual settings | Altar recipes | Config editor
+ *   main -> Events | Airdrop | Loot tables | Ritual creator | Ritual settings | Altar recipes
  *           | Player hunt | Bounty | Reload
  * Every control line in a tooltip uses the mouse icons (see util/Mouse).
  * Events: left = on/off, right = start/stop, shift = duration +-5m.
@@ -104,7 +104,6 @@ public final class AdminGui implements Listener {
             set(pg, 14, icon(Material.BEACON, "Ritual settings", "Timer, sigil, particles, palettes, sounds, bossbar", "", go),
                     (pl2, c) -> pl.configGui.open(pl2, "rituals", "", 0));
             set(pg, 15, icon(Material.ENCHANTING_TABLE, "Altar recipes", "Create and edit altar recipes", "", go), (pl2, c) -> pl.altarGui.openList(pl2, 0));
-            set(pg, 16, icon(Material.WRITABLE_BOOK, "Config editor", "Every key of every file, editable in game", "", go), (pl2, c) -> pl.configGui.openFiles(pl2));
             set(pg, 21, icon(Material.COMPASS, "Player hunt", "Hunted players: " + pl.hunt.count(), "Live coordinates in the bossbar", "", go), (pl2, c) -> pl.huntGui.openHunt(pl2));
             set(pg, 23, icon(Material.GOLDEN_SWORD, "Bounty", "Active bounties: " + pl.bounty.count(), "Reward, timer, survive or get killed", "", go), (pl2, c) -> pl.huntGui.openBounty(pl2));
             set(pg, 31, icon(Material.LIME_DYE, "Reload", "Re-read every config file", "", Mouse.left(pl, "reload")), (pl2, c) -> { pl.reloadAll(pl2); pl2.closeInventory(); });
@@ -121,6 +120,7 @@ public final class AdminGui implements Listener {
             case "elo_buff" -> Material.EXPERIENCE_BOTTLE;
             case "gold_frenzy" -> Material.GOLD_INGOT;
             case "locator_bar" -> Material.COMPASS;
+            case "random_target" -> Material.TARGET;
             case "airdrop" -> Material.BEACON;
             default -> Material.PAPER;
         };

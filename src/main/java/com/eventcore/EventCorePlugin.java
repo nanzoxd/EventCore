@@ -59,6 +59,7 @@ public final class EventCorePlugin extends JavaPlugin {
     public BountyGui bountyGui;
     public ConfigGui configGui;
     public HuntBountyGui huntGui;
+    public SkinHeads skins;
 
     @Override
     public void onEnable() {
@@ -72,6 +73,7 @@ public final class EventCorePlugin extends JavaPlugin {
         migrate();
         text = new Text(this);
         sched = new Sched(this);
+        skins = new SkinHeads(this);
         fx = new Fx(this);
         discord = new DiscordHook(this);
         bars = new BossBars(this);
@@ -104,6 +106,7 @@ public final class EventCorePlugin extends JavaPlugin {
         events.register(new EloBuffEvent(this));
         events.register(new GoldFrenzyEvent(this));
         events.register(new LocatorBarEvent(this));
+        events.register(new RandomTargetEvent(this));
         events.register(airdrop);
 
         for (org.bukkit.event.Listener l : new org.bukkit.event.Listener[]{bars, chat, events, ritual, ritualGui, ritualScheduleGui, adminGui, lootGui, altar, altarGui, hunt, bounty, bountyGui})
@@ -140,6 +143,44 @@ public final class EventCorePlugin extends JavaPlugin {
     /** One-time config updates for servers that already have an events.yml (new defaults never overwrite existing values). */
     private void migrate() {
         org.bukkit.configuration.file.YamlConfiguration ev = cfg.events();
+        if (!ev.getBoolean("migrations.player-hunt-v1", false)) {
+            // Player Hunt and Locator Bar both own the locator bar gamerule: never run them together
+            java.util.List<Object> groups = new java.util.ArrayList<>(cfg.config().getList("incompatible-events", java.util.List.of()));
+            groups.add(java.util.List.of("locator_bar", "random_target"));
+            cfg.config().set("incompatible-events", groups);
+            cfg.save("config");
+            ev.set("migrations.player-hunt-v1", true);
+            cfg.save("events");
+        }
+        if (!ev.getBoolean("migrations.random-target-v1", false)) {
+            // Player Hunt event was renamed to RandomTarget: carry over the admin's old settings, messages and incompatible-events entries
+            org.bukkit.configuration.ConfigurationSection old = ev.getConfigurationSection("events.player_hunt");
+            if (old != null) {
+                ev.set("events.random_target", null);
+                for (String k : old.getKeys(true)) if (!old.isConfigurationSection(k)) ev.set("events.random_target." + k, old.get(k));
+                ev.set("events.random_target.display-name", "random target");
+                ev.set("events.player_hunt", null);
+            }
+            org.bukkit.configuration.file.YamlConfiguration ms = cfg.messages();
+            org.bukkit.configuration.ConfigurationSection oldMsg = ms.getConfigurationSection("player-hunt");
+            if (oldMsg != null) {
+                for (String k : oldMsg.getKeys(true)) if (!oldMsg.isConfigurationSection(k)) ms.set("random-target." + k, oldMsg.get(k));
+                ms.set("player-hunt", null);
+                cfg.save("messages");
+            }
+            java.util.List<Object> groups = new java.util.ArrayList<>();
+            for (Object g : cfg.config().getList("incompatible-events", java.util.List.of())) {
+                if (g instanceof java.util.List<?> l) {
+                    java.util.List<Object> fixed = new java.util.ArrayList<>();
+                    for (Object o : l) fixed.add("player_hunt".equals(o) ? "random_target" : o);
+                    groups.add(fixed);
+                } else groups.add(g);
+            }
+            cfg.config().set("incompatible-events", groups);
+            cfg.save("config");
+            ev.set("migrations.random-target-v1", true);
+            cfg.save("events");
+        }
         if (ev.getBoolean("migrations.shulker-colors-v1", false)) return;
         String base = "events.airdrop.settings.tiers.";
         String[][] colors = {{"iron", "YELLOW"}, {"gold", "ORANGE"}, {"diamond", "RED"}, {"netherite", "BLACK"}};

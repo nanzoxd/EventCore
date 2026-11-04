@@ -447,6 +447,69 @@ events:
         - "team echest"
       command-aliases:       # extra aliases of the first word (server aliases are detected automatically)
         team: [t]
+  random_target:
+    enabled: true
+    display-name: "random target"
+    description: "everyone hunts a random player, top killers are on the scoreboard"
+    color: "#f5b7a5"
+    aliases: [randomtarget, rtarget, target]
+    duration-minutes: 30
+    cooldown-minutes: 0
+    display-mode: BOSSBAR     # the action bar belongs to the target display, so the countdown stays in the bossbar
+    bossbar:
+      enabled: true
+      text: "{event} : {time}"
+      color: RED
+      style: NOTCHED_10
+      gradient: ["#f5b7a5", "#ffe4d5"]
+      countdown: true
+    sounds:
+      start: {sound: "entity.ender_dragon.growl", volume: 0.6, pitch: 1.2}
+      end: {sound: "ui.toast.challenge_complete", volume: 0.8, pitch: 1.0}
+    titles:                   # no "end" title on purpose: the top killer title is shown instead (messages.yml random-target.winner-title)
+      start: {title: "<g>{event}</g>", subtitle: "<g>{description}</g>"}
+    messages:
+      join:
+        - "you are hunting a random player: their name and distance are in your action bar"
+        - "your locator bar points at your target"
+        - "if your target stays offline for 2 minutes you get a new one"
+        - "the top 3 killers are on the scoreboard, the top killer is announced at the end"
+      start:
+        text: "<g>{event} has started for {minutes} minutes: {description}</g>"
+        sound: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
+      end:
+        text: "<g>{event} has ended.</g>"
+        sound: {sound: "block.note_block.bass", volume: 0.6, pitch: 1.0}
+    start-animation:
+      enabled: true
+      duration-ticks: 40
+      interval-ticks: 5
+      layers:
+        ring: {shape: ring, particle: DUST, color: "#f5b7a5", size: 1.0, count: 36, radius: 2.5, radius-jitter: 0.1, y-jitter: 0.05, height: 1.0, particles-min: 1, particles-max: 1, spin: 10.0}
+        burst: {shape: burst, particle: DUST, color: "#f5b7a5", size: 0.8, count: 20, radius-min: 0.5, radius-max: 2.0, height: 1.0, particles-min: 1, particles-max: 1}
+    aura:
+      enabled: false
+      interval-ticks: 10
+      layers:
+        helix: {shape: helix, particle: DUST, color: "#f5b7a5", size: 0.6, count: 16, radius: 0.8, height: 0.1, rise: 2.0, turns: 2.0, spin: 20.0, particles-min: 1, particles-max: 1}
+    schedule:
+      mode: off            # off | times | interval
+      times: ["19:00"]     # "19:00" or "SAT 20:00"
+      days: [ALL]          # ALL or MONDAY, TUESDAY ...
+      interval-minutes: 180
+    settings:
+      worlds: []                    # empty = all worlds (locator bar gamerule)
+      reassign-after-seconds: 120   # a target offline this long is replaced by another random player
+      update-ticks: 10              # action bar + locator range refresh
+      locator-filter: true          # shrink each hunter's locator bar range to the target's distance (see README)
+      locator-margin: 3.0           # extra blocks added to that range
+      head: true                    # player head in the action bar (SkinsRestorer skin + premium UUID)
+      head-fallback: "⌖"            # shown when heads are unsupported or the skin is still loading
+      skin-refresh-minutes: 10
+      scoreboard:
+        enabled: true
+        title: "top kills"          # small caps, centred; lines are centred under it
+        colors: {first: "#FFD700", second: "#C0C0C0", third: "#CD7F32"}   # gold, gray, bronze
   airdrop:
     enabled: true
     display-name: "airdrop"

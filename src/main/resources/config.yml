@@ -38,6 +38,7 @@ max-concurrent-events: 2
 # Groups of events that can never run together (ids or aliases)
 incompatible-events:
   - [anonymous, glow]
+  - [locator_bar, random_target]   # both control the locator bar gamerule
 sounds:
   # default sound for chat broadcasts (a message can override it with its own sound section)
   broadcast: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}

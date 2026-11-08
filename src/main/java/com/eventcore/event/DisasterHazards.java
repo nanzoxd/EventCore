@@ -50,7 +50,8 @@ import java.util.function.IntPredicate;
  * Meteors, the tornado, earthquakes and the laser really destroy terrain, but only in small, shallow chunks (never deeper than
  * hazards.max-depth) so the arena erodes slowly over the whole event instead of one hole reaching bedrock.
  * Geysers place real water/lava and put the ground back afterwards. Display entities are non-persistent and removed on stop.
- * Scheduling: a few slots (hazards.max-active, default 2) cycle through every enabled disaster; each slot shows "name: 2m" in the action bar.
+ * Scheduling: a few slots (hazards.max-active, default 2) cycle through every enabled disaster; each disaster runs continuously for
+ * hazards.run-seconds (default 120 = 2m) and its slot shows the time left as "name: 2m" in the action bar, then the next disaster takes over.
  * Every hazard damage (and fall damage) is capped by hazards.max-damage (default 12 = 6 hearts).
  * Types: wind_charge (giant spinning wind charge that bursts on impact), meteor (falling magma block + crater),
  * lava_geyser, water_geyser (warning ring, then an eruption column that launches players) and wind_storm.
@@ -70,12 +71,12 @@ final class DisasterHazards {
 
     /** One of the (default two) lanes of the cycle: it shows one disaster's countdown, launches it, holds while it runs, then draws the next one. */
     private static final class Slot {
-        String type;            // disaster this slot is counting down to / running (null = nothing to show)
-        double due;             // seconds into the event when it hits
-        double until;           // while running: when the slot is free again
-        double nextDue;         // when the slot's NEXT disaster hits (set at launch so the cycle keeps its rhythm)
-        boolean running, ready;
+        String type;            // disaster this slot is running / waiting to run (null = nothing to show)
+        double until;           // while running: when it ends
+        double run;             // how long it runs in total
+        boolean running;
     }
+    private volatile List<Player> roster = List.of();      // players in the arena right now (refreshed every second)
     private final List<Slot> slots = new ArrayList<>();
     private final List<String> bag = new ArrayList<>();      // shuffled cycle: every enabled disaster shows up once before any repeats
 
@@ -369,35 +370,28 @@ final class DisasterHazards {
     void tick(ActiveEvent ae, double t, List<Player> alive) {
         ConfigurationSection h = ev.settings().getConfigurationSection("hazards");
         if (h == null || !h.getBoolean("enabled", true) || stopped) { bar = null; return; }
-        double start = h.getDouble("start-after-seconds", 0), announce = h.getDouble("announce-seconds", 12);
-        double cycle = Math.max(30, h.getDouble("cycle-seconds", 120));          // "2m": how long until the next disaster of a slot hits
-        double stagger = Math.max(0, h.getDouble("stagger-seconds", 0));         // 0 = every slot shows the same timer, N = slot k hits N seconds earlier than slot k-1
+        double start = h.getDouble("start-after-seconds", 10), announce = h.getDouble("announce-seconds", 10);
+        double globalRun = Math.max(20, h.getDouble("run-seconds", 120));        // "2m": how long one disaster keeps going
         int lanes = Math.max(1, Math.min(4, h.getInt("max-active", 2)));         // only this many disasters exist at the same time
-        double esc = h.getBoolean("escalate", true) ? 1.0 + ev.phaseIndex(t) * 0.35 : 1.0;
-        double every = cycle / esc;
         boolean live = t >= start && !alive.isEmpty();
+        roster = alive;
 
         while (slots.size() < lanes) slots.add(new Slot());
         while (slots.size() > lanes) slots.remove(slots.size() - 1);
 
-        for (int i = 0; i < slots.size(); i++) {
-            Slot s = slots.get(i);
-            if (s.running && t >= s.until) { s.running = false; s.type = null; }              // the disaster is over: this slot draws the next one
-            if (s.type == null && !s.running) {
+        for (Slot s : slots) {
+            if (s.running && t >= s.until) { s.running = false; s.type = null; }              // the disaster is over: this slot draws the next one of the cycle
+            if (s.type == null) {
                 s.type = pick(h, s);
                 if (s.type == null) continue;                                                  // nothing enabled
-                s.due = s.ready ? s.nextDue : Math.max(t, start) + Math.max(10, cycle - i * stagger);
-                s.ready = true;
             }
-            if (live && !s.running && t >= s.due) {
-                String type = s.type;
-                ConfigurationSection c = h.getConfigurationSection(type);
-                double hold = hold(type, c);
+            if (live && !s.running) {
+                ConfigurationSection c = h.getConfigurationSection(s.type);
+                double run = Math.max(20, c == null ? globalRun : c.getDouble("run-seconds", globalRun));
                 s.running = true;
-                s.until = t + hold;
-                s.nextDue = t + Math.max(every, hold + 10);                                    // the next one always comes after this one has finished
-                Player target = alive.get(ThreadLocalRandom.current().nextInt(alive.size()));
-                launch(ae, type, c, target, alive);
+                s.until = t + run;
+                s.run = run;
+                begin(ae, s.type, c, alive, run);
             }
         }
 
@@ -406,14 +400,11 @@ final class DisasterHazards {
         for (Slot s : slots) {
             if (s.type == null) continue;
             ConfigurationSection c = h.getConfigurationSection(s.type);
-            double left = s.due - t;
-            boolean now = s.running;
-            String time = now ? pl.text.sc("now") : fmt(left);
-            boolean hot = now || left <= announce;
+            double left = s.running ? s.until - t : Math.max(20, c == null ? globalRun : c.getDouble("run-seconds", globalRun));
             if (!first) b = b.append(Component.text(" | ", NamedTextColor.DARK_GRAY));
             first = false;
-            Component entry = Component.text(pl.text.sc(label(s.type).toLowerCase(java.util.Locale.ROOT) + ": " + time), colorOf(s.type, c));
-            b = b.append(hot ? entry.decorate(TextDecoration.BOLD) : entry);
+            Component entry = Component.text(pl.text.sc(label(s.type).toLowerCase(java.util.Locale.ROOT) + ": " + fmt(left)), colorOf(s.type, c));
+            b = b.append(s.running && left <= announce ? entry.decorate(TextDecoration.BOLD) : entry);   // bold when it is about to end
         }
         bar = first ? null : b;
     }
@@ -439,41 +430,51 @@ final class DisasterHazards {
         return null;
     }
 
-    /** How long a slot stays busy with a disaster (seconds), so no more than max-active disasters ever overlap. */
-    private double hold(String type, ConfigurationSection c) {
-        if (c == null) return 20;
-        return switch (type) {
-            case "wind_charge" -> 8;
-            case "meteor" -> c.getDouble("crater-seconds", 8) + 5;
-            case "lava_geyser", "water_geyser" -> c.getDouble("warning-seconds", 4) + c.getDouble("duration-seconds", 6) + 6;
-            case "wind_storm" -> c.getDouble("duration-seconds", 8) + 3;
-            case "hurricane" -> c.getDouble("duration-seconds", 20) + 3;
-            case "thunderstorm" -> c.getDouble("duration-seconds", 30) + 3;
-            case "tornado" -> { double d = c.getDouble("duration-seconds", 45); yield (d <= 0 ? 60 : d) + 3; }
-            case "earthquake" -> c.getDouble("shake-seconds", 6) + c.getInt("length", 44) / (20.0 * Math.max(1, c.getInt("columns-per-tick", 2))) + 12;
-            case "laser_sinkhole" -> c.getDouble("charge-seconds", 4) + c.getDouble("burn-seconds", 4) + 12;
-            case "meteor_shower" -> c.getDouble("duration-seconds", 16) + 12;
-            default -> 20;
-        };
+    /** Starts one disaster for `run` seconds. Storms and the tornado run on their own that long; the rest keep striking (meteors, geysers, ...) until the time is up. */
+    private void begin(ActiveEvent ae, String type, ConfigurationSection c, List<Player> alive, double run) {
+        switch (type) {
+            case "wind_storm", "hurricane", "thunderstorm", "meteor_shower", "tornado" ->
+                    launch(ae, type, c, alive.get(ThreadLocalRandom.current().nextInt(alive.size())), alive, run);
+            default -> repeat(ae, type, c, run);
+        }
     }
 
-    private void launch(ActiveEvent ae, String type, ConfigurationSection c, Player target, List<Player> alive) {
+    /** Launches a single-shot disaster near a random player, then again after a random pause (min-seconds .. max-seconds), until `run` seconds are over. */
+    private void repeat(ActiveEvent ae, String type, ConfigurationSection c, double run) {
+        double lo = Math.max(2, c == null ? 10 : c.getDouble("min-seconds", 10));
+        double hi = Math.max(lo, c == null ? 15 : c.getDouble("max-seconds", 15));
+        long total = (long) (run * 20);
+        long[] n = {0}, wait = {40};                                                  // the first one comes 2 seconds in
+        ScheduledTask task = pl.sched.globalTimer(t -> {
+            if (stopped || !ev.isLive(ae) || n[0] >= total) { t.cancel(); tasks.remove(t); return; }
+            n[0] += 10;
+            wait[0] -= 10;
+            if (wait[0] > 0) return;
+            wait[0] = (long) (ThreadLocalRandom.current().nextDouble(lo, hi) * 20);
+            List<Player> r = roster;
+            if (r.isEmpty()) return;
+            launch(ae, type, c, r.get(ThreadLocalRandom.current().nextInt(r.size())), r, run);
+        }, 1, 10);
+        tasks.add(task);
+    }
+
+    private void launch(ActiveEvent ae, String type, ConfigurationSection c, Player target, List<Player> alive, double run) {
         pl.sched.entity(target, () -> {
             if (!ev.isLive(ae)) return;
             Location base = target.getLocation();
             double off = type.endsWith("geyser") ? 10 : type.equals("tornado") ? 25 : type.equals("earthquake") ? 15 : type.equals("laser_sinkhole") ? 8 : 5;
             Location spot = spot(base, off, ae);
-            if (type.equals("wind_storm")) { windStorm(ae, c, alive); return; }
-            if (type.equals("hurricane")) { hurricane(ae, c, alive); return; }
-            if (type.equals("meteor_shower")) { meteorShower(ae, c, alive); return; }
-            if (type.equals("thunderstorm")) { thunderstorm(ae, c, alive); return; }
+            if (type.equals("wind_storm")) { windStorm(ae, c, alive, run); return; }
+            if (type.equals("hurricane")) { hurricane(ae, c, alive, run); return; }
+            if (type.equals("meteor_shower")) { meteorShower(ae, c, alive, run); return; }
+            if (type.equals("thunderstorm")) { thunderstorm(ae, c, alive, run); return; }
             pl.sched.region(spot, () -> {
                 if (!ev.isLive(ae) || stopped) return;
                 try {
                     switch (type) {
                         case "wind_charge" -> windCharge(ae, c, spot);
                         case "meteor" -> meteor(ae, c, spot, true);
-                        case "tornado" -> tornado(ae, c, spot);
+                        case "tornado" -> tornado(ae, c, spot, run);
                         case "earthquake" -> earthquake(ae, c, spot);
                         case "laser_sinkhole" -> laser(ae, c, spot);
                         case "lava_geyser" -> geyser(ae, c, spot, true);
@@ -775,10 +776,10 @@ final class DisasterHazards {
     // wind storm: a strong gust in one direction with wind streaks, pushing everybody along
     // =====================================================================================================
 
-    private void windStorm(ActiveEvent ae, ConfigurationSection c, List<Player> alive) {
+    private void windStorm(ActiveEvent ae, ConfigurationSection c, List<Player> alive, double run) {
         double ang = ThreadLocalRandom.current().nextDouble(Math.PI * 2), strength = c.getDouble("strength", 0.35);
         double dx = Math.cos(ang), dz = Math.sin(ang);
-        int ticks = (int) (c.getDouble("duration-seconds", 8) * 20);
+        int ticks = (int) (run * 20);
         boolean destroy = c.getBoolean("destroy-terrain", true);
         int rip = c.getInt("rip-per-tick", 3), cap = c.getInt("max-blocks-per-player", 35);
         double ripR = c.getDouble("rip-radius", 22);
@@ -814,11 +815,11 @@ final class DisasterHazards {
     // tornado: a tall spinning funnel that roams the arena for a while, rips blocks out, scours a shallow trench and throws players ~100 blocks
     // =====================================================================================================
 
-    private void tornado(ActiveEvent ae, ConfigurationSection c, Location spot) {
+    private void tornado(ActiveEvent ae, ConfigurationSection c, Location spot, double run) {
         World w = spot.getWorld();
         double height = c.getDouble("height", 30), pull = c.getDouble("pull", 0.45), speed = c.getDouble("speed", 0.2), reach = c.getDouble("radius", 7);
         double pickR = c.getDouble("pick-radius", 5), flingH = c.getDouble("launch-height", 100), dmg = dmg(c.getDouble("damage", 4));
-        double dur = c.getDouble("duration-seconds", 45);              // it roams this long, then fades so the next disaster can take its slot (0 = until the event ends)
+        double dur = run;                                              // it roams for the whole run, then fades so the next disaster can take its slot
         int ticks = dur <= 0 ? Integer.MAX_VALUE : (int) (dur * 20), maxBlocks = Math.max(0, c.getInt("max-blocks", 45));
         int pickEvery = Math.max(1, c.getInt("pick-interval-ticks", 3)), picks = Math.max(1, c.getInt("picks-per-interval", 3));
         int digR = Math.max(0, c.getInt("dig-radius", 2)), digDepth = Math.max(1, c.getInt("dig-depth", 3)), layers = layersPerTick();
@@ -1065,8 +1066,8 @@ final class DisasterHazards {
     // hurricane: night, rain and a rotating spiral of wind that shoves everybody around
     // =====================================================================================================
 
-    private void hurricane(ActiveEvent ae, ConfigurationSection c, List<Player> alive) {
-        int ticks = (int) (c.getDouble("duration-seconds", 20) * 20);
+    private void hurricane(ActiveEvent ae, ConfigurationSection c, List<Player> alive, double run) {
+        int ticks = (int) (run * 20);
         double strength = c.getDouble("strength", 0.45), ripR = c.getDouble("rip-radius", 24);
         boolean destroy = c.getBoolean("destroy-terrain", true);
         int rip = c.getInt("rip-per-tick", 4), cap = c.getInt("max-blocks-per-player", 45);
@@ -1105,8 +1106,8 @@ final class DisasterHazards {
     // =====================================================================================================
     // thunderstorm: dark storm sky; lightning locks onto every player (a short warning, then it strikes where they stand)
     // =====================================================================================================
-    private void thunderstorm(ActiveEvent ae, ConfigurationSection c, List<Player> alive) {
-        int ticks = (int) (c.getDouble("duration-seconds", 30) * 20), warn = Math.max(4, (int) (c.getDouble("warning-seconds", 1.2) * 20));
+    private void thunderstorm(ActiveEvent ae, ConfigurationSection c, List<Player> alive, double run) {
+        int ticks = (int) (run * 20), warn = Math.max(4, (int) (c.getDouble("warning-seconds", 1.2) * 20));
         double every = Math.max(1, c.getDouble("strike-interval-seconds", 2.5)), dmg = dmg(c.getDouble("damage", 8)), hitR = c.getDouble("hit-radius", 2.5);
         int crater = c.getInt("crater-radius", 2), ambient = Math.max(0, c.getInt("ambient-strikes", 3));
         say("disaster.hazard-thunderstorm", Text.ph());
@@ -1165,9 +1166,10 @@ final class DisasterHazards {
     // =====================================================================================================
     // meteor shower: the sky goes dark and many meteors come down around the players
     // =====================================================================================================
-    private void meteorShower(ActiveEvent ae, ConfigurationSection c, List<Player> alive) {
-        int count = Math.max(1, c.getInt("meteors", 14));
-        long gap = Math.max(4, (long) (c.getDouble("duration-seconds", 16) * 20 / count));
+    private void meteorShower(ActiveEvent ae, ConfigurationSection c, List<Player> alive, double run) {
+        double every = Math.max(0.5, c.getDouble("every-seconds", 1.5));        // a meteor this often for the whole run
+        int count = Math.max(1, (int) (run / every));
+        long gap = Math.max(4, (long) (every * 20));
         say("disaster.hazard-meteor-shower", Text.ph());
         for (Player p : alive) pl.sched.entity(p, () -> skyOn(p, false));
         int[] n = {0};

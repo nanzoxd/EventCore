@@ -950,8 +950,9 @@ events:
           strength: 0.45           # how hard (velocity per move tick)
       participants:
         mode: ALL                  # ALL = every eligible online player, OPTIN = only players who used /disaster join first
-        min-players: 2
-        exclude-gamemodes: [CREATIVE, SPECTATOR]
+        min-players: 0             # 0 = allow the event to start with any online player count
+        exclude-gamemodes: [SPECTATOR]
+        use-exempt-permission: false # true = exclude players with eventcore.disaster.exempt
         spread-radius: 35
         grace-seconds: 30          # no player-vs-player damage at the start
         entry-grace-seconds: 8     # border rules start after everyone has been teleported in

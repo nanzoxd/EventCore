@@ -53,6 +53,9 @@ public final class Text {
     /** Small caps respecting the style.small-caps switch (for placeholder values built by code). */
     public String sc(String s) { return smallCapsOn() ? smallCaps(s) : s; }
 
+    /** Small caps for a MiniMessage template (tags and {placeholders} untouched), respecting style.small-caps. */
+    public String scTpl(String s) { return smallCapsOn() ? smallCapsTemplate(s) : s; }
+
     /** Converts template text to small caps while leaving MiniMessage tags and {placeholders} untouched. */
     private static String smallCapsTemplate(String s) {
         StringBuilder b = new StringBuilder(s.length());

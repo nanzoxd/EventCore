@@ -59,15 +59,19 @@ public final class LootGui implements Listener {
         kCmds = new NamespacedKey(pl, "loot_cmds");
     }
 
-    // peach + gold palette (config.yml theme)
-    private static final TextColor WHITE = TextColor.color(0xfffbf0), SOFT = TextColor.color(0xffd7ca), GOLD = TextColor.color(0xf1d58f),
-            DARK = TextColor.color(0xe8c670), MUTED = TextColor.color(0xffe4d5);
+    // gray + white palette (config.yml theme)
+    private static final TextColor WHITE = TextColor.color(0xffffff), SOFT = TextColor.color(0xa8a8a8), GOLD = TextColor.color(0xa8a8a8),
+            DARK = TextColor.color(0x7a7a7a), MUTED = TextColor.color(0x8a8a8a);
 
-    private Component plain(String s, TextColor c) { return Component.text(s, c).decoration(TextDecoration.ITALIC, false); }
+    private Component plain(String s, TextColor c) { return Component.text(pl.text.sc(s), c).decoration(TextDecoration.ITALIC, false); }
+
+    private List<String> nameGrad() {
+        List<String> g = pl.cfg.config().getStringList("theme.name-gradient");
+        return g.size() < 2 ? List.of("#d8b04a", "#f1d58f", "#ffd7ca") : g;
+    }
 
     private Component title(String s) {
-        String a = pl.cfg.config().getString("theme.main", "#d8b04a"), b = pl.cfg.config().getString("theme.soft", "#ffd7ca");
-        return pl.text.gradient(s, List.of(a, b), 0);
+        return pl.text.gradient(s, nameGrad(), 0);
     }
 
     // ---------- tier selection ----------
@@ -83,8 +87,8 @@ public final class LootGui implements Listener {
             ItemMeta meta = it.getItemMeta();
             meta.displayName(pl.airdrop.tierName(t).decoration(TextDecoration.ITALIC, false));
             ConfigurationSection es = pl.loot.entries(t);
-            meta.lore(List.of(plain("Loot entries: " + (es == null ? 0 : es.getKeys(false).size()), SOFT),
-                    plain("Click to edit the loot", GOLD)));
+            meta.lore(List.of(plain((es == null ? 0 : es.getKeys(false).size()) + " loot entries", SOFT), Component.empty(),
+                    pl.text.item(com.eventcore.util.Mouse.left(pl, "edit the loot"), java.util.Map.of())));
             it.setItemMeta(meta);
             h.inv.setItem(slot, it);
             h.ids.add(t);
@@ -114,19 +118,19 @@ public final class LootGui implements Listener {
         ItemMeta gm = glass.getItemMeta(); gm.displayName(Component.text(" ")); glass.setItemMeta(gm);
         for (int s = LOOT_SLOTS; s < 54; s++) h.inv.setItem(s, glass);
         h.inv.setItem(45, button(Material.PAPER, "How it works",
+                "Click an empty slot with an item", "or shift-click one from your inventory", "",
                 com.eventcore.util.Mouse.left(pl, "chance +" + (int) CHANCE_STEP), com.eventcore.util.Mouse.right(pl, "chance -" + (int) CHANCE_STEP),
-                com.eventcore.util.Mouse.shiftLeft(pl, "amount +1"), com.eventcore.util.Mouse.shiftRight(pl, "amount -1"), com.eventcore.util.Mouse.drop(pl, "remove the entry"),
-                "Add: click an empty slot with an item", "on your cursor, or shift-click one", "in your inventory"));
-        h.inv.setItem(48, button(Material.ARROW, "Back", "Return to the tier list"));
-        h.inv.setItem(49, button(Material.LIME_CONCRETE, "Save", "Save this loot pool"));
-        h.inv.setItem(50, button(Material.COMMAND_BLOCK, "Add command reward", "Run a command when the crate opens"));
+                com.eventcore.util.Mouse.shiftLeft(pl, "amount +1"), com.eventcore.util.Mouse.shiftRight(pl, "amount -1"), com.eventcore.util.Mouse.drop(pl, "remove the entry")));
+        h.inv.setItem(48, button(Material.ARROW, "Back", "Return to the tier list", "", com.eventcore.util.Mouse.left(pl, "go back")));
+        h.inv.setItem(49, button(Material.LIME_CONCRETE, "Save", "Save this loot pool", "", com.eventcore.util.Mouse.left(pl, "save")));
+        h.inv.setItem(50, button(Material.COMMAND_BLOCK, "Add command reward", "Run a command when the crate opens", "", com.eventcore.util.Mouse.left(pl, "add a command")));
         p.openInventory(h.inv);
     }
 
     private ItemStack button(Material m, String name, String... lore) {
         ItemStack it = new ItemStack(m);
         ItemMeta meta = it.getItemMeta();
-        meta.displayName(plain(name, WHITE));
+        meta.displayName(pl.text.gradient(pl.text.sc(name), nameGrad(), 0).decoration(TextDecoration.ITALIC, false));
         List<Component> l = new ArrayList<>();
         for (String s : lore) l.add(s.startsWith("<color:") ? pl.text.item(s, java.util.Map.of()) : plain(s, SOFT));
         meta.lore(l);
@@ -145,7 +149,8 @@ public final class LootGui implements Listener {
         List<Component> extra = new ArrayList<>();
         extra.add(plain("Chance: " + fmt(d.chance()) + "%", GOLD));
         if (!d.cmdOnly()) extra.add(plain("Amount: " + (d.min() == d.max() ? d.min() : d.min() + "-" + d.max()), GOLD));
-        for (String c : d.cmds()) extra.add(plain("/" + (c.length() > 34 ? c.substring(0, 31) + "..." : c), DARK));
+        for (String c : d.cmds()) extra.add(Component.text("/" + (c.length() > 34 ? c.substring(0, 31) + "..." : c), DARK).decoration(TextDecoration.ITALIC, false));
+        extra.add(Component.empty());
         extra.add(pl.text.item(com.eventcore.util.Mouse.left(pl, "chance +" + (int) CHANCE_STEP), java.util.Map.of()));
         extra.add(pl.text.item(com.eventcore.util.Mouse.right(pl, "chance -" + (int) CHANCE_STEP), java.util.Map.of()));
         extra.add(pl.text.item(com.eventcore.util.Mouse.shiftLeft(pl, "amount +1"), java.util.Map.of()));

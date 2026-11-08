@@ -14,13 +14,15 @@ bossbar-gradient: ["#d8b04a", "#fff0cc", "#d8b04a"]
 eventcore-gradient: ["#808080", "#C4C4C4", "#808080"]
 # GUI colours (peach + gold only)
 theme:
-  main: "#d8b04a"
-  soft: "#ffd7ca"
-  good: "#f1d58f"
-  bad: "#ffcfca"
-  warn: "#e8c670"
-  info: "#ffe4d5"
-  white: "#fffbf0"
+  main: "#ffffff"      # item names and GUI titles
+  soft: "#9a9a9a"
+  good: "#55ff7f"      # enabled / running (green)
+  bad: "#ff5555"       # disabled (red)
+  warn: "#bdbdbd"
+  info: "#a8a8a8"      # lore text
+  white: "#ffffff"     # values
+  name-gradient: ["#d8b04a", "#f1d58f", "#ffd7ca"]   # item names and GUI titles
+  label-gradient: ["#ffffff", "#a8a8a8"]             # "Value:" style labels in lore
 style:
   flatten-colors: true   # chat uses only the palette: red/green/gray... tags become text-color
   text-color: "#ffd7ca"
@@ -76,12 +78,12 @@ discord:
     airdrop: "#d8b04a"
     ritual: "#ffd7ca"
 
-# Mouse-control icons in every tooltip: "▆▆" with the pressed button lit (palette colours only)
+# Mouse-control icons in every tooltip: "▆▆" with the pressed button lit (gray and white)
 lore:
   mouse:
-    active: "#d8b04a"
-    inactive: "#ffe4d5"
-    text: "#fffbf0"
+    active: "#ffffff"
+    inactive: "#5c5c5c"
+    text: "#a8a8a8"
 # Player Hunt: /playerhunt <player ...> | stop [player|all] | list
 playerhunt:
   enabled: true

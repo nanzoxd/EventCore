@@ -23,7 +23,7 @@ public final class HuntBountyGui {
     private AdminGui a() { return pl.adminGui; }
 
     private ItemStack head(UUID id, String name, String... lore) {
-        ItemStack it = a().icon(Material.PLAYER_HEAD, name, lore);
+        ItemStack it = a().iconRaw(Material.PLAYER_HEAD, name, lore);
         if (it.getItemMeta() instanceof SkullMeta sm) { sm.setOwningPlayer(Bukkit.getOfflinePlayer(id)); it.setItemMeta(sm); }
         return it;
     }
@@ -42,7 +42,7 @@ public final class HuntBountyGui {
 
     private void toggle(AdminGui.Page pg, int slot, Material m, String label, String path, boolean def) {
         boolean on = pl.cfg.config().getBoolean(path, def);
-        a().set(pg, slot, a().icon(m, label, "Now: " + (on ? "<color:%good%>On" : "<color:%bad%>Off"), "", Mouse.left(pl, "turn " + (on ? "off" : "on"))), (p, c) -> {
+        a().set(pg, slot, a().icon(m, label, "Status: " + (on ? "<color:%good%>Enabled" : "<color:%bad%>Disabled"), "", Mouse.left(pl, on ? "disable" : "enable")), (p, c) -> {
             pl.cfg.set("config", path, !on);
             pl.afterConfigChange("config");
             pg.fill.run();

@@ -60,7 +60,7 @@ public final class ConfigGui {
                 Object v = sec.get(key);
                 if (sec.isConfigurationSection(key)) {
                     int n = sec.getConfigurationSection(key).getKeys(false).size();
-                    a.set(pg, i, a.icon(Material.BOOKSHELF, esc(key), n + " entries", "", Mouse.left(pl, "open")), (pl2, c) -> open(pl2, file, full, 0));
+                    a.set(pg, i, a.iconRaw(Material.BOOKSHELF, esc(key), n + " entries", "", Mouse.left(pl, "open")), (pl2, c) -> open(pl2, file, full, 0));
                 } else widget(pg, i, file, full, key, v, pageNo);
             }
             a.set(pg, 45, a.icon(Material.ARROW, "Up", Mouse.left(pl, "go up")), (pl2, c) -> {
@@ -79,14 +79,14 @@ public final class ConfigGui {
         String name = esc(key);
         String parent = full.contains(".") ? full.substring(0, full.lastIndexOf('.')) : "";
         if (v instanceof Boolean b) {
-            a.set(pg, slot, a.icon(b ? Material.LIME_DYE : Material.GRAY_DYE, name, "Value: " + (b ? "<color:%good%>true" : "<color:%bad%>false"), "", Mouse.left(pl, "turn " + (b ? "off" : "on"))),
+            a.set(pg, slot, a.iconRaw(b ? Material.LIME_DYE : Material.GRAY_DYE, name, "Status: " + (b ? "<color:%good%>Enabled" : "<color:%bad%>Disabled"), "", Mouse.left(pl, b ? "disable" : "enable")),
                     (p, c) -> { set(file, full, !b); pg.fill.run(); });
         } else if (v instanceof Number n) {
             boolean whole = v instanceof Integer || v instanceof Long;
             double step = step(n.doubleValue(), whole);
             String st = whole ? String.valueOf((long) step) : String.valueOf(step);
             String st5 = whole ? String.valueOf((long) step * 5) : String.valueOf(step * 5);
-            a.set(pg, slot, a.icon(Material.REPEATER, name, "Value: <color:%white%>" + n, "", Mouse.left(pl, "+" + st), Mouse.right(pl, "-" + st),
+            a.set(pg, slot, a.iconRaw(Material.REPEATER, name, "Value: <color:%white%>" + n, "", Mouse.left(pl, "+" + st), Mouse.right(pl, "-" + st),
                             Mouse.shiftLeft(pl, "+" + st5), Mouse.shiftRight(pl, "-" + st5), Mouse.drop(pl, "type a value")),
                     (p, c) -> {
                         if (c == ClickType.DROP || c == ClickType.CONTROL_DROP) { ask(p, file, full, v, parent, pageNo); return; }
@@ -106,7 +106,7 @@ public final class ConfigGui {
             lore.add("");
             if (strings) { lore.add(Mouse.left(pl, "add an entry")); lore.add(Mouse.right(pl, "remove the last")); }
             lore.add(Mouse.shiftLeft(pl, "replace with YAML like [a, b]"));
-            a.set(pg, slot, a.icon(Material.BOOK, name, lore.toArray(new String[0])), (p, c) -> {
+            a.set(pg, slot, a.iconRaw(Material.BOOK, name, lore.toArray(new String[0])), (p, c) -> {
                 if (c == ClickType.SHIFT_LEFT || !strings) { ask(p, file, full, v, parent, pageNo); return; }
                 if (c.isLeftClick()) {
                     p.closeInventory();
@@ -124,7 +124,7 @@ public final class ConfigGui {
                 }
             });
         } else {
-            a.set(pg, slot, a.icon(v instanceof String ? Material.PAPER : Material.MAP, name, "Value: <color:%white%>" + show(full, v), "", Mouse.left(pl, "edit in chat")),
+            a.set(pg, slot, a.iconRaw(v instanceof String ? Material.PAPER : Material.MAP, name, "Value: <color:%white%>" + show(full, v), "", Mouse.left(pl, "edit in chat")),
                     (p, c) -> ask(p, file, full, v, parent, pageNo));
         }
     }

@@ -48,14 +48,13 @@ public final class RitualGui implements Listener {
         ItemStack it = GuiUtil.item(pl, s, ph());
         ItemMeta meta = it.getItemMeta();
         List<net.kyori.adventure.text.Component> lore = new ArrayList<>();
-        List<String> cfg = s.getStringList("lore");
-        if (!cfg.isEmpty()) lore.add(pl.text.item(cfg.get(0), ph()));
         String cur = pl.ritual.currentPalette();
         for (String n : pl.ritual.paletteList()) {
-            String line = "<color:" + pl.ritual.paletteColor(n) + ">■</color> <color:#fffbf0>" + pl.ritual.paletteLabel(n) + "</color>"
-                    + (n.equals(cur) ? " <color:#f1d58f>◀</color>" : "");
+            String line = "<color:" + pl.ritual.paletteColor(n) + ">■</color> <color:" + (n.equals(cur) ? "#ffffff" : "#8a8a8a") + ">" + pl.ritual.paletteLabel(n) + "</color>";
             lore.add(pl.text.item(line, Map.of()));
         }
+        List<String> cfg = s.getStringList("lore");
+        if (!cfg.isEmpty()) { lore.add(net.kyori.adventure.text.Component.empty()); lore.add(pl.text.item(cfg.get(0), ph())); }
         meta.lore(lore);
         it.setItemMeta(meta);
         return it;

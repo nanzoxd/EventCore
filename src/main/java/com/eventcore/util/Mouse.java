@@ -29,14 +29,14 @@ public final class Mouse {
 
     /** Just the icon: lit = 0 (left), 1 (right), 2 (none lit). */
     public static String icon(EventCorePlugin pl, int lit) {
-        String on = c(pl, "active", "#d8b04a"), off = c(pl, "inactive", "#ffe4d5");
+        String on = c(pl, "active", "#ffffff"), off = c(pl, "inactive", "#5c5c5c");
         return half(lit == 0 ? on : off, GLYPH) + half(lit == 1 ? on : off, GLYPH);
     }
 
-    public static String dropIcon(EventCorePlugin pl) { return half(c(pl, "active", "#d8b04a"), DROP); }
+    public static String dropIcon(EventCorePlugin pl) { return half(c(pl, "active", "#ffffff"), DROP); }
 
     private static String line(EventCorePlugin pl, String icon, String text) {
-        return icon + "  <color:" + c(pl, "text", "#fffbf0") + ">" + text + "</color>";
+        return icon + "  <color:" + c(pl, "text", "#a8a8a8") + ">" + text + "</color>";
     }
 
     public static String left(EventCorePlugin pl, String text) { return line(pl, icon(pl, 0), "LMB to " + text); }

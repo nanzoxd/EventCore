@@ -22,6 +22,7 @@ import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -146,6 +147,7 @@ public final class NaturalDisasterEvent extends GameEvent {
     double cx() { return cx; }
     double cz() { return cz; }
     double radiusNow(ActiveEvent ae) { return radiusAt(elapsed(ae)); }
+    boolean inBounds(ActiveEvent ae, double x, double z) { return outside(x, z, radiusAt(elapsed(ae))) <= 0; }
     int phaseIndex(double t) { int i = 0; for (double[] w : windows) if (t >= w[1]) i++; return i; }
 
     // =====================================================================================================
@@ -412,11 +414,13 @@ public final class NaturalDisasterEvent extends GameEvent {
         Map<String, Object> ph = Text.ph("time", Util.mmss(left), "radius", (int) Math.round(radius), "size", (int) Math.round(radius * 2),
                 "next", nextText(t), "alive", aliveCount(), "total", players.size());
         String bar = pl.fx.msg(pl.cfg.messages(), "disaster.actionbar").tpl();
+        net.kyori.adventure.text.Component incoming = fx.incomingBar(t);      // every disaster's countdown: Tornado: 2m | Meteor: 3m | ...
         for (P pp : players.values()) {
             if (pp.left) continue;
             Player p = Bukkit.getPlayer(pp.id);
             if (p == null) continue;
-            if (!bar.isBlank()) p.sendActionBar(pl.text.render(bar, ph));
+            if (incoming != null) p.sendActionBar(incoming);
+            else if (!bar.isBlank()) p.sendActionBar(pl.text.render(bar, ph));
             if (pp.alive && pp.entered && t >= entryGrace) pl.sched.entity(p, () -> tickPlayer(ae, p, pp, radius));
         }
         hazards(s, t);
@@ -757,6 +761,13 @@ public final class NaturalDisasterEvent extends GameEvent {
             e.setCancelled(true);
             p.sendMessage(pl.msg("disaster.arena-closed"));
         }
+    }
+
+    /** Tall launches must hurt, not kill: fall damage is capped like every other hazard (hazards.max-damage, default 6 hearts). */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onFall(EntityDamageEvent e) {
+        if (run == null || e.getCause() != EntityDamageEvent.DamageCause.FALL || !(e.getEntity() instanceof Player p) || !isMember(p.getUniqueId())) return;
+        e.setDamage(Math.min(e.getDamage(), fx.maxDamage()));
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)

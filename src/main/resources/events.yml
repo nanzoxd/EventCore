@@ -969,11 +969,18 @@ events:
         restrict: true
         scope: EVENT_PLAYERS       # EVENT_PLAYERS or EVERYONE. Players with eventcore.bypass are never restricted
         allowed: [warp, warps, msg, tell, w, r, reply, rules, helpop]   # everything else is blocked while the event runs
-      hazards:                     # visible disasters, all vanilla (display entities + particles), no resource pack needed, no blocks are changed
+      hazards:                     # disasters: meteors, tornado, earthquake and laser really destroy terrain (down to bedrock)
         enabled: true
         start-after-seconds: 60
-        max-active: 3              # disasters running at the same moment
+        max-active: 4              # disasters running at the same moment (the roaming tornado does not count)
+        announce-seconds: 12       # the action bar announces the next disaster this many seconds before it hits
         escalate: true             # they come faster every time the border shrinks
+        max-damage: 12.0           # no hazard hit or fall does more than this (12 = 6 hearts)
+        dig-layers-per-tick: 8     # how fast one column is dug down to bedrock
+        # ---- performance (lower = lighter on the server) ----
+        blocks-per-tick: 250       # TOTAL blocks all disasters together may remove per server tick; the rest waits for the next tick
+        particle-density: 0.5      # 0.1 - 1.0, scales the particles (fewer particles = less network + client lag)
+        max-displays: 150          # max flying block / funnel entities alive at once
         wind_charge:               # giant spinning wind charge falls, bursts and throws players away
           enabled: true
           interval-seconds: 35
@@ -982,61 +989,118 @@ events:
           radius: 5.0
           damage: 4.0
           knockback: 1.6
-        meteor:                    # giant magma block falls, explodes, leaves a burning magma crater
+          destroy-terrain: true
+          crater-radius: 3
+        meteor:                    # giant magma block: real crater, then a shaft to bedrock filled with lava + magma
           enabled: true
           interval-seconds: 40
-          scale: 4.0
-          radius: 5.0
-          damage: 6.0
+          scale: 5.0
+          radius: 7.0
+          crater-radius: 7
+          shaft-radius: 2
+          destroy-terrain: true
+          damage: 12.0
           fire-seconds: 4
           crater-seconds: 8
-        lava_geyser:               # warning ring, then a lava column that launches and burns
+        lava_geyser:               # warning ring, then a REAL lava column that launches and burns (ground is restored after)
           enabled: true
           interval-seconds: 45
           warning-seconds: 4
-          duration-seconds: 5
+          duration-seconds: 6
           height: 14
-          radius: 2.5
-          damage: 4.0
-          launch: 1.0
-        water_geyser:              # warning ring, then a water column that launches players up
+          radius: 1.8
+          vent-radius: 2.5         # the ground blows open here (lava vent goes down to bedrock)
+          vent-depth: 40
+          destroy-terrain: true
+          damage: 8.0
+          launch-height: 40
+        water_geyser:              # warning ring, then a REAL water column that launches players up
           enabled: true
           interval-seconds: 50
           warning-seconds: 3
-          duration-seconds: 5
+          duration-seconds: 6
           height: 16
-          radius: 2.5
-          launch: 1.4
+          radius: 1.8
+          vent-radius: 2.5
+          vent-depth: 24           # water vent depth; a water pool fills the bottom
+          destroy-terrain: true
+          launch-height: 50
         wind_storm:                # strong gust with wind streaks pushing everybody the same way
           enabled: true
           interval-seconds: 60
           duration-seconds: 8
           strength: 0.35
-        tornado:                   # spiralling funnel with flying debris, drifts toward players, lifts and flings them
+          destroy-terrain: true    # rips random blocks out of the ground and blows them away
+          rip-per-tick: 2
+          rip-radius: 22
+          max-blocks-per-player: 25
+        tornado:                   # never disappears: roams the whole arena, rips blocks out, digs a trench to bedrock, throws players ~100 blocks
           enabled: true
-          interval-seconds: 90
-          duration-seconds: 25
-          height: 22
+          interval-seconds: 60     # when the first tornado shows up
+          duration-seconds: 0      # 0 = stays until the event ends
+          max-count: 1             # tornadoes alive at once
+          height: 30
+          radius: 7.0
+          pull: 0.45
+          speed: 0.2
+          launch-height: 100       # how high the core throws players (blocks)
+          launch-cooldown-seconds: 10
+          max-blocks: 32           # picked-up blocks orbiting at once
+          pick-radius: 5.0
+          picks-per-interval: 2
+          pick-interval-ticks: 4
+          destroy-terrain: true
+          dig-radius: 3            # width of the trench it digs to bedrock along its path
+          damage: 4.0
+        earthquake:                # the ground shakes, then a fissure (ravine) opens down to bedrock with lava at the bottom
+          enabled: true
+          interval-seconds: 100
+          shake-seconds: 6
+          shake-radius: 45
+          length: 44
+          width: 4
+          columns-per-tick: 2
+          dig-layers-per-tick: 14
+        laser_sinkhole:            # red orbital laser locks on, burns, leaves a sinkhole of lava and magma down to bedrock
+          enabled: true
+          interval-seconds: 110
+          charge-seconds: 4
+          burn-seconds: 4
           radius: 6.0
-          pull: 0.5
-          speed: 0.12
-          debris: 14
-          damage: 2.0
+          rim-depth: 16
+          damage: 12.0
         hurricane:                 # night + rain + a rotating spiral of wind that shoves players around
           enabled: true
           interval-seconds: 120
           duration-seconds: 20
           strength: 0.45
-        meteor_shower:             # the sky darkens and many red meteors fall around the players
+          destroy-terrain: true    # picks up random blocks all around and whirls them away
+          rip-per-tick: 2
+          rip-radius: 24
+          max-blocks-per-player: 30
+        meteor_shower:             # the sky darkens and many meteors come down, each one cratering the ground
           enabled: true
           interval-seconds: 110
           duration-seconds: 16
           meteors: 14
-          scale: 3.0
-          radius: 4.0
-          damage: 5.0
+          scale: 3.5
+          radius: 5.0
+          crater-radius: 5
+          shaft-radius: 1
+          destroy-terrain: true
+          damage: 10.0
           fire-seconds: 3
           crater-seconds: 4
+        thunderstorm:              # dark storm; lightning locks onto every player and strikes where they stand
+          enabled: true
+          interval-seconds: 85
+          duration-seconds: 30
+          strike-interval-seconds: 2.5   # per player
+          warning-seconds: 1.2           # ring + crackle before the bolt lands (run!)
+          hit-radius: 2.5
+          damage: 8.0
+          crater-radius: 2
+          ambient-strikes: 3             # extra random bolts per player that wreck the terrain
         lightning:
           enabled: false           # optional: harmless-looking strikes that damage players standing close
           interval-seconds: 20

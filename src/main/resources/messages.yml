@@ -209,4 +209,7 @@ disaster:
   hazard-windstorm: "<g>⚡ a wind storm is blowing, hold your ground!</g>"
   hazard-tornado: "<g>⚡ a tornado has formed, it is coming for you!</g>"
   hazard-hurricane: "<g>⚡ a hurricane is hitting the arena, brace yourself!</g>"
+  hazard-earthquake: "<g>⚡ the ground is shaking, an earthquake is about to split the earth open!</g>"
+  hazard-laser: "<g>⚡ a red laser has locked on, get away from the ring before the ground collapses!</g>"
+  hazard-thunderstorm: "<g>⚡ a thunderstorm is rolling in, lightning is hunting you, keep moving!</g>"
   hazard-meteor-shower: "<g>⚡ the sky darkens, a meteor shower is incoming!</g>"

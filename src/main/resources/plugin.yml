@@ -47,8 +47,59 @@ commands:
     description: List active bounties
     usage: /<command>
     permission: eventcore.bounty
+  egghunt:
+    description: Egg Hunt event
+    usage: /<command> <start|stop|reset|leaderboard|reload|setarea|addspawn|clearspawns>
+    aliases: [eh]
+  disaster:
+    description: Natural Disaster event
+    usage: /<command> <start|stop|reset|setcenter|setarena|setexit|status|reload|join|leave>
+    aliases: [nd]
 
 permissions:
+  eventcore.egghunt.admin:
+    description: All Egg Hunt admin commands
+    default: op
+    children:
+      eventcore.egghunt.start: true
+      eventcore.egghunt.stop: true
+      eventcore.egghunt.reset: true
+      eventcore.egghunt.reload: true
+      eventcore.egghunt.setarea: true
+      eventcore.egghunt.addspawn: true
+      eventcore.egghunt.clearspawns: true
+  eventcore.egghunt.start: {default: op}
+  eventcore.egghunt.stop: {default: op}
+  eventcore.egghunt.reset: {default: op}
+  eventcore.egghunt.reload: {default: op}
+  eventcore.egghunt.setarea: {default: op}
+  eventcore.egghunt.addspawn: {default: op}
+  eventcore.egghunt.clearspawns: {default: op}
+  eventcore.egghunt.leaderboard: {default: true}
+  eventcore.disaster.admin:
+    description: All Natural Disaster admin commands
+    default: op
+    children:
+      eventcore.disaster.start: true
+      eventcore.disaster.stop: true
+      eventcore.disaster.reset: true
+      eventcore.disaster.reload: true
+      eventcore.disaster.setcenter: true
+      eventcore.disaster.setarena: true
+      eventcore.disaster.setexit: true
+  eventcore.disaster.start: {default: op}
+  eventcore.disaster.stop: {default: op}
+  eventcore.disaster.reset: {default: op}
+  eventcore.disaster.reload: {default: op}
+  eventcore.disaster.setcenter: {default: op}
+  eventcore.disaster.setarena: {default: op}
+  eventcore.disaster.setexit: {default: op}
+  eventcore.disaster.status: {default: true}
+  eventcore.disaster.join: {default: true}
+  eventcore.disaster.leave: {default: true}
+  eventcore.disaster.exempt:
+    description: Never drafted into the Natural Disaster
+    default: false
   eventcore.admin:
     description: All EventCore admin commands
     default: op
@@ -66,6 +117,8 @@ permissions:
       eventcore.altar: true
       eventcore.playerhunt: true
       eventcore.bounty: true
+      eventcore.egghunt.admin: true
+      eventcore.disaster.admin: true
   eventcore.start: {default: op}
   eventcore.force: {default: op}
   eventcore.rig: {default: op}

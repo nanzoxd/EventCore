@@ -8,8 +8,8 @@ import java.util.Map;
 /**
  * Mouse-control lore lines in the style of the reference tooltips:
  * <pre>
- *   ▆ ▆  LMB to +1 minute      (left half lit)
- *   ▆ ▆  RMB to -1 minute     (right half lit)
+ *   ▆▆  LMB to +1 minute      (left half lit)
+ *   ▆▆  RMB to -1 minute     (right half lit)
  *   ◉    Q: remove
  * </pre>
  * The lit half uses lore.mouse.active, the other half lore.mouse.inactive (both palette colours, config.yml).
@@ -30,7 +30,7 @@ public final class Mouse {
     /** Just the icon: lit = 0 (left), 1 (right), 2 (none lit). */
     public static String icon(EventCorePlugin pl, int lit) {
         String on = c(pl, "active", "#d8b04a"), off = c(pl, "inactive", "#ffe4d5");
-        return half(lit == 0 ? on : off, GLYPH) + " " + half(lit == 1 ? on : off, GLYPH);
+        return half(lit == 0 ? on : off, GLYPH) + half(lit == 1 ? on : off, GLYPH);
     }
 
     public static String dropIcon(EventCorePlugin pl) { return half(c(pl, "active", "#d8b04a"), DROP); }

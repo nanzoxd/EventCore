@@ -114,24 +114,27 @@ public final class AdminGui implements Listener {
         return switch (id) {
             case "vulnerable" -> Material.REDSTONE;
             case "shieldless" -> Material.SHIELD;
-            case "golden_trees" -> Material.GOLDEN_APPLE;
+            case "golden_trees" -> Material.OAK_SAPLING;
             case "anonymous" -> Material.PLAYER_HEAD;
             case "glow" -> Material.GLOWSTONE_DUST;
             case "elo_buff" -> Material.EXPERIENCE_BOTTLE;
-            case "gold_frenzy" -> Material.GOLD_INGOT;
+            case "miners_haven" -> Material.DIAMOND_PICKAXE;
+            case "healthy_feeder" -> Material.GOLDEN_APPLE;
             case "locator_bar" -> Material.COMPASS;
             case "random_target" -> Material.TARGET;
             case "airdrop" -> Material.BEACON;
+            case "egg_hunt" -> Material.TURTLE_EGG;
+            case "natural_disaster" -> Material.LIGHTNING_ROD;
             default -> Material.PAPER;
         };
     }
 
     public void openEvents(Player p) {
-        open(p, "Events", 4, pg -> {
+        open(p, "Events", 5, pg -> {
             int slot = 10;
             for (GameEvent ev : pl.events.registry().values()) {
-                if (slot == 17) slot = 19;
-                if (slot > 25) break;
+                if (slot == 17 || slot == 26) slot += 2;       // skip the border columns: rows of 7 (10-16, 19-25, 28-34)
+                if (slot > 34) break;
                 boolean on = ev.sec().getBoolean("enabled", true);
                 ActiveEvent ae = pl.events.active(ev.id());
                 String state = ae != null ? "<color:%good%>Running " + Util.mmss(ae.secondsLeft()) : on ? "<color:%soft%>Idle" : "<color:%bad%>Disabled";
@@ -163,12 +166,12 @@ public final class AdminGui implements Listener {
                 });
             }
             String dm = pl.cfg.config().getString("event-display", "BOSSBAR").toUpperCase(Locale.ROOT);
-            set(pg, 29, icon(Material.OAK_SIGN, "Event display", "Now: <color:%white%>" + dm, "BOSSBAR, ACTIONBAR or BOTH", "", Mouse.left(pl, "switch")), (pl2, c) -> {
+            set(pg, 38, icon(Material.OAK_SIGN, "Event display", "Now: <color:%white%>" + dm, "BOSSBAR, ACTIONBAR or BOTH", "", Mouse.left(pl, "switch")), (pl2, c) -> {
                 String next = dm.equals("BOSSBAR") ? "ACTIONBAR" : dm.equals("ACTIONBAR") ? "BOTH" : "BOSSBAR";
                 pl.cfg.set("config", "event-display", next);
                 pg.fill.run();
             });
-            back(pg, 31);
+            back(pg, 40);
         });
     }
 

@@ -7,6 +7,8 @@ import com.eventcore.bounty.BountyManager;
 import com.eventcore.command.AltarCommand;
 import com.eventcore.command.BountyCommand;
 import com.eventcore.command.HuntCommand;
+import com.eventcore.command.DisasterCommand;
+import com.eventcore.command.EggHuntCommand;
 import com.eventcore.command.EventCoreCommand;
 import com.eventcore.command.RitualCommand;
 import com.eventcore.event.*;
@@ -52,6 +54,8 @@ public final class EventCorePlugin extends JavaPlugin {
     public AdminGui adminGui;
     public LootGui lootGui;
     public AirdropEvent airdrop;
+    public EggHuntEvent eggHunt;
+    public NaturalDisasterEvent disaster;
     public AltarManager altar;
     public AltarGui altarGui;
     public HuntManager hunt;
@@ -104,10 +108,15 @@ public final class EventCorePlugin extends JavaPlugin {
         events.register(new AnonymousEvent(this));
         events.register(new GlowEvent(this));
         events.register(new EloBuffEvent(this));
-        events.register(new GoldFrenzyEvent(this));
+        events.register(new MinersHavenEvent(this));
+        events.register(new HealthyFeederEvent(this));
         events.register(new LocatorBarEvent(this));
         events.register(new RandomTargetEvent(this));
         events.register(airdrop);
+        eggHunt = new EggHuntEvent(this);
+        disaster = new NaturalDisasterEvent(this);
+        events.register(eggHunt);
+        events.register(disaster);
 
         for (org.bukkit.event.Listener l : new org.bukkit.event.Listener[]{bars, chat, events, ritual, ritualGui, ritualScheduleGui, adminGui, lootGui, altar, altarGui, hunt, bounty, bountyGui})
             Bukkit.getPluginManager().registerEvents(l, this);
@@ -125,6 +134,12 @@ public final class EventCorePlugin extends JavaPlugin {
         HuntCommand huntCmd = new HuntCommand(this);
         getCommand("playerhunt").setExecutor(huntCmd);
         getCommand("playerhunt").setTabCompleter(huntCmd);
+        EggHuntCommand eggCmd = new EggHuntCommand(this);
+        getCommand("egghunt").setExecutor(eggCmd);
+        getCommand("egghunt").setTabCompleter(eggCmd);
+        DisasterCommand disasterCmd = new DisasterCommand(this);
+        getCommand("disaster").setExecutor(disasterCmd);
+        getCommand("disaster").setTabCompleter(disasterCmd);
         BountyCommand bountyCmd = new BountyCommand(this);
         for (String n : new String[]{"bountyadd", "bountystop", "bountylist"}) {
             getCommand(n).setExecutor(bountyCmd);
@@ -136,6 +151,7 @@ public final class EventCorePlugin extends JavaPlugin {
         ritual.restore();
         ritualSchedule.start();
         altar.load();
+        sched.globalLater(eggHunt::recover, 60);   // removes eggs a crash left in the world
         bounty.start();
         getLogger().info("EventCore enabled.");
     }

@@ -76,7 +76,7 @@ discord:
     airdrop: "#d8b04a"
     ritual: "#ffd7ca"
 
-# Mouse-control icons in every tooltip: "▆ ▆" with the pressed button lit (palette colours only)
+# Mouse-control icons in every tooltip: "▆▆" with the pressed button lit (palette colours only)
 lore:
   mouse:
     active: "#d8b04a"

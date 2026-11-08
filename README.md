@@ -34,8 +34,8 @@ or landed, to open the editor for that crate's tier. The editor shows the loot a
 It needs the patched ReliqueOnlineAPI (ReliqueSmpStats-patched.zip: adds `getStatsManager()` and `setEloGainMultiplier`).
 Losses are not changed. The multiplier goes back to normal when the event ends or the server stops.
 
-## Gold Frenzy event
-(formerly Millionaire; the aliases `millionaire` and `mrbeast` still work) `/eventcore start gold_frenzy` makes every gold ore (GOLD_ORE, DEEPSLATE_GOLD_ORE, NETHER_GOLD_ORE) drop extra gold on top of its normal drop:
+## Miners Haven event
+(formerly Millionaire; the aliases `millionaire` and `mrbeast` still work) `/eventcore start miners_haven` makes every gold ore (GOLD_ORE, DEEPSLATE_GOLD_ORE, NETHER_GOLD_ORE) drop extra gold on top of its normal drop:
 `settings.extra-min` to `extra-max` more raw gold (or gold nuggets from nether gold ore), `settings.chance` percent per ore, `settings.blocks` lists the ores.
 Silk touch gets no bonus (the ore block itself drops).
 
@@ -43,7 +43,7 @@ Silk touch gets no bonus (the ore block itself drops).
 The former Elo Buff event is now called DuoDeck (`display-name`). Its internal id stays `elo_buff`, so config, scheduler and saved data keep working.
 
 ## Tab completion
-`/eventcore start|force|stop|rig <tab>` suggests exactly one name per event (its display name as one word: `golden_tree`, `duodeck`, `gold_frenzy`).
+`/eventcore start|force|stop|rig <tab>` suggests exactly one name per event (its display name as one word: `golden_tree`, `duodeck`, `miners_haven`).
 Ids and aliases still work when typed, they are just not suggested.
 
 ## Event display
@@ -161,3 +161,15 @@ Every tooltip shows controls as mouse icons: a lit half of `▆ ▆` is the pres
 All EventCore times use `timezone` in config.yml, now `Asia/Kolkata` (IST). On first start the plugin switches an existing config to IST once, so event schedules in events.yml are read as IST from then on.
 `/ritual schedule` opens the scheduler: date, hour and minute (IST), the ritual item in the middle slot, ritual length, and a button that sets the location to where you stand.
 `/ritual list` and `/ritual cancel <id>` (returns the item). A schedule waits if another ritual is running at its time. Saved in `data/ritual-schedule.yml`, so it survives restarts. `/ritual` alone opens the Ritual Creator.
+
+## Egg Hunt and Natural Disaster
+
+Both are normal EventCore events (they show up in `/eventcore list`, the admin GUI, the scheduler and Discord hook) with their own commands.
+
+**Egg Hunt** - `/egghunt start [minutes] | stop | reset | leaderboard | reload | setarena [radius] | addspawn | clearspawns`
+Eggs are real blocks placed on the surface and in caves of the configured area; each replaced block is saved to `egghunt-state.yml` and restored when the hunt ends, on `/egghunt reset`, on plugin disable and after a crash. Settings: `events.egg_hunt.settings` in events.yml, texts in messages.yml (`egg-hunt.*`).
+
+**Natural Disaster** - `/disaster start [minutes] | stop | reset | setcenter | setarena | setexit | status | reload | join | leave`
+The border is a virtual per-player `WorldBorder` (drawn like the vanilla one, animated by the client). The real world border is never touched. Setup: stand at the arena centre and run `/disaster setcenter`, optionally `/disaster setarena` (drop point) and `/disaster setexit` (destination). Settings: `events.natural_disaster.settings`.
+
+Permissions: `eventcore.egghunt.admin`, `eventcore.egghunt.<sub>`, `eventcore.egghunt.leaderboard` (default true), `eventcore.disaster.admin`, `eventcore.disaster.<sub>`, `eventcore.disaster.status|join|leave` (default true), `eventcore.disaster.exempt` (never drafted), `eventcore.bypass` (ignores the command whitelist).

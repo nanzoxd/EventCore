@@ -30,6 +30,11 @@ public final class EventCoreCommand implements TabExecutor {
 
     @Override
     public boolean onCommand(CommandSender s, Command c, String label, String[] a) {
+        if (a.length == 0 && s instanceof Player gp) {      // /eventcore and /ec open the menu
+            if (!can(s, "gui")) { err(s, "no-permission"); return true; }
+            pl.adminGui.openMain(gp);
+            return true;
+        }
         if (a.length == 0 || !SUBS.contains(a[0].toLowerCase(Locale.ROOT))) { s.sendMessage(pl.msg("command.usage")); return true; }
         String sub = a[0].toLowerCase(Locale.ROOT);
         if (!can(s, sub)) { err(s, "no-permission"); return true; }

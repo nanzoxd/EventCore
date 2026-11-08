@@ -969,21 +969,25 @@ events:
         restrict: true
         scope: EVENT_PLAYERS       # EVENT_PLAYERS or EVERYONE. Players with eventcore.bypass are never restricted
         allowed: [warp, warps, msg, tell, w, r, reply, rules, helpop]   # everything else is blocked while the event runs
-      hazards:                     # disasters: meteors, tornado, earthquake and laser really destroy terrain (down to bedrock)
+      hazards:                     # disasters: they erode the arena slowly, in small shallow chunks (never down to bedrock)
         enabled: true
-        start-after-seconds: 60
-        max-active: 4              # disasters running at the same moment (the roaming tornado does not count)
-        announce-seconds: 12       # the action bar announces the next disaster this many seconds before it hits
-        escalate: true             # they come faster every time the border shrinks
+        start-after-seconds: 0     # the first countdown starts with the event
+        cycle-seconds: 120         # "2m": every slot shows how long until its disaster hits, then draws the next one of the cycle
+        max-active: 2              # only this many disasters at the same time = this many entries in the action bar ("hurricane: 2m | meteor: 2m")
+        stagger-seconds: 0         # 0 = both timers match, e.g. 60 = the second slot hits a minute earlier than the first
+        announce-seconds: 12       # the entry turns bold this many seconds before it hits
+        escalate: true             # the cycle gets faster every time the border shrinks
         max-damage: 12.0           # no hazard hit or fall does more than this (12 = 6 hearts)
-        dig-layers-per-tick: 8     # how fast one column is dug down to bedrock
+        max-depth: 12              # hard limit: no disaster ever digs deeper than this many blocks below the surface
+        dig-layers-per-tick: 3     # how fast a crater crumbles (lower = slower, more visible, lighter on the server)
         # ---- performance (lower = lighter on the server) ----
-        blocks-per-tick: 250       # TOTAL blocks all disasters together may remove per server tick; the rest waits for the next tick
+        blocks-per-tick: 120       # TOTAL blocks all disasters together may remove per server tick; the rest waits for the next tick
         particle-density: 0.5      # 0.1 - 1.0, scales the particles (fewer particles = less network + client lag)
         max-displays: 150          # max flying block / funnel entities alive at once
+        # Every disaster has its own action bar colour (color: "#rrggbb"), shown in small caps.
         wind_charge:               # giant spinning wind charge falls, bursts and throws players away
           enabled: true
-          interval-seconds: 35
+          color: "#7fffd4"
           scale: 6.0
           fall-height: 35
           radius: 5.0
@@ -991,54 +995,54 @@ events:
           knockback: 1.6
           destroy-terrain: true
           crater-radius: 3
-        meteor:                    # giant magma block: real crater, then a shaft to bedrock filled with lava + magma
+        meteor:                    # giant magma block: real crater with a small scorched pit in the middle
           enabled: true
-          interval-seconds: 40
+          color: "#ff8c1a"
           scale: 5.0
           radius: 7.0
-          crater-radius: 7
+          crater-radius: 6
           shaft-radius: 2
+          shaft-depth: 5
           destroy-terrain: true
           damage: 12.0
           fire-seconds: 4
           crater-seconds: 8
         lava_geyser:               # warning ring, then a REAL lava column that launches and burns (ground is restored after)
           enabled: true
-          interval-seconds: 45
+          color: "#ff3030"
           warning-seconds: 4
           duration-seconds: 6
           height: 14
           radius: 1.8
-          vent-radius: 2.5         # the ground blows open here (lava vent goes down to bedrock)
-          vent-depth: 40
+          vent-radius: 2.5         # the ground blows open here
+          vent-depth: 9            # shallow vent with a small lava pool at the bottom
           destroy-terrain: true
           damage: 8.0
           launch-height: 40
         water_geyser:              # warning ring, then a REAL water column that launches players up
           enabled: true
-          interval-seconds: 50
+          color: "#3aa0ff"
           warning-seconds: 3
           duration-seconds: 6
           height: 16
           radius: 1.8
           vent-radius: 2.5
-          vent-depth: 24           # water vent depth; a water pool fills the bottom
+          vent-depth: 7            # shallow vent with a small water pool at the bottom
           destroy-terrain: true
           launch-height: 50
         wind_storm:                # strong gust with wind streaks pushing everybody the same way
           enabled: true
-          interval-seconds: 60
+          color: "#d8e2dc"
           duration-seconds: 8
           strength: 0.35
           destroy-terrain: true    # rips random blocks out of the ground and blows them away
           rip-per-tick: 2
           rip-radius: 22
           max-blocks-per-player: 25
-        tornado:                   # never disappears: roams the whole arena, rips blocks out, digs a trench to bedrock, throws players ~100 blocks
+        tornado:                   # roams the arena for a while, rips blocks out, scours a shallow trench, throws players ~100 blocks
           enabled: true
-          interval-seconds: 60     # when the first tornado shows up
-          duration-seconds: 0      # 0 = stays until the event ends
-          max-count: 1             # tornadoes alive at once
+          color: "#c2a878"
+          duration-seconds: 45     # then it fades and the slot draws the next disaster (0 = stays until the event ends)
           height: 30
           radius: 7.0
           pull: 0.45
@@ -1050,50 +1054,54 @@ events:
           picks-per-interval: 2
           pick-interval-ticks: 4
           destroy-terrain: true
-          dig-radius: 3            # width of the trench it digs to bedrock along its path
+          dig-radius: 2            # width of the trench it scours along its path
+          dig-depth: 3             # how deep that trench is
           damage: 4.0
-        earthquake:                # the ground shakes, then a fissure (ravine) opens down to bedrock with lava at the bottom
+        earthquake:                # the ground shakes, then a fissure opens a few blocks deep (deepest in the middle) with magma at the bottom
           enabled: true
-          interval-seconds: 100
+          color: "#b5651d"
           shake-seconds: 6
           shake-radius: 45
           length: 44
           width: 4
+          depth: 8
           columns-per-tick: 2
-          dig-layers-per-tick: 14
-        laser_sinkhole:            # red orbital laser locks on, burns, leaves a sinkhole of lava and magma down to bedrock
+          dig-layers-per-tick: 3
+        laser_sinkhole:            # red orbital laser locks on, burns, leaves a bowl-shaped sinkhole with a magma floor
           enabled: true
-          interval-seconds: 110
+          color: "#ff2bd6"
           charge-seconds: 4
           burn-seconds: 4
           radius: 6.0
-          rim-depth: 16
+          core-depth: 10           # depth in the middle of the bowl
+          rim-depth: 6             # depth towards the edge
           damage: 12.0
         hurricane:                 # night + rain + a rotating spiral of wind that shoves players around
           enabled: true
-          interval-seconds: 120
+          color: "#7b6cff"
           duration-seconds: 20
           strength: 0.45
           destroy-terrain: true    # picks up random blocks all around and whirls them away
           rip-per-tick: 2
           rip-radius: 24
           max-blocks-per-player: 30
-        meteor_shower:             # the sky darkens and many meteors come down, each one cratering the ground
+        meteor_shower:             # the sky darkens and many small meteors come down, each one cratering the ground
           enabled: true
-          interval-seconds: 110
+          color: "#ffd23f"
           duration-seconds: 16
           meteors: 14
           scale: 3.5
           radius: 5.0
-          crater-radius: 5
+          crater-radius: 4
           shaft-radius: 1
+          shaft-depth: 3
           destroy-terrain: true
           damage: 10.0
           fire-seconds: 3
           crater-seconds: 4
         thunderstorm:              # dark storm; lightning locks onto every player and strikes where they stand
           enabled: true
-          interval-seconds: 85
+          color: "#9dff4a"
           duration-seconds: 30
           strike-interval-seconds: 2.5   # per player
           warning-seconds: 1.2           # ring + crackle before the bolt lands (run!)

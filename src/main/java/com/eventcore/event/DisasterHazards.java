@@ -52,7 +52,7 @@ import java.util.function.IntPredicate;
  * Geysers place real water/lava and put the ground back afterwards. Display entities are non-persistent and removed on stop.
  * Scheduling: a few slots (hazards.max-active, default 2) cycle through every enabled disaster; each disaster runs continuously for
  * hazards.run-seconds (default 120 = 2m) and its slot shows the time left as "name: 2m" in the action bar, then the next disaster takes over.
- * Every hazard damage (and fall damage) is capped by hazards.max-damage (default 12 = 6 hearts).
+ * Every hazard damage (and fall damage) is capped by hazards.max-damage (default 20 = 10 hearts); fall damage has its own cap, hazards.max-fall-damage.
  * Types: wind_charge (giant spinning wind charge that bursts on impact), meteor (falling magma block + crater),
  * lava_geyser, water_geyser (warning ring, then an eruption column that launches players) and wind_storm.
  */
@@ -76,7 +76,9 @@ final class DisasterHazards {
         double run;             // how long it runs in total
         boolean running;
     }
-    private volatile List<Player> roster = List.of();      // players in the arena right now (refreshed every second)
+    private volatile List<Player> roster = List.of();
+    private double pauseUntil;                             // while t < this nobody is attacked: a breather so players can fight
+    private boolean wasRunning;      // players in the arena right now (refreshed every second)
     private final List<Slot> slots = new ArrayList<>();
     private final List<String> bag = new ArrayList<>();      // shuffled cycle: every enabled disaster shows up once before any repeats
 
@@ -109,7 +111,7 @@ final class DisasterHazards {
 
     DisasterHazards(EventCorePlugin pl, NaturalDisasterEvent ev) { this.pl = pl; this.ev = ev; }
 
-    void reset() { stopped = false; slots.clear(); bag.clear(); active.set(0); tornadoes.set(0); bar = null; flung.clear(); pending.clear(); }
+    void reset() { stopped = false; slots.clear(); bag.clear(); pauseUntil = 0; wasRunning = false; active.set(0); tornadoes.set(0); bar = null; flung.clear(); pending.clear(); }
 
     /** Cancels every running effect and removes every display entity. Called when the event stops. */
     void stop() {
@@ -167,7 +169,10 @@ final class DisasterHazards {
     private final Map<UUID, Long> flung = new ConcurrentHashMap<>();
 
     /** Highest damage one hazard (or one fall) may do, in half-hearts. 12 = 6 hearts. */
-    double maxDamage() { return Math.max(1, ev.settings().getDouble("hazards.max-damage", 12)); }
+    double maxDamage() { return Math.max(1, ev.settings().getDouble("hazards.max-damage", 20)); }
+
+    /** Highest fall damage (tornado / geyser launches), kept lower than direct hits so a launch hurts but does not kill. */
+    double maxFallDamage() { return Math.max(1, ev.settings().getDouble("hazards.max-fall-damage", 12)); }
     private double dmg(double v) { return Math.min(v, maxDamage()); }
     private int layersPerTick() { return Math.max(1, ev.settings().getInt("hazards.dig-layers-per-tick", 3)); }
 
@@ -220,7 +225,7 @@ final class DisasterHazards {
         return out;
     }
 
-    /** Removes up to `layers` solid blocks from every active column down to its own stop depth, then lays a magma floor (a fluid pool for vents). Returns true while work is left. */
+    /** Removes up to `layers` solid blocks from every active column down to its own stop depth, leaving the bare ground as the floor (vents get a small fluid pool). Returns true while work is left. */
     private boolean digStep(ActiveEvent ae, World w, List<Col> cols, int n, int layers, boolean floor) {
         boolean left = false, starved = false;
         int min = w.getMinHeight();
@@ -232,27 +237,16 @@ final class DisasterHazards {
             int dug = 0, guard = 0;
             try {
                 while (!c.done && dug < layers && guard++ < 400) {
-                    if (c.stop >= min && c.y < c.stop) {                     // shallow column (rim): magma floor
+                    if (c.stop >= min && c.y < c.stop) {                     // reached this column's depth: stop, the bare ground stays as the floor
                         if (c.floorFluid != null) {                          // vent pool: two blocks of fluid at the bottom
                             w.getBlockAt(c.x, c.stop, c.z).setType(c.floorFluid, false);
                             w.getBlockAt(c.x, c.stop + 1, c.z).setType(c.floorFluid, false);
-                        } else {
-                            Block f = w.getBlockAt(c.x, c.stop, c.z);
-                            if (r.nextBoolean() && f.getType().isAir()) f.setType(Material.MAGMA_BLOCK, false);
                         }
                         c.done = true; break;
                     }
                     Block b = w.getBlockAt(c.x, c.y, c.z);
                     Material m = b.getType();
-                    if (m == Material.BEDROCK || c.y < min) {
-                        if (floor) {
-                            int y1 = Math.max(c.y + 1, min);
-                            Block b1 = w.getBlockAt(c.x, y1, c.z), b2 = w.getBlockAt(c.x, y1 + 1, c.z);
-                            if (breakable(b1.getType())) b1.setType(r.nextInt(100) < 40 ? Material.MAGMA_BLOCK : Material.LAVA, false);
-                            if (breakable(b2.getType())) b2.setType(Material.LAVA, false);
-                        }
-                        c.done = true; break;
-                    }
+                    if (m == Material.BEDROCK || c.y < min) { c.done = true; break; }
                     if (!m.isAir() && breakable(m)) { if (!take()) { starved = true; break; } b.setType(Material.AIR, false); dug++; }
                     c.y--;
                 }
@@ -287,16 +281,6 @@ final class DisasterHazards {
             if (!go) { t.cancel(); tasks.remove(t); }
         }, 1, 1);
         tasks.add(task);
-    }
-
-    private void rimMagma(World w, int cx, int cz, int r) {
-        ThreadLocalRandom rnd = ThreadLocalRandom.current();
-        for (int dx = -(r + 2); dx <= r + 2; dx++) for (int dz = -(r + 2); dz <= r + 2; dz++) {
-            double d = Math.hypot(dx, dz);
-            if (d <= r || d > r + 2 || rnd.nextInt(100) >= 35) continue;
-            Block b = w.getBlockAt(cx + dx, top(w, cx + dx, cz + dz), cz + dz);
-            if (b.getType().isSolid() && breakable(b.getType())) b.setType(Material.MAGMA_BLOCK, false);
-        }
     }
 
     private boolean recentlyFlung(UUID id) { Long u = flung.get(id); return u != null && System.currentTimeMillis() < u; }
@@ -379,13 +363,22 @@ final class DisasterHazards {
         while (slots.size() < lanes) slots.add(new Slot());
         while (slots.size() > lanes) slots.remove(slots.size() - 1);
 
+        for (Slot s : slots) if (s.running && t >= s.until) { s.running = false; s.type = null; }   // the disaster is over: this slot draws the next one of the cycle
+        boolean any = false;
+        for (Slot s : slots) if (s.running) any = true;
+        if (wasRunning && !any && ThreadLocalRandom.current().nextDouble() < Math.max(0, Math.min(1, h.getDouble("pause-chance", 0.4)))) {
+            double lo = Math.max(5, h.getDouble("pause-min-seconds", 25)), hi = Math.max(lo, h.getDouble("pause-max-seconds", 45));
+            pauseUntil = t + ThreadLocalRandom.current().nextDouble(lo, hi);                  // sometimes a round ends in a pause: no disasters, players can fight
+        }
+        wasRunning = any;
+        boolean paused = t < pauseUntil;
+
         for (Slot s : slots) {
-            if (s.running && t >= s.until) { s.running = false; s.type = null; }              // the disaster is over: this slot draws the next one of the cycle
             if (s.type == null) {
                 s.type = pick(h, s);
                 if (s.type == null) continue;                                                  // nothing enabled
             }
-            if (live && !s.running) {
+            if (live && !s.running && !paused) {
                 ConfigurationSection c = h.getConfigurationSection(s.type);
                 double run = Math.max(20, c == null ? globalRun : c.getDouble("run-seconds", globalRun));
                 s.running = true;
@@ -395,6 +388,10 @@ final class DisasterHazards {
             }
         }
 
+        if (paused && !any) {                                                                  // breather: the bar counts down the pause instead
+            bar = Component.text(pl.text.sc("pause: " + fmt(pauseUntil - t)), NamedTextColor.GREEN, TextDecoration.BOLD);
+            return;
+        }
         Component b = Component.empty();
         boolean first = true;
         for (Slot s : slots) {
@@ -463,7 +460,7 @@ final class DisasterHazards {
             if (!ev.isLive(ae)) return;
             Location base = target.getLocation();
             double off = type.endsWith("geyser") ? 10 : type.equals("tornado") ? 25 : type.equals("earthquake") ? 15 : type.equals("laser_sinkhole") ? 8 : 5;
-            Location spot = spot(base, off, ae);
+            Location spot = chooseSpot(base, off, ae);
             if (type.equals("wind_storm")) { windStorm(ae, c, alive, run); return; }
             if (type.equals("hurricane")) { hurricane(ae, c, alive, run); return; }
             if (type.equals("meteor_shower")) { meteorShower(ae, c, alive, run); return; }
@@ -483,6 +480,19 @@ final class DisasterHazards {
                 } catch (Throwable ex) { pl.getLogger().warning("Natural Disaster hazard " + type + " failed: " + ex); }
             });
         });
+    }
+
+    /** Chance (hazards.track-chance, default 25%) that a disaster is aimed at a player; otherwise it just drops somewhere in the arena on its own. */
+    private double trackChance() { return Math.max(0, Math.min(1, ev.settings().getDouble("hazards.track-chance", 0.25))); }
+
+    /** Only sometimes near the player; most of the time a random place in the arena (kept within ~45 blocks of the player so the chunk is loaded). */
+    private Location chooseSpot(Location base, double off, ActiveEvent ae) {
+        ThreadLocalRandom r = ThreadLocalRandom.current();
+        if (r.nextDouble() < trackChance()) return spot(base, off, ae);
+        double lim = Math.max(3, ev.radiusNow(ae) - 3);
+        double x = Math.max(ev.cx() - lim, Math.min(ev.cx() + lim, base.getX() + r.nextDouble(-45, 45)));
+        double z = Math.max(ev.cz() - lim, Math.min(ev.cz() + lim, base.getZ() + r.nextDouble(-45, 45)));
+        return new Location(base.getWorld(), Math.floor(x) + 0.5, base.getY(), Math.floor(z) + 0.5);
     }
 
     /** A random spot near the player, kept inside the current border. */
@@ -603,7 +613,7 @@ final class DisasterHazards {
     }
 
     // =====================================================================================================
-    // meteor: a giant magma block falls and blows a real (shallow) crater into the ground with a small magma pit in the middle
+    // meteor: a giant magma block falls and blows a real (shallow) crater into the ground with a small pit in the middle
     // =====================================================================================================
 
     private void meteor(ActiveEvent ae, ConfigurationSection c, Location spot, boolean announce) {
@@ -638,14 +648,15 @@ final class DisasterHazards {
                 w.spawnParticle(Particle.LAVA, at, 60, radius * 0.5, 0.5, radius * 0.5, 0);
                 w.playSound(at, "entity.generic.explode", 4f, 0.5f);
                 near(at, radius + 3, radius + 3, p -> {
-                    p.damage(dmg(c.getDouble("damage", 12)));
+                    double dist = Math.hypot(p.getLocation().getX() - at.getX(), p.getLocation().getZ() - at.getZ());
+                    double falloff = dist <= radius * 0.5 ? 1.0 : Math.max(0.4, 1.0 - (dist - radius * 0.5) / (radius + 3));     // a direct hit hurts the most
+                    p.damage(dmg(c.getDouble("damage", 20)) * falloff);
                     p.setFireTicks((int) (c.getDouble("fire-seconds", 4) * 20));
                     p.setVelocity(p.getLocation().toVector().subtract(at.toVector()).setY(0.4).normalize().multiply(0.9).setY(0.8));
                 });
                 if (c.getBoolean("destroy-terrain", true)) {                 // real crater, then a small pit in the middle
                     int cr = (int) Math.max(2, Math.min(12, c.getDouble("crater-radius", radius)));
                     carveSphere(ae, w, (int) Math.floor(x), gy - 1, (int) Math.floor(z), cr);
-                    rimMagma(w, (int) Math.floor(x), (int) Math.floor(z), cr);
                     double sr = c.getDouble("shaft-radius", 2);
                     if (sr > 0) shaft.addAll(discCols(ae, w, x, z, sr, 1, c.getInt("shaft-depth", 5)));     // a small scorched pit, not a shaft to bedrock
                 }
@@ -822,13 +833,15 @@ final class DisasterHazards {
         double dur = run;                                              // it roams for the whole run, then fades so the next disaster can take its slot
         int ticks = dur <= 0 ? Integer.MAX_VALUE : (int) (dur * 20), maxBlocks = Math.max(0, c.getInt("max-blocks", 45));
         int pickEvery = Math.max(1, c.getInt("pick-interval-ticks", 3)), picks = Math.max(1, c.getInt("picks-per-interval", 3));
-        int digR = Math.max(0, c.getInt("dig-radius", 2)), digDepth = Math.max(1, c.getInt("dig-depth", 3)), layers = layersPerTick();
+        int digR = Math.max(0, c.getInt("dig-radius", 1)), digDepth = Math.max(1, c.getInt("dig-depth", 1)), layers = 1;
         double cooldown = c.getDouble("launch-cooldown-seconds", 10), catchR = reach * 0.55;
         boolean destroy = c.getBoolean("destroy-terrain", true);
         final int L = 14;
         double[] pos = {spot.getX(), spot.getZ()};
         double[] dir = {ThreadLocalRandom.current().nextDouble(Math.PI * 2)};
         double[] wp = {spot.getX(), spot.getZ()};
+        boolean[] chase = {false};
+        double chaseChance = trackChance();
         int[] gy = {ground(w, spot)};
         BlockData[] floorData = {Material.DIRT.createBlockData()};
         List<BlockDisplay> funnel = new ArrayList<>(), debris = new ArrayList<>();
@@ -853,11 +866,12 @@ final class DisasterHazards {
             if (n % 10 == 0) {                                          // follow the ground, hunt the closest player, otherwise roam the arena
                 gy[0] = ground(w, centre);
                 try { floorData[0] = w.getBlockAt((int) Math.floor(pos[0]), gy[0] - 1, (int) Math.floor(pos[1])).getBlockData(); } catch (Throwable ignored) { }
+                if (n % 300 == 0) chase[0] = r.nextDouble() < chaseChance;      // every 15s it decides: chase the nearest player for a while, or just roam
                 Player[] best = {null};
                 double[] bd = {Double.MAX_VALUE};
                 near(centre, 45, 80, p -> { double d = p.getLocation().distanceSquared(centre); if (d < bd[0]) { bd[0] = d; best[0] = p; } });
                 double wantX, wantZ;
-                if (best[0] != null) { wantX = best[0].getLocation().getX(); wantZ = best[0].getLocation().getZ(); }
+                if (best[0] != null && chase[0]) { wantX = best[0].getLocation().getX(); wantZ = best[0].getLocation().getZ(); }
                 else {
                     double lim0 = Math.max(6, ev.radiusNow(ae) - 6);
                     if (n % 400 == 0 || Math.hypot(wp[0] - pos[0], wp[1] - pos[1]) < 6) {     // pick a new far-away waypoint inside the arena
@@ -912,9 +926,9 @@ final class DisasterHazards {
                     dp.add(new double[]{a, 0, r.nextDouble(0, 2.5)});
                 }
             }
-            // and scours a shallow trench along its path (a few blocks deep, magma at the bottom)
+            // and scours a shallow trench along its path (only a block or two deep)
             if (destroy && digR > 0) {
-                if (n % 6 == 0) {
+                if (n % 10 == 0) {
                     int px = (int) Math.floor(pos[0]), pz = (int) Math.floor(pos[1]);
                     for (int dx = -digR; dx <= digR; dx++) for (int dz = -digR; dz <= digR; dz++) {
                         if (Math.hypot(dx, dz) > digR + 0.3) continue;
@@ -959,7 +973,7 @@ final class DisasterHazards {
     }
 
     // =====================================================================================================
-    // earthquake: the ground shakes, then a long fissure (ravine) tears open a few blocks deep, magma at the bottom
+    // earthquake: the ground shakes, then a long fissure (ravine) tears open a few blocks deep
     // =====================================================================================================
     private void earthquake(ActiveEvent ae, ConfigurationSection c, Location spot) {
         World w = spot.getWorld();
@@ -1012,7 +1026,7 @@ final class DisasterHazards {
     }
 
     // =====================================================================================================
-    // laser sinkhole: a red orbital beam locks on, burns for a few seconds and leaves a bowl-shaped sinkhole with a magma floor
+    // laser sinkhole: a red orbital beam locks on, burns for a few seconds and leaves a bowl-shaped sinkhole
     // =====================================================================================================
     private void laser(ActiveEvent ae, ConfigurationSection c, Location spot) {
         World w = spot.getWorld();
@@ -1160,7 +1174,6 @@ final class DisasterHazards {
         w.playSound(g, "entity.lightning_bolt.thunder", 4f, 0.8f);
         near(g, hitR, 3, p -> { p.damage(dmg); p.setFireTicks(60); });
         carveSphere(ae, w, gx, gy - 1, gz, Math.max(1, crater));
-        rimMagma(w, gx, gz, Math.max(1, crater));
     }
 
     // =====================================================================================================
@@ -1184,7 +1197,7 @@ final class DisasterHazards {
             Player target = alive.get(ThreadLocalRandom.current().nextInt(alive.size()));
             pl.sched.entity(target, () -> {
                 if (!ev.isLive(ae)) return;
-                Location sp = spot(target.getLocation(), 12, ae);
+                Location sp = chooseSpot(target.getLocation(), 12, ae);
                 pl.sched.region(sp, () -> { if (ev.isLive(ae) && !stopped) meteor(ae, c, sp, false); });
             });
         }, 1, gap);

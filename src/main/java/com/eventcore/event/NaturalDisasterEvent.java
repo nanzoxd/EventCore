@@ -763,11 +763,11 @@ public final class NaturalDisasterEvent extends GameEvent {
         }
     }
 
-    /** Tall launches must hurt, not kill: fall damage is capped like every other hazard (hazards.max-damage, default 6 hearts). */
+    /** Tall launches must hurt, not kill: fall damage is capped like every other hazard (hazards.max-fall-damage, default 6 hearts). */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onFall(EntityDamageEvent e) {
         if (run == null || e.getCause() != EntityDamageEvent.DamageCause.FALL || !(e.getEntity() instanceof Player p) || !isMember(p.getUniqueId())) return;
-        e.setDamage(Math.min(e.getDamage(), fx.maxDamage()));
+        e.setDamage(Math.min(e.getDamage(), fx.maxFallDamage()));
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)

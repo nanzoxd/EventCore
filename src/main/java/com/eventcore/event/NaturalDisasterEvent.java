@@ -75,6 +75,7 @@ public final class NaturalDisasterEvent extends GameEvent {
     private final Set<UUID> signups = ConcurrentHashMap.newKeySet();
     private final Set<UUID> internalTp = ConcurrentHashMap.newKeySet();
     private final Set<String> warned = ConcurrentHashMap.newKeySet();
+    private final Set<UUID> prompted = ConcurrentHashMap.newKeySet();      // already shown the join menu this run
     private final NamespacedKey keyExit, keyGm, keyBorder, keyFly;
 
     private volatile ActiveEvent run;
@@ -109,6 +110,41 @@ public final class NaturalDisasterEvent extends GameEvent {
     }
 
     public boolean running() { return run != null; }
+
+    /** Why a player can or cannot enter the arena right now (join menu, /tpdisaster). */
+    public enum Entry { OK, NOT_RUNNING, ALREADY_IN, USED, NOT_ELIGIBLE }
+
+    public Entry entryState(Player p) {
+        if (run == null) return Entry.NOT_RUNNING;
+        P pp = players.get(p.getUniqueId());
+        if (pp != null) return !pp.left && pp.alive ? Entry.ALREADY_IN : Entry.USED;   // took part once (even if dead / left): never again
+        return eligible(p, settings()) ? Entry.OK : Entry.NOT_ELIGIBLE;
+    }
+
+    /** Opens the "go to the event?" menu, or explains why not. Runs on the player's own thread. */
+    public void openInvite(Player p) {
+        Entry st = entryState(p);
+        if (st != Entry.OK) {
+            p.sendMessage(pl.msg(switch (st) {
+                case NOT_RUNNING -> "disaster.invite-not-running";
+                case ALREADY_IN -> "disaster.invite-already-in";
+                case USED -> "disaster.invite-used";
+                default -> "disaster.invite-not-eligible";
+            }));
+            return;
+        }
+        pl.inviteGui.open(p);
+    }
+
+    /** The Yes button: puts the player into the event and teleports them to the arena. Runs on the player's own thread. */
+    public boolean accept(Player p) {
+        Entry st = entryState(p);
+        if (st != Entry.OK) { openInvite(p); return false; }
+        if (players.putIfAbsent(p.getUniqueId(), new P(p.getUniqueId(), p.getName())) != null) return false;
+        signups.remove(p.getUniqueId());
+        apply(p);                                   // marks the player and runs doApply -> enter() -> teleport
+        return true;
+    }
     public boolean signUp(Player p) { return signups.add(p.getUniqueId()); }
     public boolean unSignUp(UUID id) { return signups.remove(id); }
     public int signupCount() { return signups.size(); }
@@ -239,7 +275,7 @@ public final class NaturalDisasterEvent extends GameEvent {
 
     @Override
     public void onStart(ActiveEvent ae) {
-        players.clear(); warned.clear();
+        players.clear(); warned.clear(); prompted.clear();
         fx.reset();
         result = null; winners = List.of(); lastShrink = -1; lastStrike = -1;
         run = ae;
@@ -251,27 +287,21 @@ public final class NaturalDisasterEvent extends GameEvent {
         initialR = Math.max(5, s.getDouble("border.initial-radius", 50));
         windows = buildWindows(s);
 
-        boolean optin = optIn();
-        List<Player> chosen = new ArrayList<>();
-        for (Player p : Bukkit.getOnlinePlayers()) if (eligible(p, s, optin)) chosen.add(p);
-        int min = Math.max(0, s.getInt("participants.min-players", 0));
-        if (chosen.size() < min) { signups.clear(); abort("disaster.not-enough-players", "min", min, "count", chosen.size()); return; }
-
+        // nobody is drafted: every online player gets the join menu (doApply), the ones who press Yes become players
         WorldBorder b = Bukkit.createWorldBorder();       // virtual: never touches world.getWorldBorder()
         b.setCenter(cx, cz);
         b.setSize(initialR * 2.0);
         b.setWarningDistance(Math.max(0, s.getInt("border.warning-distance", 5)));
         b.setWarningTime(15);
         border = b;
-        for (Player p : chosen) players.put(p.getUniqueId(), new P(p.getUniqueId(), p.getName()));
         signups.clear();
     }
 
-    private boolean eligible(Player p, ConfigurationSection s, boolean optin) {
+    private boolean eligible(Player p, ConfigurationSection s) {
         if (s.getBoolean("participants.use-exempt-permission", false)
                 && p.hasPermission("eventcore.disaster.exempt")) return false;
         for (String g : s.getStringList("participants.exclude-gamemodes")) if (p.getGameMode().name().equalsIgnoreCase(g.trim())) return false;
-        return !optin || signups.contains(p.getUniqueId());
+        return true;
     }
 
     /** Runs on each player's own thread right after the event starts, on respawn and on rejoin. */
@@ -279,10 +309,17 @@ public final class NaturalDisasterEvent extends GameEvent {
     protected void doApply(Player p) {
         if (run == null) return;
         P pp = players.get(p.getUniqueId());
-        if (pp == null || pp.left) return;
+        if (pp == null) { offerInvite(p); return; }          // not in the event (yet): ask first, never teleport unasked
+        if (pp.left) return;
         if (!pp.entered) { pp.entered = true; enter(p); }
         showBorder(p);
         if (!pp.alive) afterEliminated(p, pp);
+    }
+
+    /** Shows the join menu once per run (start of the event, or when a player logs in during it). */
+    private void offerInvite(Player p) {
+        if (!eligible(p, settings()) || !prompted.add(p.getUniqueId())) return;
+        pl.sched.entityLater(p, () -> { if (run != null && entryState(p) == Entry.OK) pl.inviteGui.open(p); }, 20);
     }
 
     private void enter(Player p) {
@@ -310,11 +347,13 @@ public final class NaturalDisasterEvent extends GameEvent {
         ConfigurationSection s = settings();
         boolean spawnSet = s.getBoolean("arena.spawn.enabled", false);
         double bx = spawnSet ? s.getDouble("arena.spawn.x", cx) : cx, bz = spawnSet ? s.getDouble("arena.spawn.z", cz) : cz;
-        double spread = Math.max(0, Math.min(s.getDouble("participants.spread-radius", 35), initialR - 3));
+        ActiveEvent now = run;
+        double rNow = now == null ? initialR : Math.min(initialR, Math.max(6, radiusAt(elapsed(now))));      // late joiners land inside the current border
+        double spread = Math.max(0, Math.min(s.getDouble("participants.spread-radius", 35), rNow - 3));
         ThreadLocalRandom rnd = ThreadLocalRandom.current();
         double ang = rnd.nextDouble(Math.PI * 2), dist = Math.sqrt(rnd.nextDouble()) * spread;
         int x = (int) Math.floor(bx + Math.cos(ang) * dist), z = (int) Math.floor(bz + Math.sin(ang) * dist);
-        double lim = initialR - 2;
+        double lim = rNow - 2;
         final int fx = (int) Math.max(cx - lim, Math.min(cx + lim, x)), fz = (int) Math.max(cz - lim, Math.min(cz + lim, z));
         final boolean fixedY = spawnSet && "FIXED".equalsIgnoreCase(s.getString("arena.spawn.mode", "SURFACE"));
         final double fy = s.getDouble("arena.spawn.y", 64);
@@ -384,6 +423,7 @@ public final class NaturalDisasterEvent extends GameEvent {
         if (run != ae) return;
         ConfigurationSection s = settings();
         double t = elapsed(ae);
+        checkWin(ae);                       // no-op until the join window is over
 
         // border: start each reduction once, warn before it
         for (int i = 0; i < windows.size(); i++) {
@@ -552,9 +592,11 @@ public final class NaturalDisasterEvent extends GameEvent {
 
     private synchronized void checkWin(ActiveEvent ae) {
         if (run != ae || result != null) return;
+        if (players.isEmpty() || elapsed(ae) < settings().getInt("participants.join-window-seconds", 60)) return;   // people are still choosing in the join menu
         List<P> alive = new ArrayList<>();
         for (P p : players.values()) if (p.alive && !p.left) alive.add(p);
         if (alive.size() > 1) return;
+        if (alive.size() == 1 && players.size() < 2) return;          // a lone player plays on until the timer ends or they die
         if (alive.size() == 1) { winners = List.of(alive.get(0).id); result = Result.WINNER; }
         else result = Result.NONE;
         pl.sched.global(() -> pl.events.stop(id(), true));
@@ -612,6 +654,7 @@ public final class NaturalDisasterEvent extends GameEvent {
         players.clear();
         signups.clear();
         warned.clear();
+        prompted.clear();
 
         if (res == Result.WINNER) {
             List<String> names = new ArrayList<>();
@@ -694,6 +737,7 @@ public final class NaturalDisasterEvent extends GameEvent {
     public void onQuit(PlayerQuitEvent e) {
         UUID id = e.getPlayer().getUniqueId();
         signups.remove(id);
+        prompted.remove(id);
         P pp = players.get(id);
         if (pp == null || pp.left || run == null) return;
         boolean wasAlive = pp.alive;

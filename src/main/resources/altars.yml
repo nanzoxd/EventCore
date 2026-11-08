@@ -38,6 +38,9 @@ protection:
 gui:
   craft-title: "<g>altar crafting</g>"
   list-title: "<g>altar recipes</g>"
+  hub-title: "<g>altar menu</g>"
+  place-title: "<g>place an altar</g>"
+  manage-title: "<g>placed altars</g>"
   edit-title: "<g>edit altar recipe</g>"
 presets:
   default:
@@ -79,7 +82,7 @@ presets:
       - "2 0 2 CHISELED_POLISHED_BLACKSTONE"
       - "2 1 2 SOUL_LANTERN"
 messages:
-  usage: "<g>/altar [spawn [recipe or preset]|remove [id]|list|recipes (gui)|recipe|bind [preset] [recipe or none]|stop [id or all]|reload]</g>"
+  usage: "<g>/altar (opens the altar menu) [menu|spawn [recipe or preset]|remove [id]|list|recipes (gui)|recipe|bind [preset] [recipe or none]|stop [id or all]|reload]</g>"
   usage-recipe: "<g>/altar recipe [list | edit <id> | create <id> [minutes] | output <id> | input <id> [amount | MATERIAL amount] | clear <id> | minutes <id> <n> | delete <id>]</g>"
   recipe-header: "<g>altar recipes:</g>"
   recipe-line: "<gray>{id}: {inputs} -> {output} ({minutes} min)</gray>"

@@ -12,15 +12,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/** /disaster start [minutes] | stop | reset | setcenter | setarena | setexit | status | reload | join | leave */
+/** /disaster start [minutes] | stop | reset | setcenter | setarena | setexit | status | reload | join | leave | tp   (/tpdisaster = tp) */
 public final class DisasterCommand implements TabExecutor {
-    private static final List<String> SUBS = List.of("start", "stop", "reset", "setcenter", "setarena", "setexit", "status", "reload", "join", "leave");
+    private static final List<String> SUBS = List.of("start", "stop", "reset", "setcenter", "setarena", "setexit", "status", "reload", "join", "leave", "tp");
     private static final String PATH = "events.natural_disaster.settings.";
     private final EventCorePlugin pl;
 
     public DisasterCommand(EventCorePlugin pl) { this.pl = pl; }
 
     private boolean can(CommandSender s, String sub) {
+        if (sub.equals("tp")) return s.hasPermission("eventcore.disaster.join");
         if (sub.equals("join") || sub.equals("leave") || sub.equals("status")) return s.hasPermission("eventcore.disaster." + sub);
         return s.hasPermission("eventcore.admin") || s.hasPermission("eventcore.disaster.admin") || s.hasPermission("eventcore.disaster." + sub);
     }
@@ -30,6 +31,12 @@ public final class DisasterCommand implements TabExecutor {
     @Override
     public boolean onCommand(CommandSender s, Command c, String label, String[] a) {
         NaturalDisasterEvent ev = pl.disaster;
+        if (c.getName().equalsIgnoreCase("tpdisaster")) {                 // /tpdisaster = open the "go to the event?" menu
+            if (!can(s, "tp")) { s.sendMessage(pl.msg("errors.no-permission")); return true; }
+            if (!(s instanceof Player p)) { s.sendMessage(pl.msg("errors.player-only")); return true; }
+            ev.openInvite(p);
+            return true;
+        }
         if (a.length == 0 || !SUBS.contains(a[0].toLowerCase(Locale.ROOT))) { s.sendMessage(pl.msg("disaster.usage")); return true; }
         String sub = a[0].toLowerCase(Locale.ROOT);
         if (!can(s, sub)) { s.sendMessage(pl.msg("errors.no-permission")); return true; }
@@ -57,11 +64,10 @@ public final class DisasterCommand implements TabExecutor {
             }
             case "status" -> s.sendMessage(pl.msgMap(ev.running() ? "disaster.status-running" : "disaster.status-idle", ev.statusPlaceholders()));
             case "reload" -> pl.reloadAll(s);
-            case "join" -> {
+            case "join", "tp" -> {
                 if (!(s instanceof Player p)) { s.sendMessage(pl.msg("errors.player-only")); return true; }
-                if (ev.running()) s.sendMessage(pl.msg("disaster.join-running"));
-                else if (!ev.optIn()) s.sendMessage(pl.msg("disaster.join-not-needed"));
-                else s.sendMessage(pl.msg(ev.signUp(p) ? "disaster.joined" : "disaster.already-joined"));
+                if (ev.running() || sub.equals("tp")) ev.openInvite(p);          // the join menu replaces sign-up
+                else s.sendMessage(pl.msg("disaster.join-not-needed"));
             }
             case "leave" -> {
                 if (!(s instanceof Player p)) { s.sendMessage(pl.msg("errors.player-only")); return true; }

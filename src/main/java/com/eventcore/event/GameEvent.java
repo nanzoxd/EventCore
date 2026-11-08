@@ -44,6 +44,12 @@ public abstract class GameEvent implements Listener {
     }
 
     public String displayName() { return sec().getString("display-name", id); }
+
+    /** This event's title gradient from events.yml (events.<id>.gradient), as "#a:#b:#a" for <gradient:{gradient_raw}>. */
+    public String gradientRaw() {
+        java.util.List<String> g = sec().getStringList("gradient");
+        return g.size() >= 2 ? String.join(":", g) : "#8B53F8:#E9D8FF:#8B53F8";
+    }
     public boolean active() { return pl.events.isActive(id); }
 
     // ---- lifecycle hooks (all optional) ----

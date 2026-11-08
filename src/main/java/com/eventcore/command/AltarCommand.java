@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/** /altar spawn|remove|list|recipes (GUI)|recipe ...|bind|stop|reload */
+/** /altar (menu) | spawn|remove|list|recipes (GUI)|recipe ...|bind|stop|reload */
 public final class AltarCommand implements CommandExecutor, TabCompleter {
     private final EventCorePlugin pl;
 
@@ -29,7 +29,11 @@ public final class AltarCommand implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender s, Command c, String label, String[] a) {
         if (!s.hasPermission("eventcore.altar")) { s.sendMessage(pl.msg("errors.no-permission")); return true; }
-        if (a.length == 0) { s.sendMessage(am().m("usage", Map.of())); return true; }
+        if (a.length == 0 || a[0].equalsIgnoreCase("menu") || a[0].equalsIgnoreCase("hub")) {
+            // players get the altar menu (place, manage, recipes), the console the usage line
+            if (s instanceof Player pp) pl.altarHub.open(pp); else s.sendMessage(am().m("usage", Map.of()));
+            return true;
+        }
         switch (a[0].toLowerCase(Locale.ROOT)) {
             case "spawn" -> {
                 if (!(s instanceof Player p)) { s.sendMessage(pl.msg("errors.player-only")); return true; }
@@ -139,7 +143,7 @@ public final class AltarCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender s, Command c, String label, String[] a) {
         List<String> out = new ArrayList<>();
         if (!s.hasPermission("eventcore.altar")) return out;
-        if (a.length == 1) out.addAll(List.of("spawn", "remove", "list", "recipes", "recipe", "bind", "stop", "reload"));
+        if (a.length == 1) out.addAll(List.of("menu", "spawn", "remove", "list", "recipes", "recipe", "bind", "stop", "reload"));
         else if (a.length == 2 && (a[0].equalsIgnoreCase("recipe") || a[0].equalsIgnoreCase("recipes"))) out.addAll(List.of("list", "edit", "create", "output", "input", "clear", "minutes", "delete"));
         else if (a.length == 3 && (a[0].equalsIgnoreCase("recipe") || a[0].equalsIgnoreCase("recipes")) && !a[1].equalsIgnoreCase("create") && !a[1].equalsIgnoreCase("list"))
             for (AltarManager.Recipe r : am().recipes()) out.add(r.id);

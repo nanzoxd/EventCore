@@ -40,7 +40,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class AltarGui implements Listener {
     private static final int[] GRID = {10, 11, 12, 19, 20, 21, 28, 29, 30};
     private static final int OUT = 24, ARROW = 22, INFO = 4, MINUTES = 40, SAVE = 48, BACK = 45, DELETE = 53;
-    private static final int PAGE = 45, PREV = 45, NEW = 49, NEXT = 53;
+    private static final int PAGE = 45, PREV = 45, MENU = 48, NEW = 49, NEXT = 53;
     private static final int[] EDIT = {10, 11, 12, 19, 20, 21, 28, 29, 30, 24};   // 0-8 grid, 9 output
     private static final Map<Integer, Integer> MIN_BTN = Map.of(38, -10, 39, -1, 41, 1, 42, 10);
 
@@ -99,6 +99,7 @@ public final class AltarGui implements Listener {
         for (int i = PAGE; i < 54; i++) h.inv.setItem(i, pane());
         if (h.page > 0) h.inv.setItem(PREV, button(Material.PAPER, "<gradient:#d8b04a:#f1d58f:#ffd7ca>previous page</gradient>", List.of("", Mouse.left(pl, "go back")), Map.of()));
         if (h.page < pages - 1) h.inv.setItem(NEXT, button(Material.PAPER, "<gradient:#d8b04a:#f1d58f:#ffd7ca>next page</gradient>", List.of("", Mouse.left(pl, "continue")), Map.of()));
+        h.inv.setItem(MENU, button(Material.OAK_DOOR, "<gradient:#d8b04a:#f1d58f:#ffd7ca>altar menu</gradient>", List.of("", Mouse.left(pl, "go back")), Map.of()));
         h.inv.setItem(NEW, button(Material.NETHER_STAR, "<gradient:#d8b04a:#f1d58f:#ffd7ca>new recipe</gradient>",
                 List.of("<color:#a8a8a8>type an id in chat after clicking</color>", "", Mouse.left(pl, "create a recipe")), Map.of()));
         p.openInventory(h.inv);
@@ -277,6 +278,7 @@ public final class AltarGui implements Listener {
         int slot = e.getSlot();
         if (slot == PREV && h.page > 0) { pl.sched.entity(p, () -> openList(p, h.page - 1)); return; }
         if (slot == NEXT) { pl.sched.entity(p, () -> openList(p, h.page + 1)); return; }
+        if (slot == MENU) { pl.sched.entity(p, () -> pl.altarHub.open(p)); return; }
         if (slot == NEW) { newRecipe(p); return; }
         String id = h.ids.get(slot);
         if (id != null) pl.sched.entity(p, () -> openEdit(p, id));

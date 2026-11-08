@@ -24,8 +24,8 @@ commands:
     permission-message: You do not have permission.
 
   altar:
-    description: Custom crafting altars (spawn presets, recipes)
-    usage: /<command> <spawn|remove|list|recipes|bind|stop|reload>
+    description: Custom crafting altars - /altar opens the altar menu
+    usage: /<command> [menu|spawn|remove|list|recipes|bind|stop|reload]
     aliases: [altars]
     permission: eventcore.altar
 
@@ -53,8 +53,13 @@ commands:
     aliases: [eh]
   disaster:
     description: Natural Disaster event
-    usage: /<command> <start|stop|reset|setcenter|setarena|setexit|status|reload|join|leave>
+    usage: /<command> <start|stop|reset|setcenter|setarena|setexit|status|reload|join|leave|tp>
     aliases: [nd]
+  tpdisaster:
+    description: Open the menu to join the running Natural Disaster
+    usage: /<command>
+    aliases: [tpdisater, disastertp]
+    permission: eventcore.disaster.join
 
 permissions:
   eventcore.egghunt.admin:

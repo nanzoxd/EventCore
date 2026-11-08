@@ -572,6 +572,15 @@ final class DisasterHazards {
 
     private void say(String path, Map<String, Object> ph) { ev.tellMembers(path, ph); }
 
+    /** A short hint line for the action bar (no prefix), straight from messages.yml. */
+    private Component hint(String path) { return pl.text.render(pl.fx.msg(pl.cfg.messages(), path).tpl(), Map.of()); }
+
+    /** True when the player is well below the surface (a cave or tunnel). Reads outside the region are treated as "not underground". */
+    private boolean underground(World w, Location l, int depth) {
+        try { return l.getY() < top(w, l.getBlockX(), l.getBlockZ()) - depth; }
+        catch (Throwable t) { return false; }
+    }
+
     // =====================================================================================================
     // wind charge: a giant spinning wind charge falls and bursts, throwing players away
     // =====================================================================================================
@@ -985,6 +994,9 @@ final class DisasterHazards {
         double dx = Math.cos(ang), dz = Math.sin(ang), px = -dz, pz = dx;
         List<Col> cols = new ArrayList<>();
         Location base = new Location(w, spot.getX(), ground(w, spot), spot.getZ());
+        boolean underHint = c.getBoolean("underground-hint", true);
+        int underDepth = Math.max(2, c.getInt("underground-depth", 5));
+        Set<UUID> told = ConcurrentHashMap.newKeySet();                      // each player gets the underground hint once per earthquake
         say("disaster.hazard-earthquake", Text.ph());
         every(base, ae, 1, n -> {
             ThreadLocalRandom r = ThreadLocalRandom.current();
@@ -992,6 +1004,12 @@ final class DisasterHazards {
                 if (n == 0) w.playSound(base, "entity.ravager.roar", 4f, 0.5f);
                 if (n % 8 == 0) w.playSound(base, "block.deepslate.break", 4f, 0.4f);
                 if (n % 2 == 0) near(base, shakeR, 40, p -> {                         // camera-shake style jitter
+                    if (underHint && n >= 10 && !told.contains(p.getUniqueId()) && underground(w, p.getLocation(), underDepth)) {
+                        told.add(p.getUniqueId());
+                        p.sendMessage(pl.msg("disaster.hint-earthquake"));
+                        p.sendActionBar(hint("disaster.hint-earthquake-bar"));
+                        p.playSound(p.getLocation(), "block.note_block.bell", 0.8f, 0.8f);
+                    }
                     Vector v = p.getVelocity();
                     p.setVelocity(new Vector(v.getX() + r.nextDouble(-0.1, 0.1), Math.max(v.getY(), p.isOnGround() ? 0.12 : v.getY()), v.getZ() + r.nextDouble(-0.1, 0.1)));
                     if (n % 6 == 0) w.spawnParticle(Particle.BLOCK, p.getLocation(), 12, 0.8, 0.1, 0.8, 0.1, p.getLocation().subtract(0, 1, 0).getBlock().getBlockData());
@@ -1121,14 +1139,17 @@ final class DisasterHazards {
     // thunderstorm: dark storm sky; lightning locks onto every player (a short warning, then it strikes where they stand)
     // =====================================================================================================
     private void thunderstorm(ActiveEvent ae, ConfigurationSection c, List<Player> alive, double run) {
-        int ticks = (int) (run * 20), warn = Math.max(4, (int) (c.getDouble("warning-seconds", 1.2) * 20));
-        double every = Math.max(1, c.getDouble("strike-interval-seconds", 2.5)), dmg = dmg(c.getDouble("damage", 8)), hitR = c.getDouble("hit-radius", 2.5);
-        int crater = c.getInt("crater-radius", 2), ambient = Math.max(0, c.getInt("ambient-strikes", 3));
+        int ticks = (int) (run * 20), warn = Math.max(10, (int) (c.getDouble("warning-seconds", 2.0) * 20));
+        double every = Math.max(1, c.getDouble("strike-interval-seconds", 4.0)), dmg = dmg(c.getDouble("damage", 8)), hitR = c.getDouble("hit-radius", 2.5);
+        double trackChance = Math.max(0, Math.min(1, c.getDouble("track-chance", 0.4)));      // chance a bolt is aimed near the player at all
+        double aim = Math.max(0, c.getDouble("aim-offset", 3.0)), wander = Math.max(4, c.getDouble("random-radius", 14));
+        int crater = c.getInt("crater-radius", 2), ambient = Math.max(0, c.getInt("ambient-strikes", 2));
         say("disaster.hazard-thunderstorm", Text.ph());
+        say("disaster.hint-thunderstorm", Text.ph());
         for (Player p : alive) {
             if (!p.isOnline()) continue;
             int[] n = {0};
-            int[] cd = {20 + ThreadLocalRandom.current().nextInt(40)};
+            int[] cd = {40 + ThreadLocalRandom.current().nextInt(60)};
             active.incrementAndGet();
             boolean[] ended = {false};
             Runnable end = () -> { if (!ended[0]) { ended[0] = true; active.decrementAndGet(); try { skyOff(p); } catch (Throwable ignored) { } } };
@@ -1140,18 +1161,20 @@ final class DisasterHazards {
                 n[0] += 2; cd[0] -= 2;
                 Location l = p.getLocation();
                 p.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, l.getX(), l.getY() + 1, l.getZ(), 2, 0.6, 0.8, 0.6, 0.1);
-                if (cd[0] <= 0) {                                       // lock on: ring + crackle, then strike where the player is NOW
-                    cd[0] = (int) (every * 20 * r.nextDouble(0.7, 1.3));
-                    Location mark = l.clone();
+                if (cd[0] <= 0) {                                       // mark a spot: the ring stays where it is, the bolt lands there (no following)
+                    cd[0] = (int) (every * 20 * r.nextDouble(0.8, 1.4));
+                    boolean aimed = r.nextDouble() < trackChance;
+                    double reach = aimed ? aim : wander;
+                    Location pick = l.clone().add(r.nextDouble(-reach, reach), 0, r.nextDouble(-reach, reach));
+                    final Location mark = ev.inBounds(ae, pick.getX(), pick.getZ()) ? pick : l.clone();
                     p.getWorld().playSound(mark, "entity.lightning_bolt.impact", 1.2f, 2f);
-                    p.sendActionBar(Component.text("⚡ LIGHTNING IS LOCKING ON — MOVE!", NamedTextColor.YELLOW, TextDecoration.BOLD));
+                    if (aimed) p.sendActionBar(hint("disaster.hint-lightning-lock"));      // hint: step out of the ring before it lands
                     int[] m = {0};
                     ScheduledTask lock = pl.sched.entityTimer(p, tt -> {
                         if (stopped || !p.isOnline() || !ev.isLive(ae)) { tt.cancel(); tasks.remove(tt); return; }
                         m[0] += 2;
-                        Location pl2 = p.getLocation();
-                        ring(p.getWorld(), pl2.getX(), pl2.getY(), pl2.getZ(), hitR, Color.fromRGB(0xfff27a));
-                        if (m[0] >= warn) { tt.cancel(); tasks.remove(tt); strike(ae, pl2, hitR, dmg, crater); }
+                        ring(p.getWorld(), mark.getX(), mark.getY(), mark.getZ(), hitR, Color.fromRGB(0xfff27a));
+                        if (m[0] >= warn) { tt.cancel(); tasks.remove(tt); strike(ae, mark, hitR, dmg, crater); }
                     }, () -> { }, 1, 2);
                     tasks.add(lock);
                 }

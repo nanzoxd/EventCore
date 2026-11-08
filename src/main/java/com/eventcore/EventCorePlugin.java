@@ -18,6 +18,8 @@ import com.eventcore.gui.ConfigGui;
 import com.eventcore.gui.HuntBountyGui;
 import com.eventcore.hunt.HuntManager;
 import com.eventcore.gui.AltarGui;
+import com.eventcore.gui.AltarHubGui;
+import com.eventcore.gui.DisasterInviteGui;
 import com.eventcore.gui.LootGui;
 import com.eventcore.gui.RitualGui;
 import com.eventcore.ritual.RitualManager;
@@ -58,6 +60,8 @@ public final class EventCorePlugin extends JavaPlugin {
     public NaturalDisasterEvent disaster;
     public AltarManager altar;
     public AltarGui altarGui;
+    public AltarHubGui altarHub;
+    public DisasterInviteGui inviteGui;
     public HuntManager hunt;
     public BountyManager bounty;
     public BountyGui bountyGui;
@@ -95,6 +99,8 @@ public final class EventCorePlugin extends JavaPlugin {
         scheduler = new EventScheduler(this);
         altar = new AltarManager(this);
         altarGui = new AltarGui(this);
+        altarHub = new AltarHubGui(this);
+        inviteGui = new DisasterInviteGui(this);
         hunt = new HuntManager(this);
         bounty = new BountyManager(this);
         bountyGui = new BountyGui(this);
@@ -112,13 +118,14 @@ public final class EventCorePlugin extends JavaPlugin {
         events.register(new HealthyFeederEvent(this));
         events.register(new LocatorBarEvent(this));
         events.register(new RandomTargetEvent(this));
+        events.register(new ChatQuestionEvent(this));
         events.register(airdrop);
         eggHunt = new EggHuntEvent(this);
         disaster = new NaturalDisasterEvent(this);
         events.register(eggHunt);
         events.register(disaster);
 
-        for (org.bukkit.event.Listener l : new org.bukkit.event.Listener[]{bars, chat, events, ritual, ritualGui, ritualScheduleGui, adminGui, lootGui, altar, altarGui, hunt, bounty, bountyGui})
+        for (org.bukkit.event.Listener l : new org.bukkit.event.Listener[]{bars, chat, events, ritual, ritualGui, ritualScheduleGui, adminGui, lootGui, altar, altarGui, altarHub, inviteGui, hunt, bounty, bountyGui})
             Bukkit.getPluginManager().registerEvents(l, this);
 
         EventCoreCommand ecCmd = new EventCoreCommand(this);
@@ -140,6 +147,7 @@ public final class EventCorePlugin extends JavaPlugin {
         DisasterCommand disasterCmd = new DisasterCommand(this);
         getCommand("disaster").setExecutor(disasterCmd);
         getCommand("disaster").setTabCompleter(disasterCmd);
+        getCommand("tpdisaster").setExecutor(disasterCmd);
         BountyCommand bountyCmd = new BountyCommand(this);
         for (String n : new String[]{"bountyadd", "bountystop", "bountylist"}) {
             getCommand(n).setExecutor(bountyCmd);

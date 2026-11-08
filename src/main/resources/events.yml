@@ -10,6 +10,7 @@ events:
     display-name: "vulnerable"
     description: "everyone's max health is reduced"
     color: "#ffcfca"
+    gradient: ["#8B53F8", "#E9D8FF", "#8B53F8"]   # title gradient (dark, light, dark)
     aliases: [vuln, frail, halfhearts]
     duration-minutes: 30
     cooldown-minutes: 0
@@ -21,11 +22,11 @@ events:
       gradient: ["#ffcfca", "#fff1e0"]
       countdown: true
     sounds:
-      start: {sound: "entity.wither.spawn", volume: 0.8, pitch: 1.0}
-      end: {sound: "entity.player.levelup", volume: 0.8, pitch: 1.0}
+      start: {sound: "block.respawn_anchor.charge", volume: 0.8, pitch: 1.0}
+      end: {sound: "ui.toast.challenge_complete", volume: 0.7, pitch: 1.0}
     titles:
-      start: {title: "<g>{event}</g>", subtitle: "<g>{description}</g>"}
-      end: {title: "<g>{event} ended</g>", subtitle: ""}
+      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
+      end: {title: "<gradient:{gradient_raw}>{event} ended</gradient>", subtitle: ""}
     messages:
       join:
         - "everyone's max health is reduced to {hearts} hearts"
@@ -61,6 +62,7 @@ events:
     display-name: "shieldless"
     description: "players cannot use shields"
     color: "#d8b04a"
+    gradient: ["#27E4F5", "#C6F6FB", "#27E4F5"]   # title gradient (dark, light, dark)
     aliases: [shield, shields, noshield]
     duration-minutes: 30
     cooldown-minutes: 0
@@ -73,10 +75,10 @@ events:
       countdown: true
     sounds:
       start: {sound: "item.shield.break", volume: 0.8, pitch: 1.0}
-      end: {sound: "entity.player.levelup", volume: 0.8, pitch: 1.0}
+      end: {sound: "block.amethyst_block.resonate", volume: 0.8, pitch: 1.0}
     titles:
-      start: {title: "<g>{event}</g>", subtitle: "<g>{description}</g>"}
-      end: {title: "<g>{event} ended</g>", subtitle: ""}
+      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
+      end: {title: "<gradient:{gradient_raw}>{event} ended</gradient>", subtitle: ""}
     messages:
       join:
         - "shields cannot be raised or used"
@@ -115,6 +117,7 @@ events:
     display-name: "golden tree"
     description: "leaves drop golden apples instead of apples"
     color: "#e8c670"
+    gradient: ["#E8B923", "#FFF3B0", "#E8B923"]   # title gradient (dark, light, dark)
     aliases: [goldentrees, golden_trees, golden, trees, apples]
     duration-minutes: 30
     cooldown-minutes: 0
@@ -126,11 +129,11 @@ events:
       gradient: ["#e8c670", "#fff0cc"]
       countdown: true
     sounds:
-      start: {sound: "entity.experience_orb.pickup", volume: 0.8, pitch: 1.0}
+      start: {sound: "block.amethyst_block.resonate", volume: 0.8, pitch: 1.2}
       end: {sound: "entity.player.levelup", volume: 0.8, pitch: 1.0}
     titles:
-      start: {title: "<g>{event}</g>", subtitle: "<g>{description}</g>"}
-      end: {title: "<g>{event} ended</g>", subtitle: ""}
+      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
+      end: {title: "<gradient:{gradient_raw}>{event} ended</gradient>", subtitle: ""}
     messages:
       join:
         - "leaves drop golden apples instead of apples"
@@ -176,6 +179,7 @@ events:
     display-name: "anonymous"
     description: "everyone shares the same name"
     color: "#ffd7ca"
+    gradient: ["#7B7F9E", "#E4E6F5", "#7B7F9E"]   # title gradient (dark, light, dark)
     aliases: [anon, anonym, hidden]
     duration-minutes: 30
     cooldown-minutes: 0
@@ -187,11 +191,11 @@ events:
       gradient: ["#ffd7ca", "#fffbf0"]
       countdown: true
     sounds:
-      start: {sound: "entity.enderman.teleport", volume: 0.8, pitch: 1.0}
-      end: {sound: "entity.player.levelup", volume: 0.8, pitch: 1.0}
+      start: {sound: "entity.enderman.teleport", volume: 0.8, pitch: 0.8}
+      end: {sound: "entity.illusioner.cast_spell", volume: 0.8, pitch: 1.0}
     titles:
-      start: {title: "<g>{event}</g>", subtitle: "<g>{description}</g>"}
-      end: {title: "<g>{event} ended</g>", subtitle: ""}
+      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
+      end: {title: "<gradient:{gradient_raw}>{event} ended</gradient>", subtitle: ""}
     messages:
       join:
         - "everyone shares the same name and skin"
@@ -237,6 +241,7 @@ events:
     display-name: "glow"
     description: "everyone glows"
     color: "#f1d58f"
+    gradient: ["#7CF54A", "#E3FFD1", "#7CF54A"]   # title gradient (dark, light, dark)
     aliases: [glowing]
     duration-minutes: 30
     cooldown-minutes: 0
@@ -248,11 +253,11 @@ events:
       gradient: ["#f1d58f", "#fffbf0"]
       countdown: true
     sounds:
-      start: {sound: "block.beacon.activate", volume: 0.8, pitch: 1.0}
+      start: {sound: "block.conduit.activate", volume: 0.8, pitch: 1.0}
       end: {sound: "block.beacon.deactivate", volume: 0.8, pitch: 1.0}
     titles:
-      start: {title: "<g>{event}</g>", subtitle: "<g>{description}</g>"}
-      end: {title: "<g>{event} ended</g>", subtitle: ""}
+      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
+      end: {title: "<gradient:{gradient_raw}>{event} ended</gradient>", subtitle: ""}
     messages:
       join:
         - "every player glows and can be seen through walls"
@@ -286,6 +291,7 @@ events:
     display-name: "DuoDeck"
     description: "all elo gains are boosted"
     color: "#f7e2ad"
+    gradient: ["#F54AA8", "#FFD1EA", "#F54AA8"]   # title gradient (dark, light, dark)
     aliases: [duodeck, duo, elo, elobuff, doubleelo, 2xelo]   # typed names only; tab completion shows just "duodeck"
     duration-minutes: 30
     cooldown-minutes: 0
@@ -297,11 +303,11 @@ events:
       gradient: ["#e8c670", "#fff0cc"]
       countdown: true
     sounds:
-      start: {sound: "entity.player.levelup", volume: 0.8, pitch: 1.0}
-      end: {sound: "entity.experience_orb.pickup", volume: 0.8, pitch: 1.0}
+      start: {sound: "ui.toast.challenge_complete", volume: 0.7, pitch: 1.2}
+      end: {sound: "block.note_block.bell", volume: 0.8, pitch: 1.0}
     titles:
-      start: {title: "<g>{event}</g>", subtitle: "<g>{description}</g>"}
-      end: {title: "<g>{event} ended</g>", subtitle: ""}
+      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
+      end: {title: "<gradient:{gradient_raw}>{event} ended</gradient>", subtitle: ""}
     messages:
       join:
         - "every elo gain (kills and playtime) is multiplied by {multiplier}x"
@@ -337,6 +343,7 @@ events:
     display-name: "Miners Haven"
     description: "all ore drops are doubled"
     color: "#d8b04a"
+    gradient: ["#D08A3C", "#F6E2C8", "#D08A3C"]   # title gradient (dark, light, dark)
     aliases: [minershaven, miners, miner, haven, ores, doubleores, goldfrenzy, frenzy]
     duration-minutes: 30
     cooldown-minutes: 0
@@ -348,11 +355,11 @@ events:
       gradient: ["#d8b04a", "#e8c670", "#f1d58f"]
       countdown: true
     sounds:
-      start: {sound: "block.amethyst_block.chime", volume: 0.8, pitch: 1.2}
+      start: {sound: "block.smithing_table.use", volume: 0.8, pitch: 1.0}
       end: {sound: "entity.experience_orb.pickup", volume: 0.8, pitch: 1.0}
     titles:
-      start: {title: "<g>{event}</g>", subtitle: "<g>{description}</g>"}
-      end: {title: "<g>{event} ended</g>", subtitle: ""}
+      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
+      end: {title: "<gradient:{gradient_raw}>{event} ended</gradient>", subtitle: ""}
     messages:
       join:
         - "every ore drops double while the event runs"
@@ -390,6 +397,7 @@ events:
     display-name: "Healthy Feeder"
     description: "golden apples give 4 absorption hearts instead of 2"
     color: "#d8b04a"
+    gradient: ["#2FD06B", "#CCF7DC", "#2FD06B"]   # title gradient (dark, light, dark)
     aliases: [healthyfeeder, feeder, healthy, feed, goldenapple, absorption]
     duration-minutes: 30
     cooldown-minutes: 0
@@ -401,11 +409,11 @@ events:
       gradient: ["#d8b04a", "#e8c670", "#f1d58f"]
       countdown: true
     sounds:
-      start: {sound: "block.amethyst_block.chime", volume: 0.8, pitch: 1.2}
+      start: {sound: "block.note_block.harp", volume: 0.8, pitch: 1.2}
       end: {sound: "entity.experience_orb.pickup", volume: 0.8, pitch: 1.0}
     titles:
-      start: {title: "<g>{event}</g>", subtitle: "<g>{description}</g>"}
-      end: {title: "<g>{event} ended</g>", subtitle: ""}
+      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
+      end: {title: "<gradient:{gradient_raw}>{event} ended</gradient>", subtitle: ""}
     messages:
       join:
         - "golden apples give {hearts} absorption hearts instead of 2"
@@ -442,6 +450,7 @@ events:
     display-name: "locator bar"
     description: "the locator bar is on, invisibility is disabled"
     color: "#ffe4d5"
+    gradient: ["#4A5BFF", "#D3D8FF", "#4A5BFF"]   # title gradient (dark, light, dark)
     aliases: [locator, locatorbar, bar]
     duration-minutes: 60
     cooldown-minutes: 0
@@ -454,10 +463,10 @@ events:
       countdown: true
     sounds:
       start: {sound: "block.beacon.power_select", volume: 0.8, pitch: 1.0}
-      end: {sound: "block.beacon.deactivate", volume: 0.8, pitch: 1.0}
+      end: {sound: "block.respawn_anchor.set_spawn", volume: 0.8, pitch: 1.0}
     titles:
-      start: {title: "<g>{event}</g>", subtitle: "<g>{description}</g>"}
-      end: {title: "<g>{event} ended</g>", subtitle: ""}
+      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
+      end: {title: "<gradient:{gradient_raw}>{event} ended</gradient>", subtitle: ""}
     messages:
       join:
         - "the locator bar is on, you can see other players on it"
@@ -502,6 +511,7 @@ events:
     display-name: "random target"
     description: "everyone hunts a random player, top killers are on the scoreboard"
     color: "#f5b7a5"
+    gradient: ["#F5424B", "#FFD0D3", "#F5424B"]   # title gradient (dark, light, dark)
     aliases: [randomtarget, rtarget, target]
     duration-minutes: 30
     cooldown-minutes: 0
@@ -514,10 +524,10 @@ events:
       gradient: ["#f5b7a5", "#ffe4d5"]
       countdown: true
     sounds:
-      start: {sound: "entity.ender_dragon.growl", volume: 0.6, pitch: 1.2}
+      start: {sound: "event.raid.horn", volume: 0.6, pitch: 1.0}
       end: {sound: "ui.toast.challenge_complete", volume: 0.8, pitch: 1.0}
     titles:                   # no "end" title on purpose: the top killer title is shown instead (messages.yml random-target.winner-title)
-      start: {title: "<g>{event}</g>", subtitle: "<g>{description}</g>"}
+      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
     messages:
       join:
         - "you are hunting a random player: their name and distance are in your action bar"
@@ -565,6 +575,7 @@ events:
     display-name: "airdrop"
     description: "loot crates fall from the sky"
     color: "#d8b04a"
+    gradient: ["#FF7A59", "#FFD9CF", "#FF7A59"]   # title gradient (dark, light, dark)
     aliases: [drop, airdrops, crate, crates]
     duration-minutes: 35   # code enforces at least incoming + fall + 5 min
     cooldown-minutes: 0
@@ -576,11 +587,11 @@ events:
       gradient: ["#d8b04a", "#fff0cc"]
       countdown: true
     sounds:
-      start: {sound: "block.beacon.activate", volume: 0.35, pitch: 0.8}
-      end: {sound: "block.beacon.deactivate", volume: 0.35, pitch: 0.8}
+      start: {sound: "entity.firework_rocket.launch", volume: 0.5, pitch: 1.0}
+      end: {sound: "block.beacon.deactivate", volume: 0.4, pitch: 0.8}
     titles:
-      start: {title: "<g>{event}</g>", subtitle: "<g>{description}</g>"}
-      end: {title: "<g>{event} ended</g>", subtitle: ""}
+      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
+      end: {title: "<gradient:{gradient_raw}>{event} ended</gradient>", subtitle: ""}
     messages:
       join:
         - "lootdrops fall from the sky: watch the bossbar for the time or coordinates"
@@ -776,6 +787,7 @@ events:
     display-name: "egg hunt"
     description: "find the hidden eggs and climb the leaderboard"
     color: "#f1d58f"
+    gradient: ["#4DF0C0", "#D6FFF1", "#4DF0C0"]   # title gradient (dark, light, dark)
     aliases: [egghunt, eggs, easter]
     duration-minutes: 30
     cooldown-minutes: 0
@@ -790,8 +802,8 @@ events:
       start: {sound: "entity.chicken.egg", volume: 0.8, pitch: 1.0}
       end: {sound: "entity.player.levelup", volume: 0.8, pitch: 1.0}
     titles:
-      start: {title: "<g>{event}</g>", subtitle: "<g>{description}</g>"}
-      end: {title: "<g>{event} ended</g>", subtitle: ""}
+      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
+      end: {title: "<gradient:{gradient_raw}>{event} ended</gradient>", subtitle: ""}
     messages:
       join:
         - "eggs are hidden in the event area, click one to collect it"
@@ -887,6 +899,7 @@ events:
     display-name: "natural disaster"
     description: "last player standing inside a shrinking border"
     color: "#ffcfca"
+    gradient: ["#FF5A1F", "#FFD9C7", "#FF5A1F"]   # title gradient (dark, light, dark)
     aliases: [disaster, nd, lastman]
     duration-minutes: 60
     cooldown-minutes: 0
@@ -899,13 +912,14 @@ events:
       countdown: true
     sounds:
       start: {sound: "entity.lightning_bolt.thunder", volume: 0.8, pitch: 1.0}
-      end: {sound: "entity.player.levelup", volume: 0.8, pitch: 1.0}
+      end: {sound: "block.bell.use", volume: 0.8, pitch: 0.8}
     titles:
-      start: {title: "<g>{event}</g>", subtitle: "<g>{description}</g>"}
-      end: {title: "<g>{event} ended</g>", subtitle: ""}
+      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
+      end: {title: "<gradient:{gradient_raw}>{event} ended</gradient>", subtitle: ""}
     messages:
       join:
-        - "a natural disaster is running, the arena is closed to new players"
+        - "a menu asks if you want to go to the arena, /tpdisaster opens it again"
+        - "you can enter only once: after you die or leave you cannot come back"
         - "the border shrinks over time, the last player standing wins"
         - "it ends in {time}"
       start:
@@ -949,8 +963,9 @@ events:
           distance: 2.5            # blocks from the border where the push starts
           strength: 0.45           # how hard (velocity per move tick)
       participants:
-        mode: ALL                  # ALL = every eligible online player, OPTIN = only players who used /disaster join first
-        min-players: 0             # 0 = allow the event to start with any online player count
+        # nobody is teleported automatically: every online player (and everyone who joins later) gets a Yes / No menu, /tpdisaster opens it again
+        # a player who pressed Yes and died or left cannot enter a second time during the same event
+        join-window-seconds: 60    # no "last player standing" win before this many seconds (people are still choosing in the menu)
         exclude-gamemodes: [SPECTATOR]
         use-exempt-permission: false # true = exclude players with eventcore.disaster.exempt
         spread-radius: 35
@@ -1073,6 +1088,8 @@ events:
           max-seconds: 35
           shake-seconds: 6
           shake-radius: 45
+          underground-hint: true   # players who are still underground when it starts get the hint "do not stay underground" (once per earthquake)
+          underground-depth: 5     # blocks below the surface that count as underground
           length: 44
           width: 4
           depth: 8
@@ -1110,15 +1127,18 @@ events:
           damage: 16.0
           fire-seconds: 3
           crater-seconds: 4
-        thunderstorm:              # dark storm; lightning locks onto every player and strikes where they stand
+        thunderstorm:              # dark storm; lightning marks a ring near each player, then strikes inside it (it does not follow the player)
           enabled: true
           color: "#9dff4a"
-          strike-interval-seconds: 2.5   # per player
-          warning-seconds: 1.2           # ring + crackle before the bolt lands (run!)
+          strike-interval-seconds: 4.0   # per player (was 2.5)
+          warning-seconds: 2.0           # the ring stays where it is and the bolt lands in it: step out of it (was 1.2)
+          track-chance: 0.4              # chance that a bolt is aimed near the player at all, otherwise it lands somewhere around (lower = less tracking)
+          aim-offset: 3.0                # an aimed bolt lands up to this many blocks from where the player stood when it locked on
+          random-radius: 14.0            # how far an unaimed bolt can land from the player
           hit-radius: 2.5
           damage: 14.0
           crater-radius: 2
-          ambient-strikes: 3             # extra random bolts per player that wreck the terrain
+          ambient-strikes: 2             # extra random bolts per player that wreck the terrain (was 3)
         lightning:
           enabled: false           # optional: harmless-looking strikes that damage players standing close
           interval-seconds: 20
@@ -1130,3 +1150,162 @@ events:
           items: ["NETHERITE_INGOT:2", "DIAMOND:32"]
           commands: []
           message: "<g>you survived the natural disaster!</g>"
+  chat_question:
+    enabled: true
+    display-name: "chat games"
+    description: "answer the question in chat first and win golden apples"
+    color: "#f1d58f"
+    gradient: ["#2E9BFF", "#D4ECFF", "#2E9BFF"]   # title gradient (dark, light, dark)
+    aliases: [chatquestion, chatgames, chat, trivia, quiz]
+    duration-minutes: 10
+    cooldown-minutes: 0
+    bossbar:
+      enabled: true
+      text: "{event} : {time}"
+      color: YELLOW
+      style: NOTCHED_10
+      gradient: ["#d8b04a", "#f7e2ad"]
+      countdown: true
+    sounds:
+      start: {sound: "block.note_block.bell", volume: 0.8, pitch: 1.3}
+      end: {sound: "ui.toast.challenge_complete", volume: 0.8, pitch: 1.0}
+    titles:
+      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
+      end: {title: "<gradient:{gradient_raw}>{event} ended</gradient>", subtitle: ""}
+      winner: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{player} won</gradient>", stay: 60}   # shown to everyone when a question is answered
+    messages:
+      join:
+        - "questions appear in chat, type the answer in chat"
+        - "the first correct answer wins golden apples"
+        - "it ends in {time}"
+      start:
+        text: "<g>{event} has started for {minutes} minutes: {description}</g>"
+        sound: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
+      end:
+        text: "<g>{event} has ended.</g>"
+        sound: {sound: "block.note_block.bass", volume: 0.6, pitch: 1.0}
+      question:                  # the question is sent in chat only (no title, no action bar). {number} {question} {seconds}
+        text: "<g>question {number}</g> <gray>-</gray> <white>{question}</white> <gray>({seconds}s)</gray>"
+        sound: {sound: "block.note_block.pling", volume: 1.0, pitch: 1.6}
+      winner:
+        text: "<g>{player} answered correctly and won {amount} golden apples!</g>"
+        sound: {sound: "entity.player.levelup", volume: 0.8, pitch: 1.2}
+      expired:
+        text: "<g>time is up, nobody answered. the answer was {answer}.</g>"
+        sound: {sound: "block.note_block.bass", volume: 0.7, pitch: 0.8}
+    start-animation:
+      enabled: false
+    aura:
+      enabled: false
+    schedule:
+      mode: off            # off | times | interval
+      times: ["19:00"]     # "19:00" or "SAT 20:00"
+      days: [ALL]          # ALL or MONDAY, TUESDAY ...
+      interval-minutes: 180
+    settings:
+      first-question-after-seconds: 5   # the first question comes this long after the event starts
+      question-interval-seconds: 45     # pause between the end of one question and the next one
+      answer-timeout-seconds: 30        # a question with no correct answer expires after this long
+      hide-correct-answer: true         # the winning message is not shown in chat (so nobody else can copy it)
+      reward:
+        item: GOLDEN_APPLE
+        amounts: [32, 64]               # half a stack or a full stack, picked at random (one of them per win)
+      # Each question has ONE answer (case does not matter). Use "a|b" to accept several answers.
+      questions:
+        - { q: "What is 7 x 8?", a: "56" }
+        - { q: "What is 12 x 12?", a: "144" }
+        - { q: "What is 15 + 27?", a: "42" }
+        - { q: "What is 100 - 37?", a: "63" }
+        - { q: "What is 9 x 9?", a: "81" }
+        - { q: "What is 144 divided by 12?", a: "12" }
+        - { q: "What is 6 x 7?", a: "42" }
+        - { q: "What is 50 + 75?", a: "125" }
+        - { q: "What is 200 - 88?", a: "112" }
+        - { q: "What is 8 x 8?", a: "64" }
+        - { q: "What is the square root of 64?", a: "8" }
+        - { q: "What is 3 to the power of 4?", a: "81" }
+        - { q: "What is 25% of 200?", a: "50" }
+        - { q: "What is 17 x 3?", a: "51" }
+        - { q: "What is 11 x 11?", a: "121" }
+        - { q: "What is 72 divided by 8?", a: "9" }
+        - { q: "What is 13 x 7?", a: "91" }
+        - { q: "What is 5 to the power of 3?", a: "125" }
+        - { q: "What is 50% of 340?", a: "170" }
+        - { q: "How many degrees are in a right angle?", a: "90" }
+        - { q: "How many sides does a hexagon have?", a: "6" }
+        - { q: "What is the square root of 121?", a: "11" }
+        - { q: "What is 2 to the power of 8?", a: "256" }
+        - { q: "What is 19 x 4?", a: "76" }
+        - { q: "What is 10% of 450?", a: "45" }
+        - { q: "What is 16 x 6?", a: "96" }
+        - { q: "How many degrees in a triangle total?", a: "180" }
+        - { q: "What is 63 divided by 9?", a: "7" }
+        - { q: "What is 14 x 8?", a: "112" }
+        - { q: "What is 75% of 80?", a: "60" }
+        - { q: "What planet is closest to the Sun?", a: "mercury" }
+        - { q: "What is the chemical symbol for gold?", a: "au" }
+        - { q: "How many bones are in the adult human body?", a: "206" }
+        - { q: "What gas do plants absorb from the air?", a: "carbon dioxide" }
+        - { q: "What is the chemical symbol for water?", a: "h2o" }
+        - { q: "How many chromosomes do humans have?", a: "46" }
+        - { q: "What is the speed of light in km/s (rounded)?", a: "300000" }
+        - { q: "What planet is known as the Red Planet?", a: "mars" }
+        - { q: "What is the powerhouse of the cell?", a: "mitochondria" }
+        - { q: "What element has the atomic number 1?", a: "hydrogen" }
+        - { q: "How many planets are in our solar system?", a: "8" }
+        - { q: "What is the largest organ in the human body?", a: "skin" }
+        - { q: "What gas makes up most of Earth's atmosphere?", a: "nitrogen" }
+        - { q: "What is the chemical symbol for iron?", a: "fe" }
+        - { q: "What force keeps us on the ground?", a: "gravity" }
+        - { q: "How many chambers does the human heart have?", a: "4" }
+        - { q: "What is the chemical symbol for sodium?", a: "na" }
+        - { q: "What layer protects Earth from UV rays?", a: "ozone" }
+        - { q: "What is the hardest natural substance on Earth?", a: "diamond" }
+        - { q: "How many teeth does an adult human have?", a: "32" }
+        - { q: "What is the most spoken language in the world?", a: "mandarin" }
+        - { q: "How many hours are in a week?", a: "168" }
+        - { q: "How many days are in a leap year?", a: "366" }
+        - { q: "What is the capital of France?", a: "paris" }
+        - { q: "How many seconds are in one hour?", a: "3600" }
+        - { q: "What is the largest ocean on Earth?", a: "pacific" }
+        - { q: "How many minutes are in a day?", a: "1440" }
+        - { q: "What is the tallest mountain in the world?", a: "everest" }
+        - { q: "How many weeks are in a year?", a: "52" }
+        - { q: "What is the capital of Japan?", a: "tokyo" }
+        - { q: "How many continents are there?", a: "7" }
+        - { q: "What is the longest river in the world?", a: "nile" }
+        - { q: "How many zeros are in one million?", a: "6" }
+        - { q: "What is the capital of Australia?", a: "canberra" }
+        - { q: "How many countries are in the world?", a: "195" }
+        - { q: "What currency does Japan use?", a: "yen" }
+        - { q: "What is the smallest country in the world?", a: "vatican" }
+        - { q: "How many letters are in the English alphabet?", a: "26" }
+        - { q: "What is the capital of Brazil?", a: "brasilia" }
+        - { q: "How many sides does an octagon have?", a: "8" }
+        - { q: "What ocean is between Europe and America?", a: "atlantic" }
+        - { q: "What color does red and blue make?", a: "purple" }
+        - { q: "How many strings does a standard guitar have?", a: "6" }
+        - { q: "What is the most popular sport in the world?", a: "football" }
+        - { q: "How many keys does a standard piano have?", a: "88" }
+        - { q: "What is the fastest land animal?", a: "cheetah" }
+        - { q: "How many players are on a football team?", a: "11" }
+        - { q: "What animal is known as the King of the Jungle?", a: "lion" }
+        - { q: "How many players are on a basketball team?", a: "5" }
+        - { q: "What is the largest planet in our solar system?", a: "jupiter" }
+        - { q: "How many players are in a volleyball team?", a: "6" }
+        - { q: "What is the lightest gas?", a: "hydrogen" }
+        - { q: "How many innings are in a baseball game?", a: "9" }
+        - { q: "What is the national animal of Australia?", a: "kangaroo" }
+        - { q: "How long in minutes is a standard football match?", a: "90" }
+        - { q: "What do bees produce?", a: "honey" }
+        - { q: "How many players on each side in rugby union?", a: "15" }
+        - { q: "What is the largest desert in the world?", a: "sahara" }
+        - { q: "How many points is a touchdown worth in American football?", a: "6" }
+        - { q: "What animal has the longest neck?", a: "giraffe" }
+        - { q: "How many players are in a cricket team?", a: "11" }
+        - { q: "What is water's boiling point in Celsius?", a: "100" }
+        - { q: "How many rings are on the Olympic flag?", a: "5" }
+        - { q: "What is the currency of the UK?", a: "pound" }
+        - { q: "How many events are in a decathlon?", a: "10" }
+        - { q: "What is the most abundant metal in Earth's crust?", a: "aluminum" }
+        - { q: "How many gold medals did Usain Bolt win at one Olympics?", a: "3" }

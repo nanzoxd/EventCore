@@ -101,6 +101,7 @@ public final class EventManager implements Listener {
                 "minutes", ae.totalSec / 60,
                 "time", Util.mmss(ae.secondsLeft()),
                 "color_raw", s.getString("color", "#ffffff"),
+                "gradient_raw", ae.ev.gradientRaw(),
                 "id", ae.ev.id());
         m.putAll(ae.ev.extra(ae));
         return m;
@@ -209,7 +210,7 @@ public final class EventManager implements Listener {
         if (cd > 0) cooldowns.put(id, System.currentTimeMillis() + cd * 60_000L);
         if (announce) {
             Map<String, Object> ph = Text.ph("event", pl.text.sc(ev.displayName()), "description", pl.text.sc(s.getString("description", "")),
-                    "color_raw", s.getString("color", "#ffffff"), "minutes", ae.totalSec / 60, "time", "00:00");
+                    "color_raw", s.getString("color", "#ffffff"), "gradient_raw", ev.gradientRaw(), "minutes", ae.totalSec / 60, "time", "00:00");
             pl.fx.playAll(s.getConfigurationSection("sounds.end"));
             pl.fx.title(Bukkit.getServer(), s.getConfigurationSection("titles.end"), ph);
             pl.fx.broadcast(s, "messages.end", ph, pl.cfg.messages().getString("prefix", ""));

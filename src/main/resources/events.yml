@@ -971,12 +971,10 @@ events:
         allowed: [warp, warps, msg, tell, w, r, reply, rules, helpop]   # everything else is blocked while the event runs
       hazards:                     # disasters: they erode the arena slowly, in small shallow chunks (never down to bedrock)
         enabled: true
-        start-after-seconds: 0     # the first countdown starts with the event
-        cycle-seconds: 120         # "2m": every slot shows how long until its disaster hits, then draws the next one of the cycle
+        start-after-seconds: 10    # the first two disasters begin this long after the event starts
+        run-seconds: 120           # "2m": every disaster stays active this long (storms, hurricane and tornado run non-stop, meteors / geysers strike every min-max seconds); override per disaster with run-seconds
         max-active: 2              # only this many disasters at the same time = this many entries in the action bar ("hurricane: 2m | meteor: 2m")
-        stagger-seconds: 0         # 0 = both timers match, e.g. 60 = the second slot hits a minute earlier than the first
-        announce-seconds: 12       # the entry turns bold this many seconds before it hits
-        escalate: true             # the cycle gets faster every time the border shrinks
+        announce-seconds: 10       # the entry turns bold for the last N seconds of its run, then the next disaster of the cycle takes its slot
         max-damage: 12.0           # no hazard hit or fall does more than this (12 = 6 hearts)
         max-depth: 12              # hard limit: no disaster ever digs deeper than this many blocks below the surface
         dig-layers-per-tick: 3     # how fast a crater crumbles (lower = slower, more visible, lighter on the server)
@@ -988,6 +986,8 @@ events:
         wind_charge:               # giant spinning wind charge falls, bursts and throws players away
           enabled: true
           color: "#7fffd4"
+          min-seconds: 8           # one wind charge falls every min-max seconds (random) while it runs
+          max-seconds: 12
           scale: 6.0
           fall-height: 35
           radius: 5.0
@@ -998,11 +998,13 @@ events:
         meteor:                    # giant magma block: real crater with a small scorched pit in the middle
           enabled: true
           color: "#ff8c1a"
-          scale: 5.0
-          radius: 7.0
-          crater-radius: 6
-          shaft-radius: 2
-          shaft-depth: 5
+          min-seconds: 10          # one meteor falls every 10-15 seconds (random) for the whole run
+          max-seconds: 15
+          scale: 4.0
+          radius: 5.0
+          crater-radius: 3         # small hole
+          shaft-radius: 1
+          shaft-depth: 4
           destroy-terrain: true
           damage: 12.0
           fire-seconds: 4
@@ -1010,6 +1012,8 @@ events:
         lava_geyser:               # warning ring, then a REAL lava column that launches and burns (ground is restored after)
           enabled: true
           color: "#ff3030"
+          min-seconds: 8           # one geyser erupts every min-max seconds (random) while it runs
+          max-seconds: 12
           warning-seconds: 4
           duration-seconds: 6
           height: 14
@@ -1022,6 +1026,8 @@ events:
         water_geyser:              # warning ring, then a REAL water column that launches players up
           enabled: true
           color: "#3aa0ff"
+          min-seconds: 8
+          max-seconds: 12
           warning-seconds: 3
           duration-seconds: 6
           height: 16
@@ -1033,7 +1039,6 @@ events:
         wind_storm:                # strong gust with wind streaks pushing everybody the same way
           enabled: true
           color: "#d8e2dc"
-          duration-seconds: 8
           strength: 0.35
           destroy-terrain: true    # rips random blocks out of the ground and blows them away
           rip-per-tick: 2
@@ -1042,7 +1047,6 @@ events:
         tornado:                   # roams the arena for a while, rips blocks out, scours a shallow trench, throws players ~100 blocks
           enabled: true
           color: "#c2a878"
-          duration-seconds: 45     # then it fades and the slot draws the next disaster (0 = stays until the event ends)
           height: 30
           radius: 7.0
           pull: 0.45
@@ -1060,6 +1064,8 @@ events:
         earthquake:                # the ground shakes, then a fissure opens a few blocks deep (deepest in the middle) with magma at the bottom
           enabled: true
           color: "#b5651d"
+          min-seconds: 25          # one fissure every min-max seconds (random) while it runs
+          max-seconds: 35
           shake-seconds: 6
           shake-radius: 45
           length: 44
@@ -1070,6 +1076,8 @@ events:
         laser_sinkhole:            # red orbital laser locks on, burns, leaves a bowl-shaped sinkhole with a magma floor
           enabled: true
           color: "#ff2bd6"
+          min-seconds: 15          # one laser strike every min-max seconds (random) while it runs
+          max-seconds: 20
           charge-seconds: 4
           burn-seconds: 4
           radius: 6.0
@@ -1079,20 +1087,18 @@ events:
         hurricane:                 # night + rain + a rotating spiral of wind that shoves players around
           enabled: true
           color: "#7b6cff"
-          duration-seconds: 20
           strength: 0.45
           destroy-terrain: true    # picks up random blocks all around and whirls them away
           rip-per-tick: 2
           rip-radius: 24
           max-blocks-per-player: 30
-        meteor_shower:             # the sky darkens and many small meteors come down, each one cratering the ground
+        meteor_shower:             # the sky darkens and many small meteors rain down non-stop, each one cratering the ground
           enabled: true
           color: "#ffd23f"
-          duration-seconds: 16
-          meteors: 14
-          scale: 3.5
-          radius: 5.0
-          crater-radius: 4
+          every-seconds: 3         # a meteor this often while it runs (the shower is the only dense one)
+          scale: 3.0
+          radius: 4.0
+          crater-radius: 2
           shaft-radius: 1
           shaft-depth: 3
           destroy-terrain: true
@@ -1102,7 +1108,6 @@ events:
         thunderstorm:              # dark storm; lightning locks onto every player and strikes where they stand
           enabled: true
           color: "#9dff4a"
-          duration-seconds: 30
           strike-interval-seconds: 2.5   # per player
           warning-seconds: 1.2           # ring + crackle before the bolt lands (run!)
           hit-radius: 2.5

@@ -736,7 +736,7 @@ public final class NaturalDisasterEvent extends GameEvent {
         if (pp != null && !pp.left) {
             if (intoArena || !pp.entered) return;
             switch (e.getCause()) {
-                case ENDER_PEARL, CHORUS_FRUIT, NETHER_PORTAL, END_PORTAL, END_GATEWAY -> {
+                case ENDER_PEARL, NETHER_PORTAL, END_PORTAL, END_GATEWAY -> {
                     e.setCancelled(true);
                     p.sendActionBar(pl.msg("disaster.cannot-leave"));
                 }

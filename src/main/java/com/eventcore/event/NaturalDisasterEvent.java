@@ -252,7 +252,7 @@ public final class NaturalDisasterEvent extends GameEvent {
         boolean optin = optIn();
         List<Player> chosen = new ArrayList<>();
         for (Player p : Bukkit.getOnlinePlayers()) if (eligible(p, s, optin)) chosen.add(p);
-        int min = Math.max(1, s.getInt("participants.min-players", 2));
+        int min = Math.max(0, s.getInt("participants.min-players", 0));
         if (chosen.size() < min) { signups.clear(); abort("disaster.not-enough-players", "min", min, "count", chosen.size()); return; }
 
         WorldBorder b = Bukkit.createWorldBorder();       // virtual: never touches world.getWorldBorder()
@@ -266,7 +266,8 @@ public final class NaturalDisasterEvent extends GameEvent {
     }
 
     private boolean eligible(Player p, ConfigurationSection s, boolean optin) {
-        if (p.hasPermission("eventcore.disaster.exempt")) return false;
+        if (s.getBoolean("participants.use-exempt-permission", false)
+                && p.hasPermission("eventcore.disaster.exempt")) return false;
         for (String g : s.getStringList("participants.exclude-gamemodes")) if (p.getGameMode().name().equalsIgnoreCase(g.trim())) return false;
         return !optin || signups.contains(p.getUniqueId());
     }
@@ -735,7 +736,7 @@ public final class NaturalDisasterEvent extends GameEvent {
         if (pp != null && !pp.left) {
             if (intoArena || !pp.entered) return;
             switch (e.getCause()) {
-                case ENDER_PEARL, NETHER_PORTAL, END_PORTAL, END_GATEWAY -> {
+                case ENDER_PEARL, CHORUS_FRUIT, NETHER_PORTAL, END_PORTAL, END_GATEWAY -> {
                     e.setCancelled(true);
                     p.sendActionBar(pl.msg("disaster.cannot-leave"));
                 }

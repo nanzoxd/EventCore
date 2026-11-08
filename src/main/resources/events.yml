@@ -974,8 +974,13 @@ events:
         start-after-seconds: 10    # the first two disasters begin this long after the event starts
         run-seconds: 120           # "2m": every disaster stays active this long (storms, hurricane and tornado run non-stop, meteors / geysers strike every min-max seconds); override per disaster with run-seconds
         max-active: 2              # only this many disasters at the same time = this many entries in the action bar ("hurricane: 2m | meteor: 2m")
+        track-chance: 0.25         # chance that a disaster is aimed at a player (also how often the tornado chases one); otherwise it lands / roams on its own
         announce-seconds: 10       # the entry turns bold for the last N seconds of its run, then the next disaster of the cycle takes its slot
-        max-damage: 12.0           # no hazard hit or fall does more than this (12 = 6 hearts)
+        pause-chance: 0.4          # chance that a finished round is followed by a pause with NO disasters, so players can fight
+        pause-min-seconds: 25      # how long such a pause lasts (random between min and max), shown as "pause: 30s" in the action bar
+        pause-max-seconds: 45
+        max-damage: 20.0           # highest damage of a direct hit (20 = 10 hearts; armor still reduces it)
+        max-fall-damage: 12.0      # highest fall damage after being launched (12 = 6 hearts), so launches hurt but do not kill
         max-depth: 12              # hard limit: no disaster ever digs deeper than this many blocks below the surface
         dig-layers-per-tick: 3     # how fast a crater crumbles (lower = slower, more visible, lighter on the server)
         # ---- performance (lower = lighter on the server) ----
@@ -991,11 +996,11 @@ events:
           scale: 6.0
           fall-height: 35
           radius: 5.0
-          damage: 4.0
+          damage: 8.0
           knockback: 1.6
           destroy-terrain: true
           crater-radius: 3
-        meteor:                    # giant magma block: real crater with a small scorched pit in the middle
+        meteor:                    # giant falling rock: real crater with a small pit in the middle (no magma blocks are placed)
           enabled: true
           color: "#ff8c1a"
           min-seconds: 10          # one meteor falls every 10-15 seconds (random) for the whole run
@@ -1006,7 +1011,7 @@ events:
           shaft-radius: 1
           shaft-depth: 4
           destroy-terrain: true
-          damage: 12.0
+          damage: 20.0
           fire-seconds: 4
           crater-seconds: 8
         lava_geyser:               # warning ring, then a REAL lava column that launches and burns (ground is restored after)
@@ -1021,7 +1026,7 @@ events:
           vent-radius: 2.5         # the ground blows open here
           vent-depth: 9            # shallow vent with a small lava pool at the bottom
           destroy-terrain: true
-          damage: 8.0
+          damage: 12.0
           launch-height: 40
         water_geyser:              # warning ring, then a REAL water column that launches players up
           enabled: true
@@ -1058,10 +1063,10 @@ events:
           picks-per-interval: 2
           pick-interval-ticks: 4
           destroy-terrain: true
-          dig-radius: 2            # width of the trench it scours along its path
-          dig-depth: 3             # how deep that trench is
-          damage: 4.0
-        earthquake:                # the ground shakes, then a fissure opens a few blocks deep (deepest in the middle) with magma at the bottom
+          dig-radius: 1            # width of the trench it scours along its path (small = weak digging)
+          dig-depth: 1             # how deep that trench is (1 = it only scuffs the top layer)
+          damage: 8.0
+        earthquake:                # the ground shakes, then a fissure opens a few blocks deep (deepest in the middle) 
           enabled: true
           color: "#b5651d"
           min-seconds: 25          # one fissure every min-max seconds (random) while it runs
@@ -1073,7 +1078,7 @@ events:
           depth: 8
           columns-per-tick: 2
           dig-layers-per-tick: 3
-        laser_sinkhole:            # red orbital laser locks on, burns, leaves a bowl-shaped sinkhole with a magma floor
+        laser_sinkhole:            # red orbital laser locks on, burns, leaves a bowl-shaped sinkhole
           enabled: true
           color: "#ff2bd6"
           min-seconds: 15          # one laser strike every min-max seconds (random) while it runs
@@ -1083,7 +1088,7 @@ events:
           radius: 6.0
           core-depth: 10           # depth in the middle of the bowl
           rim-depth: 6             # depth towards the edge
-          damage: 12.0
+          damage: 20.0
         hurricane:                 # night + rain + a rotating spiral of wind that shoves players around
           enabled: true
           color: "#7b6cff"
@@ -1102,7 +1107,7 @@ events:
           shaft-radius: 1
           shaft-depth: 3
           destroy-terrain: true
-          damage: 10.0
+          damage: 16.0
           fire-seconds: 3
           crater-seconds: 4
         thunderstorm:              # dark storm; lightning locks onto every player and strikes where they stand
@@ -1111,7 +1116,7 @@ events:
           strike-interval-seconds: 2.5   # per player
           warning-seconds: 1.2           # ring + crackle before the bolt lands (run!)
           hit-radius: 2.5
-          damage: 8.0
+          damage: 14.0
           crater-radius: 2
           ambient-strikes: 3             # extra random bolts per player that wreck the terrain
         lightning:

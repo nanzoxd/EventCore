@@ -414,7 +414,7 @@ public final class NaturalDisasterEvent extends GameEvent {
         Map<String, Object> ph = Text.ph("time", Util.mmss(left), "radius", (int) Math.round(radius), "size", (int) Math.round(radius * 2),
                 "next", nextText(t), "alive", aliveCount(), "total", players.size());
         String bar = pl.fx.msg(pl.cfg.messages(), "disaster.actionbar").tpl();
-        net.kyori.adventure.text.Component incoming = fx.incomingBar(t);      // every disaster's countdown: Tornado: 2m | Meteor: 3m | ...
+        net.kyori.adventure.text.Component incoming = fx.incomingBar(t);      // the two active slots: "hurricane: 2m | meteor: 2m" (coloured, small caps)
         for (P pp : players.values()) {
             if (pp.left) continue;
             Player p = Bukkit.getPlayer(pp.id);

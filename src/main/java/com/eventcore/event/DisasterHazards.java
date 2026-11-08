@@ -5,6 +5,7 @@ import com.eventcore.event.EventManager.ActiveEvent;
 import com.eventcore.util.Text;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.bukkit.Color;
@@ -46,8 +47,10 @@ import java.util.function.IntPredicate;
 /**
  * The visible disasters of the Natural Disaster event. Everything is vanilla and needs no resource pack:
  * giant item/block display entities (wind charge, magma block, glass) plus particles and sounds.
- * Meteors, the tornado, earthquakes and the laser really destroy terrain (down to bedrock, with lava and magma at the bottom);
- * geysers place real water/lava and put the ground back afterwards. Display entities are non-persistent and removed on stop.
+ * Meteors, the tornado, earthquakes and the laser really destroy terrain, but only in small, shallow chunks (never deeper than
+ * hazards.max-depth) so the arena erodes slowly over the whole event instead of one hole reaching bedrock.
+ * Geysers place real water/lava and put the ground back afterwards. Display entities are non-persistent and removed on stop.
+ * Scheduling: a few slots (hazards.max-active, default 2) cycle through every enabled disaster; each slot shows "name: 2m" in the action bar.
  * Every hazard damage (and fall damage) is capped by hazards.max-damage (default 12 = 6 hearts).
  * Types: wind_charge (giant spinning wind charge that bursts on impact), meteor (falling magma block + crater),
  * lava_geyser, water_geyser (warning ring, then an eruption column that launches players) and wind_storm.
@@ -60,13 +63,27 @@ final class DisasterHazards {
     private final Set<ScheduledTask> tasks = ConcurrentHashMap.newKeySet();
     private final Set<Entity> spawned = ConcurrentHashMap.newKeySet();
     private final Set<UUID> sky = ConcurrentHashMap.newKeySet();
-    private final Map<String, Double> next = new ConcurrentHashMap<>();
     private final AtomicInteger active = new AtomicInteger();
     private volatile boolean stopped;
     private final AtomicInteger tornadoes = new AtomicInteger();
-    private volatile String current;
-    private volatile double currentUntil;
     private volatile Component bar;
+
+    /** One of the (default two) lanes of the cycle: it shows one disaster's countdown, launches it, holds while it runs, then draws the next one. */
+    private static final class Slot {
+        String type;            // disaster this slot is counting down to / running (null = nothing to show)
+        double due;             // seconds into the event when it hits
+        double until;           // while running: when the slot is free again
+        double nextDue;         // when the slot's NEXT disaster hits (set at launch so the cycle keeps its rhythm)
+        boolean running, ready;
+    }
+    private final List<Slot> slots = new ArrayList<>();
+    private final List<String> bag = new ArrayList<>();      // shuffled cycle: every enabled disaster shows up once before any repeats
+
+    private static final Map<String, String> COLORS = Map.ofEntries(
+            Map.entry("wind_charge", "#7fffd4"), Map.entry("meteor", "#ff8c1a"), Map.entry("lava_geyser", "#ff3030"),
+            Map.entry("water_geyser", "#3aa0ff"), Map.entry("wind_storm", "#d8e2dc"), Map.entry("tornado", "#c2a878"),
+            Map.entry("hurricane", "#7b6cff"), Map.entry("meteor_shower", "#ffd23f"), Map.entry("earthquake", "#b5651d"),
+            Map.entry("laser_sinkhole", "#ff2bd6"), Map.entry("thunderstorm", "#9dff4a"));
 
     private static String label(String type) {
         return switch (type) {
@@ -77,14 +94,21 @@ final class DisasterHazards {
         };
     }
 
-    private static String fmt(double secs) { int i = (int) Math.ceil(secs); return i >= 60 ? ((i + 59) / 60) + "m" : i + "s"; }
+    private static String fmt(double secs) { int i = (int) Math.ceil(secs); return i > 60 ? ((i + 59) / 60) + "m" : Math.max(0, i) + "s"; }
 
-    /** The action bar line with every disaster's countdown: "Tornado: 2m | Meteor: 3m | ...", or null when hazards are off. */
+    /** Each disaster has its own colour (hazards.<type>.color overrides the default). */
+    private TextColor colorOf(String type, ConfigurationSection c) {
+        TextColor col = TextColor.fromHexString(c == null ? "" : c.getString("color", ""));
+        if (col == null) col = TextColor.fromHexString(COLORS.getOrDefault(type, "#ffffff"));
+        return col == null ? NamedTextColor.WHITE : col;
+    }
+
+    /** The action bar line: "hurricane: 2m | meteor: 2m", one coloured small-caps entry per slot, or null when hazards are off. */
     Component incomingBar(double t) { return bar; }
 
     DisasterHazards(EventCorePlugin pl, NaturalDisasterEvent ev) { this.pl = pl; this.ev = ev; }
 
-    void reset() { stopped = false; next.clear(); active.set(0); tornadoes.set(0); bar = null; current = null; flung.clear(); pending.clear(); }
+    void reset() { stopped = false; slots.clear(); bag.clear(); active.set(0); tornadoes.set(0); bar = null; flung.clear(); pending.clear(); }
 
     /** Cancels every running effect and removes every display entity. Called when the event stops. */
     void stop() {
@@ -144,7 +168,15 @@ final class DisasterHazards {
     /** Highest damage one hazard (or one fall) may do, in half-hearts. 12 = 6 hearts. */
     double maxDamage() { return Math.max(1, ev.settings().getDouble("hazards.max-damage", 12)); }
     private double dmg(double v) { return Math.min(v, maxDamage()); }
-    private int layersPerTick() { return Math.max(1, ev.settings().getInt("hazards.dig-layers-per-tick", 8)); }
+    private int layersPerTick() { return Math.max(1, ev.settings().getInt("hazards.dig-layers-per-tick", 3)); }
+
+    /** Hard ceiling for how deep ANY disaster may dig below the surface (hazards.max-depth). Keeps the damage in small chunks, never bedrock. */
+    private int maxDepth() { return Math.max(2, ev.settings().getInt("hazards.max-depth", 12)); }
+
+    /** The lowest block a column starting at surfaceY may lose: `depth` blocks down, never deeper than hazards.max-depth, never below the world. */
+    private int stopY(World w, int surfaceY, int depth) {
+        return Math.max(w.getMinHeight() + 1, surfaceY - Math.max(1, Math.min(depth, maxDepth())));
+    }
 
     private static boolean breakable(Material m) {
         return switch (m) {
@@ -172,8 +204,8 @@ final class DisasterHazards {
 
     private int top(World w, int x, int z) { return w.getHighestBlockYAt(x, z, HeightMap.MOTION_BLOCKING_NO_LEAVES); }
 
-    /** Columns of a disc, each starting at the surface; delay ripples outward. stopY below the world = dig to bedrock. */
-    private List<Col> discCols(ActiveEvent ae, World w, double cx, double cz, double radius, double delayPerBlock) {
+    /** Columns of a disc, each starting at the surface and digging `depth` blocks down (capped by hazards.max-depth); delay ripples outward. */
+    private List<Col> discCols(ActiveEvent ae, World w, double cx, double cz, double radius, double delayPerBlock, int depth) {
         List<Col> out = new ArrayList<>();
         int r = (int) Math.ceil(radius), bx = (int) Math.floor(cx), bz = (int) Math.floor(cz);
         for (int dx = -r; dx <= r; dx++) for (int dz = -r; dz <= r; dz++) {
@@ -181,12 +213,13 @@ final class DisasterHazards {
             if (d > radius + 0.3) continue;
             int x = bx + dx, z = bz + dz;
             if (!ev.inBounds(ae, x + 0.5, z + 0.5)) continue;
-            out.add(new Col(x, top(w, x, z), z, w.getMinHeight() - 1, (int) (d * delayPerBlock)));
+            int sy = top(w, x, z);
+            out.add(new Col(x, sy, z, stopY(w, sy, depth), (int) (d * delayPerBlock)));
         }
         return out;
     }
 
-    /** Removes up to `layers` solid blocks from every active column. At bedrock: lava + magma floor. Returns true while work is left. */
+    /** Removes up to `layers` solid blocks from every active column down to its own stop depth, then lays a magma floor (a fluid pool for vents). Returns true while work is left. */
     private boolean digStep(ActiveEvent ae, World w, List<Col> cols, int n, int layers, boolean floor) {
         boolean left = false, starved = false;
         int min = w.getMinHeight();
@@ -336,39 +369,92 @@ final class DisasterHazards {
     void tick(ActiveEvent ae, double t, List<Player> alive) {
         ConfigurationSection h = ev.settings().getConfigurationSection("hazards");
         if (h == null || !h.getBoolean("enabled", true) || stopped) { bar = null; return; }
-        double start = h.getDouble("start-after-seconds", 60), announce = h.getDouble("announce-seconds", 12);
+        double start = h.getDouble("start-after-seconds", 0), announce = h.getDouble("announce-seconds", 12);
+        double cycle = Math.max(30, h.getDouble("cycle-seconds", 120));          // "2m": how long until the next disaster of a slot hits
+        double stagger = Math.max(0, h.getDouble("stagger-seconds", 0));         // 0 = every slot shows the same timer, N = slot k hits N seconds earlier than slot k-1
+        int lanes = Math.max(1, Math.min(4, h.getInt("max-active", 2)));         // only this many disasters exist at the same time
         double esc = h.getBoolean("escalate", true) ? 1.0 + ev.phaseIndex(t) * 0.35 : 1.0;
+        double every = cycle / esc;
         boolean live = t >= start && !alive.isEmpty();
-        List<Object[]> rows = new ArrayList<>();                      // {type, seconds left | -1 active | -2 happening now}
-        for (String type : TYPES) {
-            ConfigurationSection c = h.getConfigurationSection(type);
-            if (c == null || !c.getBoolean("enabled", true)) continue;
-            double every = Math.max(5, c.getDouble("interval-seconds", 40));
-            double due = next.computeIfAbsent(type, k -> Math.max(t, start) + every * ThreadLocalRandom.current().nextDouble(0.4, 1.0));
-            if (type.equals("tornado") && tornadoes.get() >= Math.max(1, c.getInt("max-count", 1))) { rows.add(new Object[]{type, -1.0}); continue; }  // it stays until the end
-            boolean busy = active.get() - tornadoes.get() >= Math.max(1, h.getInt("max-active", 4));
-            if (live && t >= due && !busy) {
-                next.put(type, t + every / esc);
-                Player target = alive.get(ThreadLocalRandom.current().nextInt(alive.size()));
-                current = type; currentUntil = t + 8;
-                launch(ae, type, c, target, alive);
-                due = t + every / esc;
+
+        while (slots.size() < lanes) slots.add(new Slot());
+        while (slots.size() > lanes) slots.remove(slots.size() - 1);
+
+        for (int i = 0; i < slots.size(); i++) {
+            Slot s = slots.get(i);
+            if (s.running && t >= s.until) { s.running = false; s.type = null; }              // the disaster is over: this slot draws the next one
+            if (s.type == null && !s.running) {
+                s.type = pick(h, s);
+                if (s.type == null) continue;                                                  // nothing enabled
+                s.due = s.ready ? s.nextDue : Math.max(t, start) + Math.max(10, cycle - i * stagger);
+                s.ready = true;
             }
-            boolean now = type.equals(current) && t < currentUntil;
-            rows.add(new Object[]{type, now ? -2.0 : Math.max(0, due - t)});
+            if (live && !s.running && t >= s.due) {
+                String type = s.type;
+                ConfigurationSection c = h.getConfigurationSection(type);
+                double hold = hold(type, c);
+                s.running = true;
+                s.until = t + hold;
+                s.nextDue = t + Math.max(every, hold + 10);                                    // the next one always comes after this one has finished
+                Player target = alive.get(ThreadLocalRandom.current().nextInt(alive.size()));
+                launch(ae, type, c, target, alive);
+            }
         }
-        rows.sort(java.util.Comparator.comparingDouble(r -> (double) r[1]));
+
         Component b = Component.empty();
         boolean first = true;
-        for (Object[] r : rows) {
-            double secs = (double) r[1];
+        for (Slot s : slots) {
+            if (s.type == null) continue;
+            ConfigurationSection c = h.getConfigurationSection(s.type);
+            double left = s.due - t;
+            boolean now = s.running;
+            String time = now ? pl.text.sc("now") : fmt(left);
+            boolean hot = now || left <= announce;
             if (!first) b = b.append(Component.text(" | ", NamedTextColor.DARK_GRAY));
             first = false;
-            String time = secs == -1.0 ? "ACTIVE" : secs == -2.0 ? "NOW" : fmt(secs);
-            NamedTextColor col = secs < 0 ? NamedTextColor.RED : secs <= announce ? NamedTextColor.GOLD : NamedTextColor.YELLOW;
-            b = b.append(Component.text(label((String) r[0]) + ": ", NamedTextColor.WHITE)).append(Component.text(time, col, secs < 0 || secs <= announce ? new TextDecoration[]{TextDecoration.BOLD} : new TextDecoration[0]));
+            Component entry = Component.text(pl.text.sc(label(s.type).toLowerCase(java.util.Locale.ROOT) + ": " + time), colorOf(s.type, c));
+            b = b.append(hot ? entry.decorate(TextDecoration.BOLD) : entry);
         }
-        bar = rows.isEmpty() ? null : b;
+        bar = first ? null : b;
+    }
+
+    /** Draws the next disaster of the cycle: a shuffled bag, so every enabled disaster comes once before any repeats and the two slots never show the same one. */
+    private String pick(ConfigurationSection h, Slot self) {
+        for (int round = 0; round < 2; round++) {
+            for (int i = 0; i < bag.size(); i++) {
+                String type = bag.get(i);
+                boolean taken = false;
+                for (Slot o : slots) if (o != self && type.equals(o.type)) taken = true;
+                if (taken || (type.equals("tornado") && tornadoes.get() > 0)) continue;
+                bag.remove(i);
+                return type;
+            }
+            bag.clear();                                                                       // bag used up: shuffle every enabled disaster back in
+            for (String type : TYPES) {
+                ConfigurationSection c = h.getConfigurationSection(type);
+                if (c != null && c.getBoolean("enabled", true)) bag.add(type);
+            }
+            java.util.Collections.shuffle(bag);
+        }
+        return null;
+    }
+
+    /** How long a slot stays busy with a disaster (seconds), so no more than max-active disasters ever overlap. */
+    private double hold(String type, ConfigurationSection c) {
+        if (c == null) return 20;
+        return switch (type) {
+            case "wind_charge" -> 8;
+            case "meteor" -> c.getDouble("crater-seconds", 8) + 5;
+            case "lava_geyser", "water_geyser" -> c.getDouble("warning-seconds", 4) + c.getDouble("duration-seconds", 6) + 6;
+            case "wind_storm" -> c.getDouble("duration-seconds", 8) + 3;
+            case "hurricane" -> c.getDouble("duration-seconds", 20) + 3;
+            case "thunderstorm" -> c.getDouble("duration-seconds", 30) + 3;
+            case "tornado" -> { double d = c.getDouble("duration-seconds", 45); yield (d <= 0 ? 60 : d) + 3; }
+            case "earthquake" -> c.getDouble("shake-seconds", 6) + c.getInt("length", 44) / (20.0 * Math.max(1, c.getInt("columns-per-tick", 2))) + 12;
+            case "laser_sinkhole" -> c.getDouble("charge-seconds", 4) + c.getDouble("burn-seconds", 4) + 12;
+            case "meteor_shower" -> c.getDouble("duration-seconds", 16) + 12;
+            default -> 20;
+        };
     }
 
     private void launch(ActiveEvent ae, String type, ConfigurationSection c, Player target, List<Player> alive) {
@@ -516,7 +602,7 @@ final class DisasterHazards {
     }
 
     // =====================================================================================================
-    // meteor: a giant magma block falls, blows a real crater into the ground and a shaft down to bedrock (lava + magma at the bottom)
+    // meteor: a giant magma block falls and blows a real (shallow) crater into the ground with a small magma pit in the middle
     // =====================================================================================================
 
     private void meteor(ActiveEvent ae, ConfigurationSection c, Location spot, boolean announce) {
@@ -555,17 +641,17 @@ final class DisasterHazards {
                     p.setFireTicks((int) (c.getDouble("fire-seconds", 4) * 20));
                     p.setVelocity(p.getLocation().toVector().subtract(at.toVector()).setY(0.4).normalize().multiply(0.9).setY(0.8));
                 });
-                if (c.getBoolean("destroy-terrain", true)) {                 // real crater, then a shaft down to bedrock
+                if (c.getBoolean("destroy-terrain", true)) {                 // real crater, then a small pit in the middle
                     int cr = (int) Math.max(2, Math.min(12, c.getDouble("crater-radius", radius)));
                     carveSphere(ae, w, (int) Math.floor(x), gy - 1, (int) Math.floor(z), cr);
                     rimMagma(w, (int) Math.floor(x), (int) Math.floor(z), cr);
                     double sr = c.getDouble("shaft-radius", 2);
-                    if (sr > 0) shaft.addAll(discCols(ae, w, x, z, sr, 1));
+                    if (sr > 0) shaft.addAll(discCols(ae, w, x, z, sr, 1, c.getInt("shaft-depth", 5)));     // a small scorched pit, not a shaft to bedrock
                 }
                 return true;
             }
             int k = n - fallTicks;
-            boolean more = !shaft.isEmpty() && digStep(ae, w, shaft, k, layersPerTick(), true);
+            boolean more = !shaft.isEmpty() && digStep(ae, w, shaft, k, layersPerTick(), false);
             if (k % 5 == 0) {
                 w.spawnParticle(Particle.FLAME, x, gy + 0.2, z, 10, radius * 0.5, 0.1, radius * 0.5, 0.01);
                 w.spawnParticle(Particle.LAVA, x, gy + 0.3, z, 2, radius * 0.4, 0.1, radius * 0.4, 0);
@@ -576,7 +662,7 @@ final class DisasterHazards {
     }
 
     // =====================================================================================================
-    // geysers: the ground blows open into a vent, a real water / lava column launches players; the hole stays for the rest of the event
+    // geysers: the ground blows open into a shallow vent, a real water / lava column launches players; the hole stays for the rest of the event
     // =====================================================================================================
 
     private static final class Flyer { BlockDisplay d; double x, y, z, vx, vy, vz; int life; }
@@ -628,7 +714,7 @@ final class DisasterHazards {
         int warn = (int) (c.getDouble("warning-seconds", 4) * 20), dur = (int) (c.getDouble("duration-seconds", 6) * 20);
         double launchH = c.getDouble("launch-height", lava ? 40 : 50), dmg = dmg(c.getDouble("damage", lava ? 8 : 0));
         double ventR = c.getDouble("vent-radius", 2.5);
-        int ventDepth = c.getInt("vent-depth", lava ? 40 : 24);
+        int ventDepth = c.getInt("vent-depth", lava ? 9 : 7);
         boolean destroy = c.getBoolean("destroy-terrain", true);
         Color col = lava ? Color.fromRGB(0xff5a1f) : Color.fromRGB(0x4aa8ff);
         Material fluid = lava ? Material.LAVA : Material.WATER;
@@ -651,16 +737,15 @@ final class DisasterHazards {
             int k = n - warn;
             if (k == 0) {
                 w.playSound(base, lava ? "entity.generic.explode" : "entity.generic.splash", 3f, lava ? 1.2f : 0.7f);
-                if (destroy) {                                          // the vent: the ground blows open (lava: down to bedrock)
-                    for (Col cc : discCols(ae, w, x, z, ventR, 2)) {
-                        Col v = new Col(cc.x, cc.y, cc.z, lava ? w.getMinHeight() - 1 : cc.y - ventDepth, cc.delay);
-                        if (!lava) v.floorFluid = Material.WATER;
-                        vent.add(v);
+                if (destroy) {                                          // the vent: the ground blows open a few blocks deep, with a small pool at the bottom
+                    for (Col cc : discCols(ae, w, x, z, ventR, 2, ventDepth)) {
+                        cc.floorFluid = fluid;
+                        vent.add(cc);
                     }
                     carveSphere(ae, w, bx, gy - 1, bz, (int) Math.ceil(ventR) + 1);
                 }
             }
-            boolean more = !vent.isEmpty() && digStep(ae, w, vent, k, layersPerTick(), lava);
+            boolean more = !vent.isEmpty() && digStep(ae, w, vent, k, layersPerTick(), false);
             if (k < dur) {
                 int from = gy + k * rise, to = Math.min(gy + (int) height, from + rise);   // the column shoots upward
                 for (int y = from; y < to; y++)
@@ -726,17 +811,17 @@ final class DisasterHazards {
     }
 
     // =====================================================================================================
-    // tornado: a tall spinning funnel that never leaves: it roams the whole arena, rips blocks out, digs a trench to bedrock and throws players ~100 blocks
+    // tornado: a tall spinning funnel that roams the arena for a while, rips blocks out, scours a shallow trench and throws players ~100 blocks
     // =====================================================================================================
 
     private void tornado(ActiveEvent ae, ConfigurationSection c, Location spot) {
         World w = spot.getWorld();
         double height = c.getDouble("height", 30), pull = c.getDouble("pull", 0.45), speed = c.getDouble("speed", 0.2), reach = c.getDouble("radius", 7);
         double pickR = c.getDouble("pick-radius", 5), flingH = c.getDouble("launch-height", 100), dmg = dmg(c.getDouble("damage", 4));
-        double dur = c.getDouble("duration-seconds", 0);               // 0 = it never disappears, it roams until the event ends
+        double dur = c.getDouble("duration-seconds", 45);              // it roams this long, then fades so the next disaster can take its slot (0 = until the event ends)
         int ticks = dur <= 0 ? Integer.MAX_VALUE : (int) (dur * 20), maxBlocks = Math.max(0, c.getInt("max-blocks", 45));
         int pickEvery = Math.max(1, c.getInt("pick-interval-ticks", 3)), picks = Math.max(1, c.getInt("picks-per-interval", 3));
-        int digR = Math.max(0, c.getInt("dig-radius", 3)), layers = layersPerTick();
+        int digR = Math.max(0, c.getInt("dig-radius", 2)), digDepth = Math.max(1, c.getInt("dig-depth", 3)), layers = layersPerTick();
         double cooldown = c.getDouble("launch-cooldown-seconds", 10), catchR = reach * 0.55;
         boolean destroy = c.getBoolean("destroy-terrain", true);
         final int L = 14;
@@ -826,7 +911,7 @@ final class DisasterHazards {
                     dp.add(new double[]{a, 0, r.nextDouble(0, 2.5)});
                 }
             }
-            // and digs a trench to bedrock along its whole path (lava + magma at the bottom)
+            // and scours a shallow trench along its path (a few blocks deep, magma at the bottom)
             if (destroy && digR > 0) {
                 if (n % 6 == 0) {
                     int px = (int) Math.floor(pos[0]), pz = (int) Math.floor(pos[1]);
@@ -834,10 +919,11 @@ final class DisasterHazards {
                         if (Math.hypot(dx, dz) > digR + 0.3) continue;
                         int x = px + dx, z = pz + dz;
                         if (!ev.inBounds(ae, x + 0.5, z + 0.5) || !dug.add(((long) x << 32) ^ (z & 0xffffffffL))) continue;
-                        trail.add(new Col(x, top(w, x, z), z, w.getMinHeight() - 1, 0));
+                        int sy = top(w, x, z);
+                        trail.add(new Col(x, sy, z, stopY(w, sy, digDepth), 0));
                     }
                 }
-                if (!trail.isEmpty()) { digStep(ae, w, trail, n, layers, true); trail.removeIf(cc -> cc.done); }
+                if (!trail.isEmpty()) { digStep(ae, w, trail, n, layers, false); trail.removeIf(cc -> cc.done); }
             }
             if (n % 2 == 0) for (int i = debris.size() - 1; i >= 0; i--) {   // debris spirals up and is flung away at the top
                 double[] d = dp.get(i);
@@ -872,13 +958,14 @@ final class DisasterHazards {
     }
 
     // =====================================================================================================
-    // earthquake: the ground shakes, then a long fissure (ravine) tears open down to bedrock with lava at the bottom
+    // earthquake: the ground shakes, then a long fissure (ravine) tears open a few blocks deep, magma at the bottom
     // =====================================================================================================
     private void earthquake(ActiveEvent ae, ConfigurationSection c, Location spot) {
         World w = spot.getWorld();
         int shake = (int) (c.getDouble("shake-seconds", 6) * 20), len = Math.max(8, c.getInt("length", 44));
         double width = c.getDouble("width", 4), shakeR = c.getDouble("shake-radius", 45);
-        int layers = Math.max(layersPerTick(), c.getInt("dig-layers-per-tick", 14)), colsPerTick = Math.max(1, c.getInt("columns-per-tick", 2));
+        int layers = Math.max(layersPerTick(), c.getInt("dig-layers-per-tick", 3)), colsPerTick = Math.max(1, c.getInt("columns-per-tick", 2));
+        int maxDepthCfg = Math.max(3, c.getInt("depth", 8));
         double ang = ThreadLocalRandom.current().nextDouble(Math.PI);
         double dx = Math.cos(ang), dz = Math.sin(ang), px = -dz, pz = dx;
         List<Col> cols = new ArrayList<>();
@@ -910,26 +997,28 @@ final class DisasterHazards {
                         int x = (int) Math.floor(cx + px * o), z = (int) Math.floor(cz + pz * o);
                         if (!seen.add(((long) x << 32) ^ (z & 0xffffffffL))) continue;
                         if (!ev.inBounds(ae, x + 0.5, z + 0.5)) continue;
-                        cols.add(new Col(x, top(w, x, z), z, w.getMinHeight() - 1, i / colsPerTick));
+                        int sy = top(w, x, z);
+                        int depth = Math.max(3, (int) Math.round(maxDepthCfg * (1 - Math.abs(t - 0.5) * 1.2)));      // deepest in the middle, shallow at both ends
+                        cols.add(new Col(x, sy, z, stopY(w, sy, depth), i / colsPerTick));
                     }
                 }
                 w.playSound(base, "entity.generic.explode", 4f, 0.4f);
             }
-            boolean more = digStep(ae, w, cols, k, layers, true);
+            boolean more = digStep(ae, w, cols, k, layers, false);
             if (k % 3 == 0) near(base, shakeR, 40, p -> p.getWorld().spawnParticle(Particle.LARGE_SMOKE, p.getLocation(), 4, 1, 0.2, 1, 0.02));
             return more;
         }, () -> { });
     }
 
     // =====================================================================================================
-    // laser sinkhole: a red orbital beam locks on, burns for a few seconds and leaves a sinkhole of lava and magma down to bedrock
+    // laser sinkhole: a red orbital beam locks on, burns for a few seconds and leaves a bowl-shaped sinkhole with a magma floor
     // =====================================================================================================
     private void laser(ActiveEvent ae, ConfigurationSection c, Location spot) {
         World w = spot.getWorld();
         int gy = ground(w, spot);
         double x = spot.getX(), z = spot.getZ(), R = c.getDouble("radius", 6), dmg = dmg(c.getDouble("damage", 12));
         int charge = (int) (c.getDouble("charge-seconds", 4) * 20), burn = (int) (c.getDouble("burn-seconds", 4) * 20);
-        int rim = Math.max(3, c.getInt("rim-depth", 16)), layers = layersPerTick();
+        int rim = Math.max(3, c.getInt("rim-depth", 6)), coreDepth = Math.max(rim, c.getInt("core-depth", 10)), layers = layersPerTick();
         double core = R * 0.55, beamTop = Math.min(w.getMaxHeight() - 1, gy + 60);
         Location base = new Location(w, x, gy, z);
         List<Col> cols = new ArrayList<>();
@@ -956,8 +1045,8 @@ final class DisasterHazards {
                     int bx = (int) Math.floor(x) + dx, bz = (int) Math.floor(z) + dz;
                     if (!ev.inBounds(ae, bx + 0.5, bz + 0.5)) continue;
                     int sy = top(w, bx, bz);
-                    int stop = d <= core ? w.getMinHeight() - 1 : sy - Math.max(2, (int) (rim * (1 - (d - core) / (R - core + 0.001))));
-                    cols.add(new Col(bx, sy, bz, stop, (int) (d * 2)));
+                    int depth = d <= core ? coreDepth : Math.max(2, (int) (rim * (1 - (d - core) / (R - core + 0.001))));     // bowl: deepest in the middle
+                    cols.add(new Col(bx, sy, bz, stopY(w, sy, depth), (int) (d * 2)));
                 }
             }
             if (k < burn) {
@@ -967,7 +1056,7 @@ final class DisasterHazards {
                 w.spawnParticle(Particle.LAVA, x, gy + 0.5, z, 3, R * 0.4, 0.2, R * 0.4, 0);
                 if (k % 10 == 0) w.playSound(base, "block.beacon.ambient", 4f, 0.5f);
             }
-            boolean more = digStep(ae, w, cols, k, layers, true);       // the ground melts away from the centre outward
+            boolean more = digStep(ae, w, cols, k, layers, false);      // the ground melts away from the centre outward
             return k < burn || more;
         }, () -> { });
     }

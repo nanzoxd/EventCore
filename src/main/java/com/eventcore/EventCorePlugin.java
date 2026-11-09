@@ -19,6 +19,7 @@ import com.eventcore.gui.HuntBountyGui;
 import com.eventcore.hunt.HuntManager;
 import com.eventcore.gui.AltarGui;
 import com.eventcore.gui.AltarHubGui;
+import com.eventcore.gui.DisasterDifficultyGui;
 import com.eventcore.gui.DisasterInviteGui;
 import com.eventcore.gui.LootGui;
 import com.eventcore.gui.RitualGui;
@@ -62,6 +63,7 @@ public final class EventCorePlugin extends JavaPlugin {
     public AltarGui altarGui;
     public AltarHubGui altarHub;
     public DisasterInviteGui inviteGui;
+    public DisasterDifficultyGui difficultyGui;
     public HuntManager hunt;
     public BountyManager bounty;
     public BountyGui bountyGui;
@@ -101,6 +103,7 @@ public final class EventCorePlugin extends JavaPlugin {
         altarGui = new AltarGui(this);
         altarHub = new AltarHubGui(this);
         inviteGui = new DisasterInviteGui(this);
+        difficultyGui = new DisasterDifficultyGui(this);
         hunt = new HuntManager(this);
         bounty = new BountyManager(this);
         bountyGui = new BountyGui(this);
@@ -125,7 +128,7 @@ public final class EventCorePlugin extends JavaPlugin {
         events.register(eggHunt);
         events.register(disaster);
 
-        for (org.bukkit.event.Listener l : new org.bukkit.event.Listener[]{bars, chat, events, ritual, ritualGui, ritualScheduleGui, adminGui, lootGui, altar, altarGui, altarHub, inviteGui, hunt, bounty, bountyGui})
+        for (org.bukkit.event.Listener l : new org.bukkit.event.Listener[]{bars, chat, events, ritual, ritualGui, ritualScheduleGui, adminGui, lootGui, altar, altarGui, altarHub, inviteGui, difficultyGui, hunt, bounty, bountyGui})
             Bukkit.getPluginManager().registerEvents(l, this);
 
         EventCoreCommand ecCmd = new EventCoreCommand(this);

@@ -168,7 +168,7 @@ egg-hunt:
   spawn-added: "<#00FF55>fixed egg spawn added at [{x}, {y}, {z}] ({count} total)."
   spawns-cleared: "<#00FF55>fixed egg spawns cleared."
 disaster:
-  usage: "<#A5B8FF>Usage: /disaster [start|stop|reset|setcenter|setarena|setexit|status|reload|join|leave|tp]</#A5B8FF> <#AAAAAA>(or /tpdisaster)</#AAAAAA>"
+  usage: "<#A5B8FF>Usage: /disaster [start|stop|reset|setcenter|setarena|setexit|status|reload|join|leave|tp|difficulty]</#A5B8FF> <#AAAAAA>(or /tpdisaster)</#AAAAAA>"
   not-configured: "<#EE2424>set the arena centre first with /disaster setcenter.</#EE2424>"
   not-enough-players: "<#EE2424>natural disaster cancelled: {count} eligible player(s), at least {min} needed.</#EE2424>"
   setcenter: "<#00FF55>border centre set to {world} [{x}, {z}]."
@@ -224,6 +224,7 @@ disaster:
   hint-lightning-lock: "<g>lightning is aiming near you, leave the yellow ring</g>"
   hint-earthquake: "<g>hint: do not stay underground during an earthquake, get out to the surface.</g>"
   hint-earthquake-bar: "<g>earthquake: do not stay underground</g>"
+  difficulty-set: "<#00FF55>disaster difficulty is now <#FFFFFF>{difficulty}<#AAAAAA>, it applies to the next disaster."
   earthquake-ejected: "<#FF5555>the earthquake threw you out of the ground."
   glow: "<#FF5555>glow <#FFFFFF>you are glowing for <#FFFFFF>{seconds}s<#AAAAAA>, everybody can see you."
   underground-glow: "<#FF5555>glow <#FFFFFF>you have been underground for over <#FFFFFF>{seconds}s<#AAAAAA>, you glow until you come up."

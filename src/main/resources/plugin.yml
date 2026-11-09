@@ -53,7 +53,7 @@ commands:
     aliases: [eh]
   disaster:
     description: Natural Disaster event
-    usage: /<command> <start|stop|reset|setcenter|setarena|setexit|status|reload|join|leave|tp>
+    usage: /<command> <start|stop|reset|setcenter|setarena|setexit|status|reload|join|leave|tp|difficulty>
     aliases: [nd]
   tpdisaster:
     description: Open the menu to join the running Natural Disaster

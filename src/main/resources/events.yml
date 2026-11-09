@@ -985,13 +985,18 @@ events:
         restrict: true
         scope: EVENT_PLAYERS       # EVENT_PLAYERS or EVERYONE. Players with eventcore.bypass are never restricted
         allowed: [warp, warps, msg, tell, w, r, reply, rules, helpop]   # everything else is blocked while the event runs
+      difficulty: mid              # easy | mid | hard (default mid). /disaster difficulty opens the menu; the presets are below
+      difficulties:
+        easy: {damage-multiplier: 0.6, two-at-once-chance: 0.1, pause-chance: 0.85, big-chance: 0.1}
+        mid:  {damage-multiplier: 1.0, two-at-once-chance: 0.5, pause-chance: 0.7, big-chance: 0.25}
+        hard: {damage-multiplier: 1.5, two-at-once-chance: 0.85, pause-chance: 0.4, big-chance: 0.45}
       hazards:                     # disasters: they erode the arena slowly, in small shallow chunks (never down to bedrock)
         enabled: true
         short-before-end-minutes: 10  # when only this many minutes are left, disasters only run for late-run-seconds (0 = off)
         late-run-seconds: 5           # length of a disaster in that last stretch (0 = no disasters at all then)
         start-after-seconds: 5     # the first disaster begins this long after the event starts
         run-seconds: 120           # "2m": every disaster stays active this long (only 5s in the last 10 minutes, see below); "2m": every disaster stays active this long (storms, hurricane and tornado run non-stop, meteors / geysers strike every min-max seconds); override per disaster with run-seconds
-        max-active: 1              # (was 2) only one disaster at a time; only this many disasters at the same time = this many entries in the action bar ("hurricane: 2m | meteor: 2m")
+        max-active: 2              # up to this many disasters in one round; each round randomly has 1 or 2 (chance: two-at-once-chance, set by the difficulty); only this many disasters at the same time = this many entries in the action bar ("hurricane: 2m | meteor: 2m")
         track-chance: 0.1          # chance that a disaster is aimed at a player (also how often the tornado chases one); otherwise it lands / roams on its own
         announce-seconds: 10       # the entry turns bold for the last N seconds of its run, then the next disaster of the cycle takes its slot
         pause-chance: 0.7          # (was 0.4) most rounds are followed by a quiet pause; chance that a finished round is followed by a pause with NO disasters, so players can fight
@@ -1015,6 +1020,15 @@ events:
           min-interval-seconds: 90
           max-interval-seconds: 180
           duration-seconds: 10
+        two-at-once-chance: 0.5    # fallback when the difficulty has none: chance that a round has two disasters at once instead of one
+        sizes:                     # tornadoes and meteors get a random size (small / normal / big) and are never announced as "small" or "big"
+          enabled: true
+          small-chance: 0.3
+          big-chance: 0.25         # the difficulty overrides this
+          small-min: 0.5
+          small-max: 0.75
+          big-min: 1.5             # big meteors also make a larger explosion and crater
+          big-max: 2.0
         wind_charge:               # giant spinning wind charge falls, bursts and throws players away
           enabled: true
           color: "#7fffd4"

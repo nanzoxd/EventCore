@@ -140,6 +140,6 @@ public final class ChatQuestionEvent extends GameEvent {
                 "number", l.number, "event", pl.text.sc(displayName()), "gradient_raw", gradientRaw());
         pl.fx.title(org.bukkit.Bukkit.getServer(), sec().getConfigurationSection("titles.winner"), ph);   // the only title: event name + who won
         pl.fx.broadcast(sec(), "messages.winner", ph, prefix());
-        if (settings().getBoolean("end-on-answer", true)) pl.events.stop(id(), true);   // first correct answer ends the whole event
+        if (settings().getBoolean("end-on-answer", true)) pl.events.stop(id(), false);   // first correct answer ends the whole event
     }
 }

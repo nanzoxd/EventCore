@@ -12,9 +12,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/** /disaster start [minutes] | stop | reset | setcenter | setarena | setexit | status | reload | join | leave | tp   (/tpdisaster = tp) */
+/** /disaster start [minutes] | stop | reset | setcenter | setarena | setexit | status | reload | join | leave | tp | difficulty [easy|mid|hard]   (/tpdisaster = tp) */
 public final class DisasterCommand implements TabExecutor {
-    private static final List<String> SUBS = List.of("start", "stop", "reset", "setcenter", "setarena", "setexit", "status", "reload", "join", "leave", "tp");
+    private static final List<String> SUBS = List.of("start", "stop", "reset", "setcenter", "setarena", "setexit", "status", "reload", "join", "leave", "tp", "difficulty");
     private static final String PATH = "events.natural_disaster.settings.";
     private final EventCorePlugin pl;
 
@@ -64,6 +64,14 @@ public final class DisasterCommand implements TabExecutor {
             }
             case "status" -> s.sendMessage(pl.msgMap(ev.running() ? "disaster.status-running" : "disaster.status-idle", ev.statusPlaceholders()));
             case "reload" -> pl.reloadAll(s);
+            case "difficulty" -> {
+                String pick = a.length >= 2 ? a[1].toLowerCase(Locale.ROOT) : "";
+                if (List.of("easy", "mid", "hard").contains(pick)) {
+                    pl.difficultyGui.set(pick);
+                    s.sendMessage(pl.msg("disaster.difficulty-set", "difficulty", pick));
+                } else if (s instanceof Player p) pl.difficultyGui.open(p);      // /disaster difficulty opens the menu
+                else s.sendMessage(pl.msg("disaster.difficulty-set", "difficulty", pl.difficultyGui.current()));
+            }
             case "join", "tp" -> {
                 if (!(s instanceof Player p)) { s.sendMessage(pl.msg("errors.player-only")); return true; }
                 if (ev.running() || sub.equals("tp")) ev.openInvite(p);          // the join menu replaces sign-up
@@ -104,6 +112,7 @@ public final class DisasterCommand implements TabExecutor {
         List<String> out = new ArrayList<>();
         if (a.length == 1) { for (String x : SUBS) if (can(s, x)) out.add(x); }
         else if (a.length == 2 && a[0].equalsIgnoreCase("start")) out.addAll(List.of("30", "60"));
+        else if (a.length == 2 && a[0].equalsIgnoreCase("difficulty")) out.addAll(List.of("easy", "mid", "hard"));
         String last = a.length == 0 ? "" : a[a.length - 1].toLowerCase(Locale.ROOT);
         out.removeIf(x -> !x.toLowerCase(Locale.ROOT).startsWith(last));
         return out;

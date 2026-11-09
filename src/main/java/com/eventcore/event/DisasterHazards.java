@@ -111,7 +111,7 @@ final class DisasterHazards {
 
     DisasterHazards(EventCorePlugin pl, NaturalDisasterEvent ev) { this.pl = pl; this.ev = ev; }
 
-    void reset() { nextGlow = -1; underSince.clear(); stopped = false; slots.clear(); bag.clear(); pauseUntil = 0; wasRunning = false; active.set(0); tornadoes.set(0); bar = null; flung.clear(); pending.clear(); }
+    void reset() { roundLanes = 1; nextGlow = -1; underSince.clear(); stopped = false; slots.clear(); bag.clear(); pauseUntil = 0; wasRunning = false; active.set(0); tornadoes.set(0); bar = null; flung.clear(); pending.clear(); }
 
     /** Cancels every running effect and removes every display entity. Called when the event stops. */
     void stop() {
@@ -173,7 +173,25 @@ final class DisasterHazards {
 
     /** Highest fall damage (tornado / geyser launches), kept lower than direct hits so a launch hurts but does not kill. */
     double maxFallDamage() { return Math.max(1, ev.settings().getDouble("hazards.max-fall-damage", 12)); }
-    private double dmg(double v) { return Math.min(v, maxDamage()); }
+    private double dmg(double v) { double m = diffD("damage-multiplier", 1.0); return Math.min(v * m, maxDamage() * Math.max(1, m)); }
+
+    /** The chosen difficulty (settings.difficulty: easy | mid | hard) and its preset in settings.difficulties. */
+    private ConfigurationSection diff() {
+        return ev.settings().getConfigurationSection("difficulties." + ev.settings().getString("difficulty", "mid").toLowerCase(java.util.Locale.ROOT));
+    }
+    private double diffD(String key, double def) { ConfigurationSection d = diff(); return d == null ? def : d.getDouble(key, def); }
+
+    /** Random size of a tornado / meteor, never shown to players: small, normal or big. */
+    private double sizeRoll() {
+        ConfigurationSection z = ev.settings().getConfigurationSection("hazards.sizes");
+        if (z == null || !z.getBoolean("enabled", true)) return 1.0;
+        ThreadLocalRandom r = ThreadLocalRandom.current();
+        double big = diffD("big-chance", z.getDouble("big-chance", 0.25)), small = z.getDouble("small-chance", 0.3), x = r.nextDouble();
+        if (x < big) return r.nextDouble(z.getDouble("big-min", 1.5), Math.max(z.getDouble("big-min", 1.5) + 0.01, z.getDouble("big-max", 2.0)));
+        if (x < big + small) return r.nextDouble(z.getDouble("small-min", 0.5), Math.max(z.getDouble("small-min", 0.5) + 0.01, z.getDouble("small-max", 0.75)));
+        return r.nextDouble(0.9, 1.15);
+    }
+    private int roundLanes = 1;
     private int layersPerTick() { return Math.max(1, ev.settings().getInt("hazards.dig-layers-per-tick", 3)); }
 
     /** Hard ceiling for how deep ANY disaster may dig below the surface (hazards.max-depth). Keeps the damage in small chunks, never bedrock. */
@@ -418,19 +436,26 @@ final class DisasterHazards {
         for (Slot s : slots) if (s.running && t >= s.until) { s.running = false; s.type = null; }   // the disaster is over: this slot draws the next one of the cycle
         boolean any = false;
         for (Slot s : slots) if (s.running) any = true;
-        if (wasRunning && !any && ThreadLocalRandom.current().nextDouble() < Math.max(0, Math.min(1, h.getDouble("pause-chance", 0.4)))) {
+        if (wasRunning && !any && ThreadLocalRandom.current().nextDouble() < Math.max(0, Math.min(1, diffD("pause-chance", h.getDouble("pause-chance", 0.4))))) {
             double lo = Math.max(5, h.getDouble("pause-min-seconds", 25)), hi = Math.max(lo, h.getDouble("pause-max-seconds", 45));
             pauseUntil = t + ThreadLocalRandom.current().nextDouble(lo, hi);                  // sometimes a round ends in a pause: no disasters, players can fight
         }
         wasRunning = any;
         boolean paused = t < pauseUntil;
+        boolean roundStart = !any && !paused;                                                   // a new round: ALL slots are idle
+        if (roundStart) {                                                                       // sometimes one disaster, sometimes two at once
+            double two = diffD("two-at-once-chance", h.getDouble("two-at-once-chance", 0.5));
+            roundLanes = lanes >= 2 && ThreadLocalRandom.current().nextDouble() < two ? 2 : 1;
+        }
 
-        for (Slot s : slots) {
+        for (int si = 0; si < slots.size(); si++) {
+            Slot s = slots.get(si);
+            if (si >= roundLanes) { if (!s.running) s.type = null; continue; }
             if (s.type == null) {
                 s.type = pick(h, s);
                 if (s.type == null) continue;                                                  // nothing enabled
             }
-            if (live && !s.running && !paused) {
+            if (live && !s.running && !paused && roundStart) {
                 ConfigurationSection c = h.getConfigurationSection(s.type);
                 double run = late ? Math.max(5, lateRun) : Math.max(5, c == null ? globalRun : c.getDouble("run-seconds", globalRun));
                 s.running = true;
@@ -718,8 +743,9 @@ final class DisasterHazards {
     private void meteor(ActiveEvent ae, ConfigurationSection c, Location spot, boolean announce) {
         World w = spot.getWorld();
         int gy = ground(w, spot);
-        double x = spot.getX(), z = spot.getZ(), radius = c.getDouble("radius", 6), fall = 40;
-        float s = (float) c.getDouble("scale", 4);
+        final double sz = sizeRoll();                                   // small, normal or big: not announced
+        double x = spot.getX(), z = spot.getZ(), radius = c.getDouble("radius", 6) * sz, fall = 40;
+        float s = (float) (c.getDouble("scale", 4) * sz);
         int craterTicks = (int) (c.getDouble("crater-seconds", 8) * 20), fallTicks = (int) Math.ceil(fall / 1.3);
         BlockDisplay rock = blockDisplay(new Location(w, x, gy + fall, z), Material.MAGMA_BLOCK, s, s, s);
         rock.setInterpolationDuration(2);
@@ -743,20 +769,20 @@ final class DisasterHazards {
             if (n == fallTicks) {
                 rock.remove();
                 Location at = new Location(w, x, gy + 0.5, z);
-                w.spawnParticle(Particle.EXPLOSION_EMITTER, at, 3);
+                w.spawnParticle(Particle.EXPLOSION_EMITTER, at, sz >= 1.4 ? 10 : sz <= 0.8 ? 1 : 3);
                 w.spawnParticle(Particle.LAVA, at, 60, radius * 0.5, 0.5, radius * 0.5, 0);
-                w.playSound(at, "entity.generic.explode", 4f, 0.5f);
+                w.playSound(at, "entity.generic.explode", (float) Math.min(6, 3 + sz), 0.5f / (float) Math.max(0.6, sz));
                 near(at, radius + 3, radius + 3, p -> {
                     double dist = Math.hypot(p.getLocation().getX() - at.getX(), p.getLocation().getZ() - at.getZ());
                     double falloff = dist <= radius * 0.5 ? 1.0 : Math.max(0.4, 1.0 - (dist - radius * 0.5) / (radius + 3));     // a direct hit hurts the most
-                    p.damage(dmg(c.getDouble("damage", 20)) * falloff);
+                    p.damage(dmg(c.getDouble("damage", 20)) * falloff * Math.sqrt(sz));
                     p.setFireTicks((int) (c.getDouble("fire-seconds", 4) * 20));
                     p.setVelocity(p.getLocation().toVector().subtract(at.toVector()).setY(0.4).normalize().multiply(0.9).setY(0.8));
                 });
                 if (c.getBoolean("destroy-terrain", true)) {                 // real crater, then a small pit in the middle
-                    int cr = (int) Math.max(2, Math.min(12, c.getDouble("crater-radius", radius)));
+                    int cr = (int) Math.max(2, Math.min(16, c.contains("crater-radius") ? c.getDouble("crater-radius") * sz : radius));
                     carveSphere(ae, w, (int) Math.floor(x), gy - 1, (int) Math.floor(z), cr);
-                    double sr = c.getDouble("shaft-radius", 2);
+                    double sr = c.getDouble("shaft-radius", 2) * sz;
                     if (sr > 0) shaft.addAll(discCols(ae, w, x, z, sr, 1, c.getInt("shaft-depth", 5)));     // a small scorched pit, not a shaft to bedrock
                 }
                 return true;
@@ -933,8 +959,9 @@ final class DisasterHazards {
 
     private void tornado(ActiveEvent ae, ConfigurationSection c, Location spot, double run) {
         World w = spot.getWorld();
-        double height = c.getDouble("height", 30), pull = c.getDouble("pull", 0.45), speed = c.getDouble("speed", 0.2), reach = c.getDouble("radius", 7);
-        double pickR = c.getDouble("pick-radius", 5), flingH = c.getDouble("launch-height", 100), dmg = dmg(c.getDouble("damage", 4));
+        final double sz = sizeRoll();                                   // small, normal or big tornado: always just "tornado" to the players
+        double height = c.getDouble("height", 30) * sz, pull = c.getDouble("pull", 0.45), speed = c.getDouble("speed", 0.2), reach = c.getDouble("radius", 7) * sz;
+        double pickR = c.getDouble("pick-radius", 5) * sz, flingH = c.getDouble("launch-height", 100), dmg = dmg(c.getDouble("damage", 4));
         double dur = run;                                              // it roams for the whole run, then fades so the next disaster can take its slot
         int ticks = dur <= 0 ? Integer.MAX_VALUE : (int) (dur * 20), maxBlocks = Math.max(0, c.getInt("max-blocks", 45));
         int pickEvery = Math.max(1, c.getInt("pick-interval-ticks", 3)), picks = Math.max(1, c.getInt("picks-per-interval", 3));

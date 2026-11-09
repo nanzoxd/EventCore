@@ -97,10 +97,10 @@ public final class AltarGui implements Listener {
             h.ids.put(i, r.id);
         }
         for (int i = PAGE; i < 54; i++) h.inv.setItem(i, pane());
-        if (h.page > 0) h.inv.setItem(PREV, button(Material.PAPER, "<gradient:#d8b04a:#f1d58f:#ffd7ca>previous page</gradient>", List.of("", Mouse.left(pl, "go back")), Map.of()));
-        if (h.page < pages - 1) h.inv.setItem(NEXT, button(Material.PAPER, "<gradient:#d8b04a:#f1d58f:#ffd7ca>next page</gradient>", List.of("", Mouse.left(pl, "continue")), Map.of()));
-        h.inv.setItem(MENU, button(Material.OAK_DOOR, "<gradient:#d8b04a:#f1d58f:#ffd7ca>altar menu</gradient>", List.of("", Mouse.left(pl, "go back")), Map.of()));
-        h.inv.setItem(NEW, button(Material.NETHER_STAR, "<gradient:#d8b04a:#f1d58f:#ffd7ca>new recipe</gradient>",
+        if (h.page > 0) h.inv.setItem(PREV, button(Material.PAPER, "<gradient:#9babc7:#E7E7E7:#E7E7E7>previous page</gradient>", List.of("", Mouse.left(pl, "go back")), Map.of()));
+        if (h.page < pages - 1) h.inv.setItem(NEXT, button(Material.PAPER, "<gradient:#9babc7:#E7E7E7:#E7E7E7>next page</gradient>", List.of("", Mouse.left(pl, "continue")), Map.of()));
+        h.inv.setItem(MENU, button(Material.OAK_DOOR, "<gradient:#9babc7:#E7E7E7:#E7E7E7>altar menu</gradient>", List.of("", Mouse.left(pl, "go back")), Map.of()));
+        h.inv.setItem(NEW, button(Material.NETHER_STAR, "<gradient:#9babc7:#E7E7E7:#E7E7E7>new recipe</gradient>",
                 List.of("<color:#a8a8a8>type an id in chat after clicking</color>", "", Mouse.left(pl, "create a recipe")), Map.of()));
         p.openInventory(h.inv);
     }
@@ -112,7 +112,7 @@ public final class AltarGui implements Listener {
         List<Component> lore = new ArrayList<>();
         if (meta.hasLore() && meta.lore() != null) lore.addAll(meta.lore());
         lore.add(Component.empty());
-        lore.add(pl.text.item("<gradient:#d8b04a:#f1d58f:#ffd7ca>ingredients</gradient>", Map.of()));
+        lore.add(pl.text.item("<gradient:#9babc7:#E7E7E7:#E7E7E7>ingredients</gradient>", Map.of()));
         for (Ingredient in : r.inputs) lore.add(pl.text.item("<color:#a8a8a8>{line}</color>", Text.ph("line", in.line())));
         lore.add(pl.text.item("<color:#7a7a7a>{minutes} minutes, id {id}</color>", Text.ph("minutes", r.minutes, "id", r.id)));
         lore.add(Component.empty());
@@ -174,8 +174,8 @@ public final class AltarGui implements Listener {
     /** Buttons and labels (never touches the item slots). */
     private void decorate(EditHolder h) {
         Inventory inv = h.inv;
-        inv.setItem(ARROW, button(Material.ARROW, "<gradient:#d8b04a:#f1d58f:#ffd7ca>ritual</gradient>", null, Map.of()));
-        inv.setItem(INFO, button(Material.BOOK, "<gradient:#d8b04a:#f1d58f:#ffd7ca>recipe {id}</gradient>", List.of(
+        inv.setItem(ARROW, button(Material.ARROW, "<gradient:#9babc7:#E7E7E7:#E7E7E7>ritual</gradient>", null, Map.of()));
+        inv.setItem(INFO, button(Material.BOOK, "<gradient:#9babc7:#E7E7E7:#E7E7E7>recipe {id}</gradient>", List.of(
                 "<color:#a8a8a8>ingredients go in the grid</color>",
                 "<color:#a8a8a8>the result goes in the right slot</color>",
                 "<color:#a8a8a8>stack size sets the amount</color>",
@@ -183,13 +183,13 @@ public final class AltarGui implements Listener {
                 "<color:#7a7a7a>items are returned on close</color>"), Text.ph("id", h.id)));
         inv.setItem(38, button(Material.RED_STAINED_GLASS_PANE, "<color:#a8a8a8>-10 minutes</color>", null, Map.of()));
         inv.setItem(39, button(Material.RED_STAINED_GLASS_PANE, "<color:#a8a8a8>-1 minute</color>", null, Map.of()));
-        inv.setItem(MINUTES, button(Material.CLOCK, "<gradient:#d8b04a:#f1d58f:#ffd7ca>ritual length</gradient>", List.of("<color:#a8a8a8>{minutes} minutes</color>"), Text.ph("minutes", h.minutes)));
+        inv.setItem(MINUTES, button(Material.CLOCK, "<gradient:#9babc7:#E7E7E7:#E7E7E7>ritual length</gradient>", List.of("<color:#a8a8a8>{minutes} minutes</color>"), Text.ph("minutes", h.minutes)));
         inv.setItem(41, button(Material.LIME_STAINED_GLASS_PANE, "<color:#a8a8a8>+1 minute</color>", null, Map.of()));
         inv.setItem(42, button(Material.LIME_STAINED_GLASS_PANE, "<color:#a8a8a8>+10 minutes</color>", null, Map.of()));
-        inv.setItem(SAVE, button(Material.LIME_CONCRETE, "<gradient:#d8b04a:#f1d58f:#ffd7ca>save recipe</gradient>", List.of("", Mouse.left(pl, "save")), Map.of()));
-        inv.setItem(BACK, button(Material.OAK_DOOR, "<gradient:#d8b04a:#f1d58f:#ffd7ca>back</gradient>", List.of("<color:#7a7a7a>changes are discarded</color>", "", Mouse.left(pl, "go back")), Map.of()));
+        inv.setItem(SAVE, button(Material.LIME_CONCRETE, "<gradient:#9babc7:#E7E7E7:#E7E7E7>save recipe</gradient>", List.of("", Mouse.left(pl, "save")), Map.of()));
+        inv.setItem(BACK, button(Material.OAK_DOOR, "<gradient:#9babc7:#E7E7E7:#E7E7E7>back</gradient>", List.of("<color:#7a7a7a>changes are discarded</color>", "", Mouse.left(pl, "go back")), Map.of()));
         if (h.existing) inv.setItem(DELETE, button(Material.BARRIER,
-                h.confirmDelete ? "<gradient:#d8b04a:#f1d58f:#ffd7ca>click again to delete</gradient>" : "<gradient:#d8b04a:#f1d58f:#ffd7ca>delete recipe</gradient>",
+                h.confirmDelete ? "<gradient:#9babc7:#E7E7E7:#E7E7E7>click again to delete</gradient>" : "<gradient:#9babc7:#E7E7E7:#E7E7E7>delete recipe</gradient>",
                 h.confirmDelete ? List.of("<color:#7a7a7a>this cannot be undone</color>") : List.of("", Mouse.left(pl, "delete")), Map.of()));
     }
 

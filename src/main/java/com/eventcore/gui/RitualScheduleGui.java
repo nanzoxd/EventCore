@@ -60,7 +60,7 @@ public final class RitualScheduleGui implements Listener {
         h.minute = (t.getMinute() / 5) * 5;
         h.length = pl.ritual.minutes();
         h.loc = p.getLocation().clone();
-        h.inv = Bukkit.createInventory(h, 27, pl.text.render("<gradient:#d8b04a:#fff0cc:#ffd7ca>ritual schedule | " + label() + "</gradient>", Map.of()));
+        h.inv = Bukkit.createInventory(h, 27, pl.text.render("<gradient:#9babc7:#E7E7E7:#E7E7E7>ritual schedule | " + label() + "</gradient>", Map.of()));
         render(h);
         p.openInventory(h.inv);
     }

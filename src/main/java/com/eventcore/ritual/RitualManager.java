@@ -57,7 +57,7 @@ public final class RitualManager implements Listener {
                 plainName = Text.plain(displayName);
             } else {
                 plainName = Util.pretty(item.getType());
-                displayName = pl.text.render(cfgMsg("ritual.unnamed-format", "<gold>{item}</gold>"), Text.ph("item", plainName));
+                displayName = pl.text.render(cfgMsg("ritual.unnamed-format", "<#FFD54A>{item}</#FFD54A>"), Text.ph("item", plainName));
             }
         }
 
@@ -96,7 +96,7 @@ public final class RitualManager implements Listener {
             return pl.text.render(cfgMsg("ritual.name-text", "{item_display}"), ph());
         }
 
-        Component timerComponent() { return pl.text.render(cfgMsg("ritual.timer-text", "<red>({time} left)</red>"), ph()); }
+        Component timerComponent() { return pl.text.render(cfgMsg("ritual.timer-text", "<#FF5555>({time} left)</#FF5555>"), ph()); }
 
         Entity spawnText(Location l, Component c, String mode) {
             World w = l.getWorld();

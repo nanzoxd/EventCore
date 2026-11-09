@@ -111,7 +111,7 @@ final class DisasterHazards {
 
     DisasterHazards(EventCorePlugin pl, NaturalDisasterEvent ev) { this.pl = pl; this.ev = ev; }
 
-    void reset() { stopped = false; slots.clear(); bag.clear(); pauseUntil = 0; wasRunning = false; active.set(0); tornadoes.set(0); bar = null; flung.clear(); pending.clear(); }
+    void reset() { nextGlow = -1; underSince.clear(); stopped = false; slots.clear(); bag.clear(); pauseUntil = 0; wasRunning = false; active.set(0); tornadoes.set(0); bar = null; flung.clear(); pending.clear(); }
 
     /** Cancels every running effect and removes every display entity. Called when the event stops. */
     void stop() {
@@ -351,14 +351,66 @@ final class DisasterHazards {
     // =====================================================================================================
     // scheduling
     // =====================================================================================================
+    private double nextGlow = -1;
+    private final Map<UUID, Long> underSince = new ConcurrentHashMap<>();
+    private long lastUnder;
+
+    /** Anybody who stays underground (cave, tunnel, mine) for more than after-seconds glows until they come up. */
+    private void undergroundGlow(ConfigurationSection h, double t, double start, List<Player> alive) {
+        ConfigurationSection g = h.getConfigurationSection("underground-glow");
+        if (g == null || !g.getBoolean("enabled", true) || t < start) { underSince.clear(); return; }
+        long now = System.currentTimeMillis();
+        if (now - lastUnder < 1000) return;
+        lastUnder = now;
+        long after = (long) (Math.max(5, g.getDouble("after-seconds", 60)) * 1000);
+        int depth = Math.max(2, g.getInt("depth", 5));
+        for (Player p : alive) {
+            if (!p.isOnline()) continue;
+            pl.sched.entity(p, () -> {
+                UUID id = p.getUniqueId();
+                if (!underground(p.getWorld(), p.getLocation(), depth)) { underSince.remove(id); return; }
+                long since = underSince.computeIfAbsent(id, k -> now);
+                if (now - since < after) return;
+                boolean first = !p.hasPotionEffect(org.bukkit.potion.PotionEffectType.GLOWING);
+                p.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.GLOWING, 60, 0, false, false, false));   // refreshed every second
+                if (first) p.sendMessage(pl.msg("disaster.underground-glow", "seconds", after / 1000));
+            });
+        }
+    }
+
+    /** Random glow: every few minutes ALL players inside the border glow for a few seconds, so nobody can hide. */
+    private void glowTick(ConfigurationSection h, double t, double start, List<Player> alive) {
+        ConfigurationSection g = h.getConfigurationSection("glow");
+        if (g == null || !g.getBoolean("enabled", true) || t < start || alive.isEmpty()) return;
+        ThreadLocalRandom r = ThreadLocalRandom.current();
+        double lo = Math.max(10, g.getDouble("min-interval-seconds", 90)), hi = Math.max(lo, g.getDouble("max-interval-seconds", 180));
+        if (nextGlow < 0) { nextGlow = t + r.nextDouble(lo, hi); return; }
+        if (t < nextGlow) return;
+        nextGlow = t + r.nextDouble(lo, hi);
+        int secs = (int) Math.max(1, g.getDouble("duration-seconds", 10));
+        for (Player p : alive) {
+            if (!p.isOnline()) continue;
+            pl.sched.entity(p, () -> {
+                p.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.GLOWING, secs * 20, 0, false, false, false));
+                p.sendMessage(pl.msg("disaster.glow", "seconds", secs));
+                p.playSound(p.getLocation(), "block.beacon.power_select", 0.7f, 1.4f);
+            });
+        }
+    }
+
     void tick(ActiveEvent ae, double t, List<Player> alive) {
         ConfigurationSection h = ev.settings().getConfigurationSection("hazards");
         if (h == null || !h.getBoolean("enabled", true) || stopped) { bar = null; return; }
         double start = h.getDouble("start-after-seconds", 10), announce = h.getDouble("announce-seconds", 10);
-        double globalRun = Math.max(20, h.getDouble("run-seconds", 120));        // "2m": how long one disaster keeps going
+        double globalRun = Math.max(5, h.getDouble("run-seconds", 5));        // "2m": how long one disaster keeps going
         int lanes = Math.max(1, Math.min(4, h.getInt("max-active", 2)));         // only this many disasters exist at the same time
-        boolean live = t >= start && !alive.isEmpty();
+        double quiet = Math.max(0, h.getDouble("short-before-end-minutes", 10)) * 60;         // in the last N minutes disasters are only short
+        boolean late = quiet > 0 && ae.totalSec - t <= quiet;
+        double lateRun = Math.max(0, h.getDouble("late-run-seconds", 5));                      // 0 = no disasters at all in that time
+        boolean live = t >= start && !alive.isEmpty() && !(late && lateRun <= 0);
         roster = alive;
+        glowTick(h, t, start, alive);
+        undergroundGlow(h, t, start, alive);
 
         while (slots.size() < lanes) slots.add(new Slot());
         while (slots.size() > lanes) slots.remove(slots.size() - 1);
@@ -380,7 +432,7 @@ final class DisasterHazards {
             }
             if (live && !s.running && !paused) {
                 ConfigurationSection c = h.getConfigurationSection(s.type);
-                double run = Math.max(20, c == null ? globalRun : c.getDouble("run-seconds", globalRun));
+                double run = late ? Math.max(5, lateRun) : Math.max(5, c == null ? globalRun : c.getDouble("run-seconds", globalRun));
                 s.running = true;
                 s.until = t + run;
                 s.run = run;
@@ -388,8 +440,9 @@ final class DisasterHazards {
             }
         }
 
+        if (late && lateRun <= 0 && !any) { bar = null; return; }                                              // final minutes: calm, nothing in the action bar
         if (paused && !any) {                                                                  // breather: the bar counts down the pause instead
-            bar = Component.text(pl.text.sc("pause: " + fmt(pauseUntil - t)), NamedTextColor.GREEN, TextDecoration.BOLD);
+            bar = Component.text(pl.text.sc("pause: " + fmt(pauseUntil - t)), net.kyori.adventure.text.format.TextColor.color(0xFF5555));
             return;
         }
         Component b = Component.empty();
@@ -397,8 +450,8 @@ final class DisasterHazards {
         for (Slot s : slots) {
             if (s.type == null) continue;
             ConfigurationSection c = h.getConfigurationSection(s.type);
-            double left = s.running ? s.until - t : Math.max(20, c == null ? globalRun : c.getDouble("run-seconds", globalRun));
-            if (!first) b = b.append(Component.text(" | ", NamedTextColor.DARK_GRAY));
+            double left = s.running ? s.until - t : Math.max(5, c == null ? globalRun : c.getDouble("run-seconds", globalRun));
+            if (!first) b = b.append(Component.text(" | ", net.kyori.adventure.text.format.TextColor.color(0x555555)));
             first = false;
             Component entry = Component.text(pl.text.sc(label(s.type).toLowerCase(java.util.Locale.ROOT) + ": " + fmt(left)), colorOf(s.type, c));
             b = b.append(s.running && left <= announce ? entry.decorate(TextDecoration.BOLD) : entry);   // bold when it is about to end
@@ -460,7 +513,7 @@ final class DisasterHazards {
             if (!ev.isLive(ae)) return;
             Location base = target.getLocation();
             double off = type.endsWith("geyser") ? 10 : type.equals("tornado") ? 25 : type.equals("earthquake") ? 15 : type.equals("laser_sinkhole") ? 8 : 5;
-            Location spot = chooseSpot(base, off, ae);
+            Location spot = type.equals("tornado") ? randomSpot(base.getWorld(), ae) : type.endsWith("geyser") ? geyserSpot(base, c, ae) : chooseSpot(base, off, ae);   // the tornado never starts at a player
             if (type.equals("wind_storm")) { windStorm(ae, c, alive, run); return; }
             if (type.equals("hurricane")) { hurricane(ae, c, alive, run); return; }
             if (type.equals("meteor_shower")) { meteorShower(ae, c, alive, run); return; }
@@ -484,6 +537,43 @@ final class DisasterHazards {
 
     /** Chance (hazards.track-chance, default 25%) that a disaster is aimed at a player; otherwise it just drops somewhere in the arena on its own. */
     private double trackChance() { return Math.max(0, Math.min(1, ev.settings().getDouble("hazards.track-chance", 0.25))); }
+
+    /** Geysers do not erupt on the player by default: they open somewhere around (min-distance .. max-distance blocks away),
+     *  and only with below-chance directly under the player (the warning ring still shows first). */
+    private Location geyserSpot(Location base, ConfigurationSection c, ActiveEvent ae) {
+        ThreadLocalRandom r = ThreadLocalRandom.current();
+        double lim = Math.max(3, ev.radiusNow(ae) - 3);
+        if (c != null && r.nextDouble() < Math.max(0, Math.min(1, c.getDouble("below-chance", 0.15))))
+            return new Location(base.getWorld(), Math.floor(base.getX()) + 0.5, base.getY(), Math.floor(base.getZ()) + 0.5);
+        double min = c == null ? 10 : c.getDouble("min-distance", 10), max = Math.max(min + 1, c == null ? 35 : c.getDouble("max-distance", 35));
+        double x = base.getX(), z = base.getZ();
+        for (int i = 0; i < 8; i++) {
+            double a = r.nextDouble(Math.PI * 2), d = r.nextDouble(min, max);
+            x = Math.max(ev.cx() - lim, Math.min(ev.cx() + lim, base.getX() + Math.cos(a) * d));
+            z = Math.max(ev.cz() - lim, Math.min(ev.cz() + lim, base.getZ() + Math.sin(a) * d));
+            if (Math.hypot(x - base.getX(), z - base.getZ()) >= min) break;      // clamped against the border: try another direction
+        }
+        return new Location(base.getWorld(), Math.floor(x) + 0.5, base.getY(), Math.floor(z) + 0.5);
+    }
+
+    /** A random place inside the current border (used by the tornado). */
+    private Location randomSpot(World w, ActiveEvent ae) {
+        ThreadLocalRandom r = ThreadLocalRandom.current();
+        double lim = Math.max(4, ev.radiusNow(ae) - 6);
+        return new Location(w, Math.floor(ev.cx() + r.nextDouble(-lim, lim)) + 0.5, 64, Math.floor(ev.cz() + r.nextDouble(-lim, lim)) + 0.5);
+    }
+
+    /** Centre of a sweeping wind front: it travels back and forth along one random line through the arena at `bps` blocks/second.
+     *  Returns {x, z, direction sign}. Pure function of time, so every player's own scheduler sees the same front (Folia-safe). */
+    private double[] sweepCentre(ActiveEvent ae, double ang, double off, double bps, long t0) {
+        double lim = Math.max(6, ev.radiusNow(ae) - 4), len = 2 * lim;
+        double s = ((System.currentTimeMillis() - t0) / 1000.0 * bps) % (2 * len);
+        boolean fwd = s < len;
+        double along = Math.max(-lim, Math.min(lim, -lim + (fwd ? s : 2 * len - s)));
+        double perp = off * lim * 0.7;
+        double x = ev.cx() + Math.cos(ang) * along - Math.sin(ang) * perp, z = ev.cz() + Math.sin(ang) * along + Math.cos(ang) * perp;
+        return new double[]{x, z, fwd ? 1 : -1};
+    }
 
     /** Only sometimes near the player; most of the time a random place in the arena (kept within ~45 blocks of the player so the chunk is loaded). */
     private Location chooseSpot(Location base, double off, ActiveEvent ae) {
@@ -797,12 +887,13 @@ final class DisasterHazards {
     // =====================================================================================================
 
     private void windStorm(ActiveEvent ae, ConfigurationSection c, List<Player> alive, double run) {
-        double ang = ThreadLocalRandom.current().nextDouble(Math.PI * 2), strength = c.getDouble("strength", 0.35);
-        double dx = Math.cos(ang), dz = Math.sin(ang);
+        ThreadLocalRandom R = ThreadLocalRandom.current();
+        double ang = R.nextDouble(Math.PI * 2), off = R.nextDouble(-1, 1), strength = c.getDouble("strength", 0.35);
+        double sweepR = c.getDouble("sweep-radius", 14), bps = c.getDouble("sweep-speed", 8.0);   // a gust front that sweeps the arena on its own
+        long t0 = System.currentTimeMillis();
         int ticks = (int) (run * 20);
         boolean destroy = c.getBoolean("destroy-terrain", true);
         int rip = c.getInt("rip-per-tick", 3), cap = c.getInt("max-blocks-per-player", 35);
-        double ripR = c.getDouble("rip-radius", 22);
         say("disaster.hazard-windstorm", Text.ph());
         for (Player p : alive) {
             if (!p.isOnline()) continue;
@@ -814,18 +905,23 @@ final class DisasterHazards {
             ScheduledTask task = pl.sched.entityTimer(p, t -> {
                 boolean go = !stopped && ev.isLive(ae) && n[0] < ticks && p.isOnline() && ev.isMember(p.getUniqueId());
                 if (!go) { t.cancel(); tasks.remove(t); end.run(); return; }
-                if (n[0] == 0) p.getWorld().playSound(p.getLocation(), "entity.wind_charge.wind_burst", 1.5f, 0.5f);
                 n[0] += 2;
-                Vector v = p.getVelocity();
-                if (p.getGameMode() != GameMode.SPECTATOR) p.setVelocity(new Vector(v.getX() + dx * strength * 0.25, v.getY(), v.getZ() + dz * strength * 0.25));
+                double[] sc = sweepCentre(ae, ang, off, bps, t0);
+                double dx = Math.cos(ang) * sc[2], dz = Math.sin(ang) * sc[2];
                 Location l = p.getLocation();
-                if (destroy) { rip(ae, l, ripR, rip, mine, cap, dx, dz); }
+                double d = Math.hypot(l.getX() - sc[0], l.getZ() - sc[1]);
                 fly(mine, l.getWorld());
+                if (d > sweepR) return;                                   // only players the front passes over are swept along
+                if (n[0] <= 2) p.getWorld().playSound(l, "entity.wind_charge.wind_burst", 1.5f, 0.5f);
+                double f = 1.0 - 0.5 * d / sweepR;
+                Vector v = p.getVelocity();
+                if (p.getGameMode() != GameMode.SPECTATOR) p.setVelocity(new Vector(v.getX() + dx * strength * 0.3 * f, v.getY(), v.getZ() + dz * strength * 0.3 * f));
+                if (destroy) rip(ae, new Location(l.getWorld(), sc[0], l.getY(), sc[1]), sweepR, rip, mine, cap, dx, dz);
                 for (int i = 0; i < 3; i++) {
-                    double ox = ThreadLocalRandom.current().nextDouble(-4, 4), oy = ThreadLocalRandom.current().nextDouble(0, 3), oz = ThreadLocalRandom.current().nextDouble(-4, 4);
-                    p.getWorld().spawnParticle(Particle.CLOUD, l.getX() + ox - dx * 3, l.getY() + oy, l.getZ() + oz - dz * 3, 0, dx, 0, dz, 0.6);
+                    double ox = R.nextDouble(-4, 4), oy = R.nextDouble(0, 3), oz = R.nextDouble(-4, 4);
+                    p.getWorld().spawnParticle(Particle.CLOUD, sc[0] + ox - dx * 3, l.getY() + oy, sc[1] + oz - dz * 3, 0, dx, 0, dz, 0.6);
                 }
-                if (n[0] % 10 == 0) p.getWorld().spawnParticle(Particle.GUST, l.getX() + dx * 2, l.getY() + 1, l.getZ() + dz * 2, 1, 1, 1, 1, 0);
+                if (n[0] % 10 == 0) p.getWorld().spawnParticle(Particle.GUST, sc[0] + dx * 2, l.getY() + 1, sc[1] + dz * 2, 1, 1, 1, 1, 0);
             }, end, 1, 2);
             tasks.add(task);
         }
@@ -850,7 +946,7 @@ final class DisasterHazards {
         double[] dir = {ThreadLocalRandom.current().nextDouble(Math.PI * 2)};
         double[] wp = {spot.getX(), spot.getZ()};
         boolean[] chase = {false};
-        double chaseChance = trackChance();
+        double chaseChance = c.getBoolean("chase-players", false) ? trackChance() : 0;   // default: roams on its own, never hunts a player
         int[] gy = {ground(w, spot)};
         BlockData[] floorData = {Material.DIRT.createBlockData()};
         List<BlockDisplay> funnel = new ArrayList<>(), debris = new ArrayList<>();
@@ -997,6 +1093,8 @@ final class DisasterHazards {
         boolean underHint = c.getBoolean("underground-hint", true);
         int underDepth = Math.max(2, c.getInt("underground-depth", 5));
         Set<UUID> told = ConcurrentHashMap.newKeySet();                      // each player gets the underground hint once per earthquake
+        boolean cave = c.getBoolean("cave-in", true), eject = c.getBoolean("eject-to-surface", true);
+        double caveDmg = dmg(c.getDouble("cave-in-damage", 2.0));
         say("disaster.hazard-earthquake", Text.ph());
         every(base, ae, 1, n -> {
             ThreadLocalRandom r = ThreadLocalRandom.current();
@@ -1017,6 +1115,29 @@ final class DisasterHazards {
                 if (n % 4 == 0) for (int i = 0; i < len; i += 2) {      // cracks appear along the line before it opens
                     double off = Math.sin(i * 0.25) * 2.0;
                     w.spawnParticle(Particle.SMOKE, base.getX() + dx * (i - len / 2.0) + px * off, base.getY() + 0.3, base.getZ() + dz * (i - len / 2.0) + pz * off, 2, 0.4, 0.1, 0.4, 0.01);
+                }
+                if (cave && n >= 20 && n % 20 == 0) for (Player p : new ArrayList<>(roster)) {      // EVERY player inside the border, not just near the fissure
+                    if (!p.isOnline()) continue;
+                    pl.sched.entity(p, () -> {
+                        if (!ev.isLive(ae) || p.getWorld() != w || !underground(w, p.getLocation(), underDepth)) return;
+                        p.damage(caveDmg);                                                          // the roof comes down on anybody hiding in a cave or tunnel
+                        p.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.NAUSEA, 100, 0, false, false, false));
+                        p.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.SLOWNESS, 100, 1, false, false, false));
+                        p.getWorld().spawnParticle(Particle.BLOCK, p.getLocation().add(0, 2, 0), 20, 0.6, 0.3, 0.6, 0.1, Material.STONE.createBlockData());
+                        if (told.add(p.getUniqueId())) { p.sendMessage(pl.msg("disaster.hint-earthquake")); p.sendActionBar(hint("disaster.hint-earthquake-bar")); }
+                    });
+                }
+                if (eject && n == shake - 1) for (Player p : new ArrayList<>(roster)) {            // the shaking ends: anybody still underground is thrown up to the surface
+                    if (!p.isOnline()) continue;
+                    pl.sched.entity(p, () -> {
+                        if (!ev.isLive(ae) || p.getWorld() != w || !underground(w, p.getLocation(), underDepth)) return;
+                        Location l = p.getLocation();
+                        Location up = new Location(w, Math.floor(l.getX()) + 0.5, top(w, l.getBlockX(), l.getBlockZ()) + 1, Math.floor(l.getZ()) + 0.5, l.getYaw(), l.getPitch());
+                        if (!ev.inBounds(ae, up.getX(), up.getZ())) return;
+                        p.teleportAsync(up);
+                        w.playSound(up, "entity.generic.explode", 1.2f, 0.7f);
+                        p.sendMessage(pl.msg("disaster.earthquake-ejected"));
+                    });
                 }
                 return true;
             }
@@ -1099,8 +1220,12 @@ final class DisasterHazards {
     // =====================================================================================================
 
     private void hurricane(ActiveEvent ae, ConfigurationSection c, List<Player> alive, double run) {
+        ThreadLocalRandom R = ThreadLocalRandom.current();
         int ticks = (int) (run * 20);
-        double strength = c.getDouble("strength", 0.45), ripR = c.getDouble("rip-radius", 24);
+        double strength = c.getDouble("strength", 0.45);
+        double sweepR = c.getDouble("sweep-radius", 18), bps = c.getDouble("sweep-speed", 6.0);   // the eye roams the arena on its own
+        double ang = R.nextDouble(Math.PI * 2), off = R.nextDouble(-1, 1);
+        long t0 = System.currentTimeMillis();
         boolean destroy = c.getBoolean("destroy-terrain", true);
         int rip = c.getInt("rip-per-tick", 4), cap = c.getInt("max-blocks-per-player", 45);
         say("disaster.hazard-hurricane", Text.ph());
@@ -1116,20 +1241,24 @@ final class DisasterHazards {
                 if (!go) { t.cancel(); tasks.remove(t); end.run(); return; }
                 if (n[0] == 0) { skyOn(p, true); p.getWorld().playSound(p.getLocation(), "entity.lightning_bolt.thunder", 1.5f, 0.6f); }
                 n[0] += 2;
-                double ang = n[0] * 0.04, tx = Math.cos(ang), tz = Math.sin(ang);       // the wind direction keeps turning
-                Vector v = p.getVelocity();
-                p.setVelocity(new Vector(v.getX() + tx * strength * 0.2, v.getY(), v.getZ() + tz * strength * 0.2));
+                double[] sc = sweepCentre(ae, ang, off, bps, t0);
                 Location l = p.getLocation();
-                ThreadLocalRandom r = ThreadLocalRandom.current();
-                if (destroy) rip(ae, l, ripR, rip, mine, cap, tx, tz);                  // blocks are torn up at random and whirled away
+                double rx = l.getX() - sc[0], rz = l.getZ() - sc[1], d = Math.max(0.5, Math.hypot(rx, rz));
                 fly(mine, l.getWorld());
-                for (int i = 0, sp = pc(8); i < sp; i++) {                                           // spiral of wind and snowflake-like spray
+                if (d <= sweepR) {                                         // inside the storm: shoved round the eye (spiral), not hunted
+                    double f = 1.0 - 0.5 * d / sweepR;
+                    double tx = -rz / d * 0.8 + rx / d * 0.4, tz = rx / d * 0.8 + rz / d * 0.4;
+                    Vector v = p.getVelocity();
+                    if (p.getGameMode() != GameMode.SPECTATOR) p.setVelocity(new Vector(v.getX() + tx * strength * 0.25 * f, v.getY(), v.getZ() + tz * strength * 0.25 * f));
+                    if (destroy) rip(ae, new Location(l.getWorld(), sc[0], l.getY(), sc[1]), sweepR, rip, mine, cap, tx, tz);
+                }
+                for (int i = 0, sp = pc(8); i < sp; i++) {                                           // spiral of wind around the eye
                     double a = n[0] * 0.3 + i * 0.78, rad = 2 + i * 0.7;
-                    double px = l.getX() + Math.cos(a) * rad, pz = l.getZ() + Math.sin(a) * rad;
+                    double px = sc[0] + Math.cos(a) * rad, pz = sc[1] + Math.sin(a) * rad;
                     p.getWorld().spawnParticle(Particle.SNOWFLAKE, px, l.getY() + i * 0.4, pz, 0, -Math.sin(a), 0.05, Math.cos(a), 0.5);
                     p.getWorld().spawnParticle(Particle.CLOUD, px, l.getY() + 1 + i * 0.4, pz, 0, -Math.sin(a), 0, Math.cos(a), 0.5);
                 }
-                p.getWorld().spawnParticle(Particle.RAIN, l.getX() + r.nextDouble(-8, 8), l.getY() + r.nextDouble(0, 6), l.getZ() + r.nextDouble(-8, 8), pc(6), 0, 0, 0, 0);
+                p.getWorld().spawnParticle(Particle.RAIN, l.getX() + R.nextDouble(-8, 8), l.getY() + R.nextDouble(0, 6), l.getZ() + R.nextDouble(-8, 8), pc(6), 0, 0, 0, 0);
             }, end, 1, 2);
             tasks.add(task);
         }

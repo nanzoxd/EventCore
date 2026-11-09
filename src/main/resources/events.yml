@@ -17,26 +17,26 @@ events:
     bossbar:
       enabled: true
       text: "{event} : {time}"
-      color: PINK
+      color: PURPLE
       style: NOTCHED_10
-      gradient: ["#ffcfca", "#fff1e0"]
+      gradient: ["#8B53F8", "#E9D8FF", "#8B53F8"]   # this event's own bar + GUI name colours (dark, light, dark)
       countdown: true
     sounds:
       start: {sound: "block.respawn_anchor.charge", volume: 0.8, pitch: 1.0}
       end: {sound: "ui.toast.challenge_complete", volume: 0.7, pitch: 1.0}
     titles:
-      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
-      end: {title: "<gradient:{gradient_raw}>{event} ended</gradient>", subtitle: ""}
+      start: {title: "<#A5B8FF>{event}", subtitle: "<#A5B8FF>{description}"}
+      end: {title: "<#A5B8FF>{event} ended", subtitle: ""}
     messages:
       join:
         - "everyone's max health is reduced to {hearts} hearts"
         - "you still regenerate normally, the limit only lasts until the event ends"
         - "it ends in {time}"
       start:
-        text: "<g>{event} has started for {minutes} minutes: {description}</g>"
+        text: "<#E3948F>{event} <#FFFFFF>started for <#FFFFFF>{minutes}m<#AAAAAA>: {description}"
         sound: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
       end:
-        text: "<g>{event} has ended.</g>"
+        text: "<#E3948F>{event} <#FFFFFF>has ended."
         sound: {sound: "block.note_block.bass", volume: 0.6, pitch: 1.0}
     start-animation:
       enabled: true
@@ -69,26 +69,26 @@ events:
     bossbar:
       enabled: true
       text: "{event} : {time}"
-      color: YELLOW
+      color: BLUE
       style: NOTCHED_6
-      gradient: ["#d8b04a", "#f7e2ad"]
+      gradient: ["#27E4F5", "#C6F6FB", "#27E4F5"]   # this event's own bar + GUI name colours (dark, light, dark)
       countdown: true
     sounds:
       start: {sound: "item.shield.break", volume: 0.8, pitch: 1.0}
       end: {sound: "block.amethyst_block.resonate", volume: 0.8, pitch: 1.0}
     titles:
-      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
-      end: {title: "<gradient:{gradient_raw}>{event} ended</gradient>", subtitle: ""}
+      start: {title: "<#A5B8FF>{event}", subtitle: "<#A5B8FF>{description}"}
+      end: {title: "<#A5B8FF>{event} ended", subtitle: ""}
     messages:
       join:
         - "shields cannot be raised or used"
         - "you cannot craft new shields either"
         - "a raised shield is lowered automatically"
       start:
-        text: "<g>{event} has started for {minutes} minutes: {description}</g>"
+        text: "<#E3948F>{event} <#FFFFFF>started for <#FFFFFF>{minutes}m<#AAAAAA>: {description}"
         sound: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
       end:
-        text: "<g>{event} has ended.</g>"
+        text: "<#E3948F>{event} <#FFFFFF>has ended."
         sound: {sound: "block.note_block.bass", volume: 0.6, pitch: 1.0}
     start-animation:
       enabled: true
@@ -126,24 +126,24 @@ events:
       text: "{event} : {time}"
       color: YELLOW
       style: PROGRESS
-      gradient: ["#e8c670", "#fff0cc"]
+      gradient: ["#E8B923", "#FFF3B0", "#E8B923"]   # this event's own bar + GUI name colours (dark, light, dark)
       countdown: true
     sounds:
       start: {sound: "block.amethyst_block.resonate", volume: 0.8, pitch: 1.2}
       end: {sound: "entity.player.levelup", volume: 0.8, pitch: 1.0}
     titles:
-      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
-      end: {title: "<gradient:{gradient_raw}>{event} ended</gradient>", subtitle: ""}
+      start: {title: "<#A5B8FF>{event}", subtitle: "<#A5B8FF>{description}"}
+      end: {title: "<#A5B8FF>{event} ended", subtitle: ""}
     messages:
       join:
         - "leaves drop golden apples instead of apples"
         - "break or let leaves decay to get them"
         - "shears and silk touch still drop the leaf itself"
       start:
-        text: "<g>{event} has started for {minutes} minutes: {description}</g>"
+        text: "<#E3948F>{event} <#FFFFFF>started for <#FFFFFF>{minutes}m<#AAAAAA>: {description}"
         sound: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
       end:
-        text: "<g>{event} has ended.</g>"
+        text: "<#E3948F>{event} <#FFFFFF>has ended."
         sound: {sound: "block.note_block.bass", volume: 0.6, pitch: 1.0}
     start-animation:
       enabled: true
@@ -186,26 +186,26 @@ events:
     bossbar:
       enabled: true
       text: "{event} : {time}"
-      color: PINK
+      color: WHITE
       style: NOTCHED_12
-      gradient: ["#ffd7ca", "#fffbf0"]
+      gradient: ["#7B7F9E", "#E4E6F5", "#7B7F9E"]   # this event's own bar + GUI name colours (dark, light, dark)
       countdown: true
     sounds:
       start: {sound: "entity.enderman.teleport", volume: 0.8, pitch: 0.8}
       end: {sound: "entity.illusioner.cast_spell", volume: 0.8, pitch: 1.0}
     titles:
-      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
-      end: {title: "<gradient:{gradient_raw}>{event} ended</gradient>", subtitle: ""}
+      start: {title: "<#A5B8FF>{event}", subtitle: "<#A5B8FF>{description}"}
+      end: {title: "<#A5B8FF>{event} ended", subtitle: ""}
     messages:
       join:
         - "everyone shares the same name and skin"
         - "chat names, tab list and nametags are hidden"
         - "join, quit, death and advancement messages are hidden"
       start:
-        text: "<g>{event} has started for {minutes} minutes: {description}</g>"
+        text: "<#E3948F>{event} <#FFFFFF>started for <#FFFFFF>{minutes}m<#AAAAAA>: {description}"
         sound: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
       end:
-        text: "<g>{event} has ended.</g>"
+        text: "<#E3948F>{event} <#FFFFFF>has ended."
         sound: {sound: "block.note_block.bass", volume: 0.6, pitch: 1.0}
     start-animation:
       enabled: true
@@ -226,7 +226,7 @@ events:
       interval-minutes: 180
     settings:
       name: "Anonymous"
-      chat-format: "<color:#ffd7ca>{name}</color> <color:#ffd7ca>»</color> "
+      chat-format: "<#FFFFFF>{name} <#555555>» <#FFFFFF>"
       hide-join-quit: true
       hide-death-messages: true
       hide-advancements: true
@@ -248,25 +248,25 @@ events:
     bossbar:
       enabled: true
       text: "{event} : {time}"
-      color: YELLOW
+      color: GREEN
       style: NOTCHED_20
-      gradient: ["#f1d58f", "#fffbf0"]
+      gradient: ["#7CF54A", "#E3FFD1", "#7CF54A"]   # this event's own bar + GUI name colours (dark, light, dark)
       countdown: true
     sounds:
       start: {sound: "block.conduit.activate", volume: 0.8, pitch: 1.0}
       end: {sound: "block.beacon.deactivate", volume: 0.8, pitch: 1.0}
     titles:
-      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
-      end: {title: "<gradient:{gradient_raw}>{event} ended</gradient>", subtitle: ""}
+      start: {title: "<#A5B8FF>{event}", subtitle: "<#A5B8FF>{description}"}
+      end: {title: "<#A5B8FF>{event} ended", subtitle: ""}
     messages:
       join:
         - "every player glows and can be seen through walls"
         - "the outline cannot be removed until the event ends"
       start:
-        text: "<g>{event} has started for {minutes} minutes: {description}</g>"
+        text: "<#E3948F>{event} <#FFFFFF>started for <#FFFFFF>{minutes}m<#AAAAAA>: {description}"
         sound: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
       end:
-        text: "<g>{event} has ended.</g>"
+        text: "<#E3948F>{event} <#FFFFFF>has ended."
         sound: {sound: "block.note_block.bass", volume: 0.6, pitch: 1.0}
     start-animation:
       enabled: true
@@ -298,25 +298,25 @@ events:
     bossbar:
       enabled: true
       text: "{event} : {time}"
-      color: YELLOW
-      style: PROGRESS
-      gradient: ["#e8c670", "#fff0cc"]
+      color: PINK
+      style: NOTCHED_6
+      gradient: ["#F54AA8", "#FFD1EA", "#F54AA8"]   # this event's own bar + GUI name colours (dark, light, dark)
       countdown: true
     sounds:
       start: {sound: "ui.toast.challenge_complete", volume: 0.7, pitch: 1.2}
       end: {sound: "block.note_block.bell", volume: 0.8, pitch: 1.0}
     titles:
-      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
-      end: {title: "<gradient:{gradient_raw}>{event} ended</gradient>", subtitle: ""}
+      start: {title: "<#A5B8FF>{event}", subtitle: "<#A5B8FF>{description}"}
+      end: {title: "<#A5B8FF>{event} ended", subtitle: ""}
     messages:
       join:
         - "every elo gain (kills and playtime) is multiplied by {multiplier}x"
         - "losses are not changed"
       start:
-        text: "<g>{event} has started for {minutes} minutes: {description}</g>"
+        text: "<#E3948F>{event} <#FFFFFF>started for <#FFFFFF>{minutes}m<#AAAAAA>: {description}"
         sound: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
       end:
-        text: "<g>{event} has ended.</g>"
+        text: "<#E3948F>{event} <#FFFFFF>has ended."
         sound: {sound: "block.note_block.bass", volume: 0.6, pitch: 1.0}
     start-animation:
       enabled: true
@@ -351,25 +351,25 @@ events:
       enabled: true
       text: "{event} : {time}"
       color: YELLOW
-      style: PROGRESS
-      gradient: ["#d8b04a", "#e8c670", "#f1d58f"]
+      style: NOTCHED_12
+      gradient: ["#D08A3C", "#F6E2C8", "#D08A3C"]   # this event's own bar + GUI name colours (dark, light, dark)
       countdown: true
     sounds:
       start: {sound: "block.smithing_table.use", volume: 0.8, pitch: 1.0}
       end: {sound: "entity.experience_orb.pickup", volume: 0.8, pitch: 1.0}
     titles:
-      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
-      end: {title: "<gradient:{gradient_raw}>{event} ended</gradient>", subtitle: ""}
+      start: {title: "<#A5B8FF>{event}", subtitle: "<#A5B8FF>{description}"}
+      end: {title: "<#A5B8FF>{event} ended", subtitle: ""}
     messages:
       join:
         - "every ore drops double while the event runs"
         - "coal, iron, copper, gold, redstone, lapis, diamond, emerald and quartz"
         - "silk touch gets no bonus"
       start:
-        text: "<g>{event} has started for {minutes} minutes: {description}</g>"
+        text: "<#E3948F>{event} <#FFFFFF>started for <#FFFFFF>{minutes}m<#AAAAAA>: {description}"
         sound: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
       end:
-        text: "<g>{event} has ended.</g>"
+        text: "<#E3948F>{event} <#FFFFFF>has ended."
         sound: {sound: "block.note_block.bass", volume: 0.6, pitch: 1.0}
     start-animation:
       enabled: true
@@ -404,26 +404,26 @@ events:
     bossbar:
       enabled: true
       text: "{event} : {time}"
-      color: YELLOW
+      color: GREEN
       style: PROGRESS
-      gradient: ["#d8b04a", "#e8c670", "#f1d58f"]
+      gradient: ["#2FD06B", "#CCF7DC", "#2FD06B"]   # this event's own bar + GUI name colours (dark, light, dark)
       countdown: true
     sounds:
       start: {sound: "block.note_block.harp", volume: 0.8, pitch: 1.2}
       end: {sound: "entity.experience_orb.pickup", volume: 0.8, pitch: 1.0}
     titles:
-      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
-      end: {title: "<gradient:{gradient_raw}>{event} ended</gradient>", subtitle: ""}
+      start: {title: "<#A5B8FF>{event}", subtitle: "<#A5B8FF>{description}"}
+      end: {title: "<#A5B8FF>{event} ended", subtitle: ""}
     messages:
       join:
         - "golden apples give {hearts} absorption hearts instead of 2"
         - "the extra hearts come on top of your normal health"
         - "enchanted golden apples are unchanged"
       start:
-        text: "<g>{event} has started for {minutes} minutes: {description}</g>"
+        text: "<#E3948F>{event} <#FFFFFF>started for <#FFFFFF>{minutes}m<#AAAAAA>: {description}"
         sound: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
       end:
-        text: "<g>{event} has ended.</g>"
+        text: "<#E3948F>{event} <#FFFFFF>has ended."
         sound: {sound: "block.note_block.bass", volume: 0.6, pitch: 1.0}
     start-animation:
       enabled: true
@@ -457,26 +457,26 @@ events:
     bossbar:
       enabled: true
       text: "{event} : {time}"
-      color: PINK
+      color: BLUE
       style: NOTCHED_10
-      gradient: ["#ffe4d5", "#ffcfca"]
+      gradient: ["#4A5BFF", "#D3D8FF", "#4A5BFF"]   # this event's own bar + GUI name colours (dark, light, dark)
       countdown: true
     sounds:
       start: {sound: "block.beacon.power_select", volume: 0.8, pitch: 1.0}
       end: {sound: "block.respawn_anchor.set_spawn", volume: 0.8, pitch: 1.0}
     titles:
-      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
-      end: {title: "<gradient:{gradient_raw}>{event} ended</gradient>", subtitle: ""}
+      start: {title: "<#A5B8FF>{event}", subtitle: "<#A5B8FF>{description}"}
+      end: {title: "<#A5B8FF>{event} ended", subtitle: ""}
     messages:
       join:
         - "the locator bar is on, you can see other players on it"
         - "invisibility is disabled (potions, clouds, arrows ...)"
         - "team home, warp and echest commands are blocked"
       start:
-        text: "<g>{event} has started for {minutes} minutes: {description}</g>"
+        text: "<#E3948F>{event} <#FFFFFF>started for <#FFFFFF>{minutes}m<#AAAAAA>: {description}"
         sound: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
       end:
-        text: "<g>{event} has ended.</g>"
+        text: "<#E3948F>{event} <#FFFFFF>has ended."
         sound: {sound: "block.note_block.bass", volume: 0.6, pitch: 1.0}
     start-animation:
       enabled: true
@@ -520,25 +520,25 @@ events:
       enabled: true
       text: "{event} : {time}"
       color: RED
-      style: NOTCHED_10
-      gradient: ["#f5b7a5", "#ffe4d5"]
+      style: NOTCHED_6
+      gradient: ["#F5424B", "#FFD0D3", "#F5424B"]   # this event's own bar + GUI name colours (dark, light, dark)
       countdown: true
     sounds:
       start: {sound: "event.raid.horn", volume: 0.6, pitch: 1.0}
       end: {sound: "ui.toast.challenge_complete", volume: 0.8, pitch: 1.0}
     titles:                   # no "end" title on purpose: the top killer title is shown instead (messages.yml random-target.winner-title)
-      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
+      start: {title: "<#A5B8FF>{event}", subtitle: "<#A5B8FF>{description}"}
     messages:
       join:
         - "you are hunting a random player: their name and distance are in your action bar"
-        - "your locator bar points at your target"
+        - "your locator bar points at your target (if enabled)"
         - "if your target stays offline for 2 minutes you get a new one"
         - "the top 3 killers are on the scoreboard, the top killer is announced at the end"
       start:
-        text: "<g>{event} has started for {minutes} minutes: {description}</g>"
+        text: "<#E3948F>{event} <#FFFFFF>started for <#FFFFFF>{minutes}m<#AAAAAA>: {description}"
         sound: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
       end:
-        text: "<g>{event} has ended.</g>"
+        text: "<#E3948F>{event} <#FFFFFF>has ended."
         sound: {sound: "block.note_block.bass", volume: 0.6, pitch: 1.0}
     start-animation:
       enabled: true
@@ -558,6 +558,7 @@ events:
       days: [ALL]          # ALL or MONDAY, TUESDAY ...
       interval-minutes: 180
     settings:
+      locator-bar: true             # true = locator bar gamerule is switched on and points at the target, false = action bar only
       worlds: []                    # empty = all worlds (locator bar gamerule)
       reassign-after-seconds: 120   # a target offline this long is replaced by another random player
       update-ticks: 10              # action bar + locator range refresh
@@ -583,15 +584,15 @@ events:
       enabled: true
       text: "{event} : {time}"
       color: YELLOW
-      style: NOTCHED_6
-      gradient: ["#d8b04a", "#fff0cc"]
+      style: NOTCHED_20
+      gradient: ["#FF7A59", "#FFD9CF", "#FF7A59"]   # this event's own bar + GUI name colours (dark, light, dark)
       countdown: true
     sounds:
       start: {sound: "entity.firework_rocket.launch", volume: 0.5, pitch: 1.0}
       end: {sound: "block.beacon.deactivate", volume: 0.4, pitch: 0.8}
     titles:
-      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
-      end: {title: "<gradient:{gradient_raw}>{event} ended</gradient>", subtitle: ""}
+      start: {title: "<#A5B8FF>{event}", subtitle: "<#A5B8FF>{description}"}
+      end: {title: "<#A5B8FF>{event} ended", subtitle: ""}
     messages:
       join:
         - "lootdrops fall from the sky: watch the bossbar for the time or coordinates"
@@ -599,10 +600,10 @@ events:
         - "punch the crate until its health is gone to open it, the last hit takes the loot"
         - "chat shows who is hitting it and the top 3 hitters"
       start:
-        text: "<g>{event} has started for {minutes} minutes: {description}</g>"
+        text: "<#E3948F>{event} <#FFFFFF>started for <#FFFFFF>{minutes}m<#AAAAAA>: {description}"
         sound: {sound: "block.note_block.chime", volume: 0.3, pitch: 1.0}
       end:
-        text: "<g>{event} has ended.</g>"
+        text: "<#E3948F>{event} <#FFFFFF>has ended."
         sound: {sound: "block.note_block.bass", volume: 0.3, pitch: 0.8}
     start-animation:
       enabled: true
@@ -794,26 +795,26 @@ events:
     bossbar:
       enabled: true
       text: "{event} : {time}"
-      color: YELLOW
+      color: GREEN
       style: NOTCHED_10
-      gradient: ["#d8b04a", "#fff0cc"]
+      gradient: ["#4DF0C0", "#D6FFF1", "#4DF0C0"]   # this event's own bar + GUI name colours (dark, light, dark)
       countdown: true
     sounds:
       start: {sound: "entity.chicken.egg", volume: 0.8, pitch: 1.0}
       end: {sound: "entity.player.levelup", volume: 0.8, pitch: 1.0}
     titles:
-      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
-      end: {title: "<gradient:{gradient_raw}>{event} ended</gradient>", subtitle: ""}
+      start: {title: "<#A5B8FF>{event}", subtitle: "<#A5B8FF>{description}"}
+      end: {title: "<#A5B8FF>{event} ended", subtitle: ""}
     messages:
       join:
         - "eggs are hidden in the event area, click one to collect it"
         - "every egg can be collected once, rarer eggs give better rewards"
         - "/egghunt leaderboard shows the top finders, it ends in {time}"
       start:
-        text: "<g>{event} has started for {minutes} minutes: {description}</g>"
+        text: "<#E3948F>{event} <#FFFFFF>started for <#FFFFFF>{minutes}m<#AAAAAA>: {description}"
         sound: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
       end:
-        text: "<g>{event} has ended.</g>"
+        text: "<#E3948F>{event} <#FFFFFF>has ended."
         sound: {sound: "block.note_block.bass", volume: 0.6, pitch: 1.0}
     schedule:
       mode: off            # off | times | interval
@@ -907,15 +908,15 @@ events:
       enabled: true
       text: "{event} : {time} | {alive} alive | border {radius}"
       color: RED
-      style: NOTCHED_10
-      gradient: ["#ffcfca", "#fff1e0"]
+      style: NOTCHED_12
+      gradient: ["#FF5A1F", "#FFD9C7", "#FF5A1F"]   # this event's own bar + GUI name colours (dark, light, dark)
       countdown: true
     sounds:
       start: {sound: "entity.lightning_bolt.thunder", volume: 0.8, pitch: 1.0}
       end: {sound: "block.bell.use", volume: 0.8, pitch: 0.8}
     titles:
-      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
-      end: {title: "<gradient:{gradient_raw}>{event} ended</gradient>", subtitle: ""}
+      start: {title: "<#A5B8FF>{event}", subtitle: "<#A5B8FF>{description}"}
+      end: {title: "<#A5B8FF>{event} ended", subtitle: ""}
     messages:
       join:
         - "a menu asks if you want to go to the arena, /tpdisaster opens it again"
@@ -926,7 +927,7 @@ events:
         text: "<g>{event} has started: {description}</g>"
         sound: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
       end:
-        text: "<g>{event} has ended.</g>"
+        text: "<#E3948F>{event} <#FFFFFF>has ended."
         sound: {sound: "block.note_block.bass", volume: 0.6, pitch: 1.0}
     schedule:
       mode: off
@@ -950,25 +951,25 @@ events:
       exit:                        # where everyone goes when the event ends or they are eliminated (/disaster setexit; empty world = main spawn)
         world: ""
       border:
-        initial-radius: 40         # 40 blocks each side of the centre (80 x 80) at the start
+        initial-radius: 80         # 80 blocks each side of the centre (160 x 160) at the start
         shrink-seconds: 3000       # ONE slow, steady shrink like the vanilla border (50 min), ending exactly at the minute below
         warning-distance: 5        # blocks from the border where the red vignette appears
         warnings: []               # seconds before a reduction begins (the single shrink starts at once, so none)
         warning-sound: {sound: "block.note_block.bell", volume: 0.8, pitch: 0.8}
         shrink-sound: {sound: "entity.ender_dragon.growl", volume: 0.4, pitch: 1.2}
         phases:                    # radius (blocks each side of the centre) reached at this minute
-          - {minutes: 50, radius: 10}   # stops here, 10 blocks each side (20 x 20), and stays until the event ends
+          - {minutes: 50, radius: 20}   # stops here after 50 minutes, 20 blocks each side (40 x 40), and stays until the event ends
         push:                      # players are pushed away from the border so nobody can stand next to it
           enabled: true
-          distance: 2.5            # blocks from the border where the push starts
-          strength: 0.45           # how hard (velocity per move tick)
+          distance: 2.0            # blocks from the border where the push starts
+          strength: 0.18           # how hard (velocity per move tick, was 0.45)
       participants:
         # nobody is teleported automatically: every online player (and everyone who joins later) gets a Yes / No menu, /tpdisaster opens it again
         # a player who pressed Yes and died or left cannot enter a second time during the same event
         join-window-seconds: 60    # no "last player standing" win before this many seconds (people are still choosing in the menu)
         exclude-gamemodes: [SPECTATOR]
         use-exempt-permission: false # true = exclude players with eventcore.disaster.exempt
-        spread-radius: 35
+        spread-radius: 0           # 0 = every player is placed at a random spot anywhere inside the arena (was 35 around the arena spawn); a number = random within that radius
         grace-seconds: 30          # no player-vs-player damage at the start
         entry-grace-seconds: 8     # border rules start after everyone has been teleported in
         heal-on-start: true
@@ -986,14 +987,16 @@ events:
         allowed: [warp, warps, msg, tell, w, r, reply, rules, helpop]   # everything else is blocked while the event runs
       hazards:                     # disasters: they erode the arena slowly, in small shallow chunks (never down to bedrock)
         enabled: true
-        start-after-seconds: 10    # the first two disasters begin this long after the event starts
-        run-seconds: 120           # "2m": every disaster stays active this long (storms, hurricane and tornado run non-stop, meteors / geysers strike every min-max seconds); override per disaster with run-seconds
-        max-active: 2              # only this many disasters at the same time = this many entries in the action bar ("hurricane: 2m | meteor: 2m")
-        track-chance: 0.25         # chance that a disaster is aimed at a player (also how often the tornado chases one); otherwise it lands / roams on its own
+        short-before-end-minutes: 10  # when only this many minutes are left, disasters only run for late-run-seconds (0 = off)
+        late-run-seconds: 5           # length of a disaster in that last stretch (0 = no disasters at all then)
+        start-after-seconds: 5     # the first disaster begins this long after the event starts
+        run-seconds: 120           # "2m": every disaster stays active this long (only 5s in the last 10 minutes, see below); "2m": every disaster stays active this long (storms, hurricane and tornado run non-stop, meteors / geysers strike every min-max seconds); override per disaster with run-seconds
+        max-active: 1              # (was 2) only one disaster at a time; only this many disasters at the same time = this many entries in the action bar ("hurricane: 2m | meteor: 2m")
+        track-chance: 0.1          # chance that a disaster is aimed at a player (also how often the tornado chases one); otherwise it lands / roams on its own
         announce-seconds: 10       # the entry turns bold for the last N seconds of its run, then the next disaster of the cycle takes its slot
-        pause-chance: 0.4          # chance that a finished round is followed by a pause with NO disasters, so players can fight
-        pause-min-seconds: 25      # how long such a pause lasts (random between min and max), shown as "pause: 30s" in the action bar
-        pause-max-seconds: 45
+        pause-chance: 0.7          # (was 0.4) most rounds are followed by a quiet pause; chance that a finished round is followed by a pause with NO disasters, so players can fight
+        pause-min-seconds: 45      # how long such a pause lasts (random between min and max), shown as "pause: 30s" in the action bar
+        pause-max-seconds: 75
         max-damage: 20.0           # highest damage of a direct hit (20 = 10 hearts; armor still reduces it)
         max-fall-damage: 12.0      # highest fall damage after being launched (12 = 6 hearts), so launches hurt but do not kill
         max-depth: 12              # hard limit: no disaster ever digs deeper than this many blocks below the surface
@@ -1003,6 +1006,15 @@ events:
         particle-density: 0.5      # 0.1 - 1.0, scales the particles (fewer particles = less network + client lag)
         max-displays: 150          # max flying block / funnel entities alive at once
         # Every disaster has its own action bar colour (color: "#rrggbb"), shown in small caps.
+        underground-glow:          # players who stay underground (caves, mines) longer than this glow until they come up
+          enabled: true
+          after-seconds: 60
+          depth: 5                 # blocks below the surface that count as underground
+        glow:                      # random glow for every player inside the border, so nobody can hide
+          enabled: true
+          min-interval-seconds: 90
+          max-interval-seconds: 180
+          duration-seconds: 10
         wind_charge:               # giant spinning wind charge falls, bursts and throws players away
           enabled: true
           color: "#7fffd4"
@@ -1034,6 +1046,9 @@ events:
           color: "#ff3030"
           min-seconds: 8           # one geyser erupts every min-max seconds (random) while it runs
           max-seconds: 12
+          below-chance: 0.15       # chance that it erupts directly under a player (the warning ring shows first); otherwise it opens away from every player
+          min-distance: 10         # otherwise it opens at least this many blocks from the player it was picked for
+          max-distance: 35
           warning-seconds: 4
           duration-seconds: 6
           height: 14
@@ -1048,6 +1063,9 @@ events:
           color: "#3aa0ff"
           min-seconds: 8
           max-seconds: 12
+          below-chance: 0.15       # chance that it erupts directly under a player (the warning ring shows first); otherwise it opens away from every player
+          min-distance: 10         # otherwise it opens at least this many blocks from the player it was picked for
+          max-distance: 35
           warning-seconds: 3
           duration-seconds: 6
           height: 16
@@ -1060,7 +1078,9 @@ events:
           enabled: true
           color: "#d8e2dc"
           strength: 0.35
-          destroy-terrain: true    # rips random blocks out of the ground and blows them away
+          sweep-radius: 14         # width of the gust front: it sweeps across the arena on its own and only pushes players it passes over
+          sweep-speed: 8.0         # blocks per second the front travels (no player tracking)
+          destroy-terrain: true    # rips random blocks out of the ground along the front
           rip-per-tick: 2
           rip-radius: 22
           max-blocks-per-player: 25
@@ -1071,6 +1091,7 @@ events:
           radius: 7.0
           pull: 0.45
           speed: 0.2
+          chase-players: false     # false = it roams random waypoints and never hunts a player (true = uses hazards.track-chance)
           launch-height: 100       # how high the core throws players (blocks)
           launch-cooldown-seconds: 10
           max-blocks: 32           # picked-up blocks orbiting at once
@@ -1090,6 +1111,9 @@ events:
           shake-radius: 45
           underground-hint: true   # players who are still underground when it starts get the hint "do not stay underground" (once per earthquake)
           underground-depth: 5     # blocks below the surface that count as underground
+          cave-in: true            # EVERY player still underground during the shaking takes damage + nausea + slowness (no hiding in caves or mines)
+          cave-in-damage: 2.0      # per second (2.0 = 1 heart)
+          eject-to-surface: true   # when the shaking ends, anybody still underground is thrown up to the surface
           length: 44
           width: 4
           depth: 8
@@ -1110,7 +1134,9 @@ events:
           enabled: true
           color: "#7b6cff"
           strength: 0.45
-          destroy-terrain: true    # picks up random blocks all around and whirls them away
+          sweep-radius: 18         # size of the storm: its eye roams the arena on its own, players inside are shoved round it
+          sweep-speed: 6.0         # blocks per second the eye travels (no player tracking)
+          destroy-terrain: true    # picks up random blocks around the eye and whirls them away
           rip-per-tick: 2
           rip-radius: 24
           max-blocks-per-player: 30
@@ -1130,10 +1156,10 @@ events:
         thunderstorm:              # dark storm; lightning marks a ring near each player, then strikes inside it (it does not follow the player)
           enabled: true
           color: "#9dff4a"
-          strike-interval-seconds: 4.0   # per player (was 2.5)
+          strike-interval-seconds: 5.0   # per player
           warning-seconds: 2.0           # the ring stays where it is and the bolt lands in it: step out of it (was 1.2)
-          track-chance: 0.4              # chance that a bolt is aimed near the player at all, otherwise it lands somewhere around (lower = less tracking)
-          aim-offset: 3.0                # an aimed bolt lands up to this many blocks from where the player stood when it locked on
+          track-chance: 0.1              # chance that a bolt is aimed near the player at all (was 0.4), otherwise it lands somewhere around
+          aim-offset: 7.0                # an aimed bolt lands up to this many blocks from where the player stood when it locked on
           random-radius: 14.0            # how far an unaimed bolt can land from the player
           hit-radius: 2.5
           damage: 14.0
@@ -1153,6 +1179,7 @@ events:
   chat_question:
     enabled: true
     display-name: "chat games"
+    display-mode: NONE        # no bossbar and no action bar for this event
     description: "answer the question in chat first and win golden apples"
     color: "#f1d58f"
     gradient: ["#2E9BFF", "#D4ECFF", "#2E9BFF"]   # title gradient (dark, light, dark)
@@ -1160,38 +1187,36 @@ events:
     duration-minutes: 10
     cooldown-minutes: 0
     bossbar:
-      enabled: true
+      enabled: false
       text: "{event} : {time}"
-      color: YELLOW
-      style: NOTCHED_10
-      gradient: ["#d8b04a", "#f7e2ad"]
+      color: BLUE
+      style: PROGRESS
+      gradient: ["#2E9BFF", "#D4ECFF", "#2E9BFF"]   # this event's own bar + GUI name colours (dark, light, dark)
       countdown: true
     sounds:
       start: {sound: "block.note_block.bell", volume: 0.8, pitch: 1.3}
       end: {sound: "ui.toast.challenge_complete", volume: 0.8, pitch: 1.0}
     titles:
-      start: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{description}</gradient>"}
-      end: {title: "<gradient:{gradient_raw}>{event} ended</gradient>", subtitle: ""}
-      winner: {title: "<gradient:{gradient_raw}>{event}</gradient>", subtitle: "<gradient:{gradient_raw}>{player} won</gradient>", stay: 60}   # shown to everyone when a question is answered
+      winner: {title: "<#A5B8FF>{event}", subtitle: "<#FFFFFF>{player} <#00FF55>won", stay: 60}   # the ONLY title of this event (event name + who won)
     messages:
       join:
         - "questions appear in chat, type the answer in chat"
         - "the first correct answer wins golden apples"
-        - "it ends in {time}"
+        - "the event ends as soon as someone answers"
       start:
-        text: "<g>{event} has started for {minutes} minutes: {description}</g>"
+        text: "<#E3948F>{event} <#FFFFFF>started for <#FFFFFF>{minutes}m<#AAAAAA>: {description}"
         sound: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
       end:
-        text: "<g>{event} has ended.</g>"
+        text: "<#E3948F>{event} <#FFFFFF>has ended."
         sound: {sound: "block.note_block.bass", volume: 0.6, pitch: 1.0}
       question:                  # the question is sent in chat only (no title, no action bar). {number} {question} {seconds}
-        text: "<g>question {number}</g> <gray>-</gray> <white>{question}</white> <gray>({seconds}s)</gray>"
+        text: "<#A5B8FF>Question {number}<#AAAAAA>: <#FFFFFF>{question} <#AAAAAA>({seconds}s)"
         sound: {sound: "block.note_block.pling", volume: 1.0, pitch: 1.6}
       winner:
-        text: "<g>{player} answered correctly and won {amount} golden apples!</g>"
+        text: "<#FFFFFF>{player} <#00FF55>answered correctly <#FFFFFF>and won <#FFD54A>{amount} golden apples<#FFFFFF>!"
         sound: {sound: "entity.player.levelup", volume: 0.8, pitch: 1.2}
       expired:
-        text: "<g>time is up, nobody answered. the answer was {answer}.</g>"
+        text: "<#FF5555>Time is up<#AAAAAA>, nobody answered. <#FFFFFF>Answer: <#FFD54A>{answer}"
         sound: {sound: "block.note_block.bass", volume: 0.7, pitch: 0.8}
     start-animation:
       enabled: false
@@ -1206,6 +1231,7 @@ events:
       first-question-after-seconds: 5   # the first question comes this long after the event starts
       question-interval-seconds: 45     # pause between the end of one question and the next one
       answer-timeout-seconds: 30        # a question with no correct answer expires after this long
+      end-on-answer: true               # the event ends by itself as soon as a player answers correctly
       hide-correct-answer: true         # the winning message is not shown in chat (so nobody else can copy it)
       reward:
         item: GOLDEN_APPLE

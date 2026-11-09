@@ -38,7 +38,7 @@ public final class AltarHubGui implements Listener {
 
     private static final int PAGE = 45, PREV = 45, BACK = 48, ANY = 49, NEXT = 53;
     private static final int H_PLACE = 10, H_MANAGE = 12, H_RECIPES = 14, H_STOP = 16, H_CLOSE = 22;
-    private static final String NAME = "<gradient:#d8b04a:#f1d58f:#ffd7ca>";
+    private static final String NAME = "<gradient:#9babc7:#E7E7E7:#E7E7E7>";
     private static final String NAME_END = "</gradient>";
     private static final String GRAY = "<color:#a8a8a8>", DIM = "<color:#7a7a7a>", END = "</color>";
 

@@ -177,6 +177,7 @@ public final class EventManager implements Listener {
         if (custom != null) return custom;
         ConfigurationSection bb = ae.ev.sec().getConfigurationSection("bossbar");
         String tpl = bb == null ? "{event} : {time}" : bb.getString("text", "{event} : {time}");
+        if (tpl.contains("<#")) return pl.text.render(tpl, placeholders(ae));   // themed text: "Label: " red, value white
         String plain = pl.text.expandPlain(tpl, placeholders(ae));
         List<String> g = bb == null ? List.of() : bb.getStringList("gradient");
         return g.isEmpty() ? pl.text.bossbar(plain) : pl.text.gradient(plain, g, 0);

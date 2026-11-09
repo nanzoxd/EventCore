@@ -1,32 +1,28 @@
 # EventCore main configuration. Everything here is also editable in-game: /eventcore gui
-# Gradient palette used by the <g> tag in every message, title and bossbar.
-# The two palettes everything is coloured with (titles, chat, GUIs, bossbars, holograms):
-#   peach: #fffbf0 #fff1e0 #ffe4d5 #ffd7ca #ffcfca     gold: #d8b04a #e8c670 #f1d58f #f7e2ad #fff0cc
-palette:            # peach -> gold (chat, titles)
-  - "#fffbf0"
-  - "#ffe4d5"
-  - "#ffcfca"
-  - "#f1d58f"
-  - "#d8b04a"
+# Theme palette: the <g> tag in every message resolves to the info colour #A5B8FF.
+# Other theme colours: body #FFFFFF, brackets #555555, muted #AAAAAA, success #00FF55, error #EE2424, warning #FF5555,
+# event #E3948F, highlight #FFD54A, staff #FFA100, cooldown #7F7F7F, ability #00D5FF / #FFAA00.
+palette:            # <g> tag = info colour
+  - "#A5B8FF"
 # Bossbars use this gradient (<bb> tag): "Lootdrop Falling | 10 20 30"
-bossbar-gradient: ["#d8b04a", "#fff0cc", "#d8b04a"]
+bossbar-gradient: ["#FF5555"]
 # The [EventCore] label (chat prefix in messages.yml and the /eventcore gui title)
 eventcore-gradient: ["#808080", "#C4C4C4", "#808080"]
 # GUI colours (peach + gold only)
 theme:
-  main: "#ffffff"      # item names and GUI titles
-  soft: "#9a9a9a"
-  good: "#55ff7f"      # enabled / running (green)
-  bad: "#ff5555"       # disabled (red)
-  warn: "#bdbdbd"
-  info: "#a8a8a8"      # lore text
-  white: "#ffffff"     # values
-  name-gradient: ["#d8b04a", "#f1d58f", "#ffd7ca"]   # item names and GUI titles
-  label-gradient: ["#ffffff", "#a8a8a8"]             # "Value:" style labels in lore
+  main: "#A5B8FF"      # item names and GUI titles
+  soft: "#AAAAAA"
+  good: "#00FF55"      # enabled / running
+  bad: "#EE2424"       # disabled
+  warn: "#FF5555"
+  info: "#AAAAAA"      # lore text
+  white: "#FFFFFF"     # values
+  name-gradient: ["#9babc7", "#E7E7E7", "#E7E7E7"]   # item names and GUI titles (dark to light)
+  label-gradient: ["#9babc7", "#6981ab"]             # "Value:" style labels in lore
 style:
-  flatten-colors: true   # chat uses only the palette: red/green/gray... tags become text-color
-  text-color: "#ffd7ca"
-  small-caps: true      # convert template text to small caps (placeholder values are left alone)
+  flatten-colors: false  # keep every hex colour exactly as written in the messages (theme)
+  text-color: "#FFFFFF"
+  small-caps: true      # small caps on template text (placeholder values stay normal)
   strip-bold: true      # never render bold
   title-times:          # ticks
     fade-in: 10
@@ -81,9 +77,9 @@ discord:
 # Mouse-control icons in every tooltip: "▆▆" with the pressed button lit (gray and white)
 lore:
   mouse:
-    active: "#ffffff"
-    inactive: "#5c5c5c"
-    text: "#a8a8a8"
+    active: "#FFFFFF"
+    inactive: "#7F7F7F"
+    text: "#AAAAAA"
 # Player Hunt: /playerhunt <player ...> | stop [player|all] | list
 playerhunt:
   enabled: true

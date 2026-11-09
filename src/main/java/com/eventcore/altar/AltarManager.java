@@ -644,7 +644,7 @@ public final class AltarManager implements Listener {
             String real = String.valueOf(v[i]);
             out = out.append(i < stage
                     ? Component.text(real, TextColor.color(0xf1d58f))
-                    : Component.text("0".repeat(real.length()), NamedTextColor.GRAY).decoration(TextDecoration.OBFUSCATED, true));
+                    : Component.text("0".repeat(real.length()), net.kyori.adventure.text.format.TextColor.color(0xAAAAAA)).decoration(TextDecoration.OBFUSCATED, true));
         }
         return out.decoration(TextDecoration.ITALIC, false);
     }
@@ -861,7 +861,7 @@ public final class AltarManager implements Listener {
             if (name.color() == null && name.children().isEmpty() && name.decoration(TextDecoration.BOLD) == TextDecoration.State.NOT_SET)
                 name = name.decoration(TextDecoration.BOLD, true);
         } else {
-            name = Component.text(Util.pretty(out.getType()), NamedTextColor.WHITE)
+            name = Component.text(Util.pretty(out.getType()), net.kyori.adventure.text.format.TextColor.color(0xFFFFFF))
                     .decoration(TextDecoration.BOLD, true).decoration(TextDecoration.ITALIC, false);
         }
         return name;
@@ -1025,7 +1025,7 @@ public final class AltarManager implements Listener {
         for (Recipe r : list) if (r.craftable(inv)) { use = r; break; }
         if (use == null) {
             p.sendMessage(m("missing", Map.of()));
-            if (list.size() == 1) for (String line : list.get(0).missing(inv)) p.sendMessage(Component.text(" - " + line, NamedTextColor.GRAY));
+            if (list.size() == 1) for (String line : list.get(0).missing(inv)) p.sendMessage(Component.text(" - " + line, net.kyori.adventure.text.format.TextColor.color(0xAAAAAA)));
             p.playSound(p.getLocation(), Sound.ENTITY_VILLAGER_NO, 0.6f, 1f);
             return;
         }

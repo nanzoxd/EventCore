@@ -349,7 +349,8 @@ public final class NaturalDisasterEvent extends GameEvent {
         double bx = spawnSet ? s.getDouble("arena.spawn.x", cx) : cx, bz = spawnSet ? s.getDouble("arena.spawn.z", cz) : cz;
         ActiveEvent now = run;
         double rNow = now == null ? initialR : Math.min(initialR, Math.max(6, radiusAt(elapsed(now))));      // late joiners land inside the current border
-        double spread = Math.max(0, Math.min(s.getDouble("participants.spread-radius", 35), rNow - 3));
+        double cfgSpread = s.getDouble("participants.spread-radius", 0);      // 0 = the whole arena
+        double spread = Math.max(0, cfgSpread <= 0 ? rNow - 3 : Math.min(cfgSpread, rNow - 3));
         ThreadLocalRandom rnd = ThreadLocalRandom.current();
         double ang = rnd.nextDouble(Math.PI * 2), dist = Math.sqrt(rnd.nextDouble()) * spread;
         int x = (int) Math.floor(bx + Math.cos(ang) * dist), z = (int) Math.floor(bz + Math.sin(ang) * dist);

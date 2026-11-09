@@ -73,6 +73,9 @@ public final class RandomTargetEvent extends GameEvent {
         return l.isEmpty() || l.contains(w.getName());
     }
 
+    /** settings.locator-bar: false = the gamerule and the waypoint ranges are never touched (action bar hunt only). */
+    private boolean locatorBar() { return settings().getBoolean("locator-bar", true); }
+
     private String tpl(String key, String def) {
         String v = pl.cfg.messages().getString("random-target." + key);
         return v == null ? def : v;
@@ -86,7 +89,7 @@ public final class RandomTargetEvent extends GameEvent {
     @Override public void onStart(ActiveEvent ae) {
         targets.clear(); kills.clear(); killSeq.clear(); offlineSince.clear(); snaps.clear(); names.clear(); seq.set(0);
         savedRule.clear();
-        for (World w : Bukkit.getWorlds()) {
+        for (World w : locatorBar() ? Bukkit.getWorlds() : List.<World>of()) {
             if (!worldAllowed(w)) continue;
             Boolean old = LocatorRule.get(w);
             if (old == null) { pl.getLogger().warning("RandomTarget: this server has no locator bar gamerule (needs 1.21.6+); world " + w.getName()); continue; }
@@ -137,7 +140,7 @@ public final class RandomTargetEvent extends GameEvent {
 
     @Override protected void doStrip(Player p) {
         Sched.cancel(tasks.remove(p.getUniqueId()));
-        setReceiveRange(p, -1);
+        setReceiveRange(p, -1);   // always restore, even if locator-bar was switched off mid-run
         if (p.isOnline()) p.sendActionBar(Component.empty());
     }
 
@@ -169,7 +172,7 @@ public final class RandomTargetEvent extends GameEvent {
         }
         p.sendActionBar(bar);
 
-        if (settings().getBoolean("locator-filter", true)) {
+        if (locatorBar() && settings().getBoolean("locator-filter", true)) {
             double range = (tid == null || offline || !sameWorld) ? 0 : dist + Math.max(0, settings().getDouble("locator-margin", 3.0));
             setReceiveRange(p, range);
         }

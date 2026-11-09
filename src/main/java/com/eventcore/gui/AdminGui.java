@@ -66,7 +66,7 @@ public final class AdminGui implements Listener {
         List<String> l = pl.cfg.config().getStringList("theme." + key);
         return l.size() < 2 ? def : l;
     }
-    List<String> nameGrad() { return gl("name-gradient", List.of("#d8b04a", "#f1d58f", "#ffd7ca")); }
+    List<String> nameGrad() { return gl("name-gradient", List.of("#9babc7", "#E7E7E7", "#E7E7E7")); }
     private String grad(List<String> g) { return "<gradient:" + String.join(":", g) + ">"; }
 
     /** "Label: value" lore line: gradient label, white value (SMPCore-style status lines). */

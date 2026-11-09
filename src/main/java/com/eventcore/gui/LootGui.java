@@ -67,7 +67,7 @@ public final class LootGui implements Listener {
 
     private List<String> nameGrad() {
         List<String> g = pl.cfg.config().getStringList("theme.name-gradient");
-        return g.size() < 2 ? List.of("#d8b04a", "#f1d58f", "#ffd7ca") : g;
+        return g.size() < 2 ? List.of("#9babc7", "#E7E7E7", "#E7E7E7") : g;
     }
 
     private Component title(String s) {

@@ -21,7 +21,8 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Chat Question: every few seconds a question is sent in chat (chat only, with a notification sound).
+ * Chat Question: a question is sent in chat (chat only, no bossbar, no action bar).
+ * The event ends as soon as somebody answers correctly; the only title is the winner title.
  * The first player to type a correct answer wins half a stack or a full stack of golden apples.
  * Questions and answers live in events.yml (events.chat_question.settings.questions).
  */
@@ -137,7 +138,8 @@ public final class ChatQuestionEvent extends GameEvent {
         if (p.isOnline()) pl.sched.entity(p, () -> Util.give(p, reward));
         java.util.Map<String, Object> ph = Text.ph("player", p.getName(), "amount", amount, "item", Util.pretty(mat), "answer", l.q.shown(),
                 "number", l.number, "event", pl.text.sc(displayName()), "gradient_raw", gradientRaw());
-        pl.fx.title(org.bukkit.Bukkit.getServer(), sec().getConfigurationSection("titles.winner"), ph);   // "chat games" / "<player> won" on every screen
+        pl.fx.title(org.bukkit.Bukkit.getServer(), sec().getConfigurationSection("titles.winner"), ph);   // the only title: event name + who won
         pl.fx.broadcast(sec(), "messages.winner", ph, prefix());
+        if (settings().getBoolean("end-on-answer", true)) pl.events.stop(id(), true);   // first correct answer ends the whole event
     }
 }

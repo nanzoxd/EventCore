@@ -29,7 +29,7 @@ import java.util.Map;
  */
 public final class DisasterInviteGui implements Listener {
     private static final int YES = 11, INFO = 13, NO = 15;
-    private static final String NAME = "<gradient:#d8b04a:#f1d58f:#ffd7ca>";
+    private static final String NAME = "<gradient:#9babc7:#E7E7E7:#E7E7E7>";
     private static final String NAME_END = "</gradient>";
 
     static final class Holder implements InventoryHolder {

@@ -57,7 +57,7 @@ import java.util.function.IntPredicate;
  * lava_geyser, water_geyser (warning ring, then an eruption column that launches players) and wind_storm.
  */
 final class DisasterHazards {
-    private static final String[] TYPES = {"wind_charge", "meteor", "lava_geyser", "water_geyser", "wind_storm", "tornado", "hurricane", "meteor_shower", "earthquake", "laser_sinkhole", "thunderstorm"};
+    private static final String[] TYPES = {"wind_charge", "meteor", "lava_geyser", "water_geyser", "wind_storm", "tornado", "hurricane", "meteor_shower", "earthquake", "laser_sinkhole", "thunderstorm", "tnt_rain"};
 
     private final EventCorePlugin pl;
     private final NaturalDisasterEvent ev;
@@ -86,14 +86,14 @@ final class DisasterHazards {
             Map.entry("wind_charge", "#7fffd4"), Map.entry("meteor", "#ff8c1a"), Map.entry("lava_geyser", "#ff3030"),
             Map.entry("water_geyser", "#3aa0ff"), Map.entry("wind_storm", "#d8e2dc"), Map.entry("tornado", "#c2a878"),
             Map.entry("hurricane", "#7b6cff"), Map.entry("meteor_shower", "#ffd23f"), Map.entry("earthquake", "#b5651d"),
-            Map.entry("laser_sinkhole", "#ff2bd6"), Map.entry("thunderstorm", "#9dff4a"));
+            Map.entry("laser_sinkhole", "#ff2bd6"), Map.entry("thunderstorm", "#9dff4a"), Map.entry("tnt_rain", "#ff5555"));
 
     private static String label(String type) {
         return switch (type) {
             case "wind_charge" -> "Wind Charge"; case "meteor" -> "Meteor"; case "lava_geyser" -> "Lava Geyser";
             case "water_geyser" -> "Water Geyser"; case "wind_storm" -> "Wind Storm"; case "tornado" -> "Tornado";
             case "hurricane" -> "Hurricane"; case "meteor_shower" -> "Meteor Shower"; case "earthquake" -> "Earthquake";
-            case "laser_sinkhole" -> "Laser"; case "thunderstorm" -> "Thunderstorm"; default -> type;
+            case "laser_sinkhole" -> "Laser"; case "thunderstorm" -> "Thunderstorm"; case "tnt_rain" -> "TNT Rain"; default -> type;
         };
     }
 
@@ -111,7 +111,7 @@ final class DisasterHazards {
 
     DisasterHazards(EventCorePlugin pl, NaturalDisasterEvent ev) { this.pl = pl; this.ev = ev; }
 
-    void reset() { roundLanes = 1; nextGlow = -1; underSince.clear(); stopped = false; slots.clear(); bag.clear(); pauseUntil = 0; wasRunning = false; active.set(0); tornadoes.set(0); bar = null; flung.clear(); pending.clear(); }
+    void reset() { meteorHint.set(false); roundLanes = 1; nextGlow = -1; underSince.clear(); stopped = false; slots.clear(); bag.clear(); pauseUntil = 0; wasRunning = false; active.set(0); tornadoes.set(0); bar = null; flung.clear(); pending.clear(); }
 
     /** Cancels every running effect and removes every display entity. Called when the event stops. */
     void stop() {
@@ -172,7 +172,7 @@ final class DisasterHazards {
     double maxDamage() { return Math.max(1, ev.settings().getDouble("hazards.max-damage", 20)); }
 
     /** Highest fall damage (tornado / geyser launches), kept lower than direct hits so a launch hurts but does not kill. */
-    double maxFallDamage() { return Math.max(1, ev.settings().getDouble("hazards.max-fall-damage", 12)); }
+    double maxFallDamage() { double v = ev.settings().getDouble("hazards.max-fall-damage", 0); return v <= 0 ? Double.MAX_VALUE : Math.max(1, v); }   // 0 = no fall damage cap
     private double dmg(double v) { double m = diffD("damage-multiplier", 1.0); return Math.min(v * m, maxDamage() * Math.max(1, m)); }
 
     /** The chosen difficulty (settings.difficulty: easy | mid | hard) and its preset in settings.difficulties. */
@@ -192,6 +192,7 @@ final class DisasterHazards {
         return r.nextDouble(0.9, 1.15);
     }
     private int roundLanes = 1;
+    private final java.util.concurrent.atomic.AtomicBoolean meteorHint = new java.util.concurrent.atomic.AtomicBoolean();
     private int layersPerTick() { return Math.max(1, ev.settings().getInt("hazards.dig-layers-per-tick", 3)); }
 
     /** Hard ceiling for how deep ANY disaster may dig below the surface (hazards.max-depth). Keeps the damage in small chunks, never bedrock. */
@@ -538,11 +539,13 @@ final class DisasterHazards {
             if (!ev.isLive(ae)) return;
             Location base = target.getLocation();
             double off = type.endsWith("geyser") ? 10 : type.equals("tornado") ? 25 : type.equals("earthquake") ? 15 : type.equals("laser_sinkhole") ? 8 : 5;
-            Location spot = type.equals("tornado") ? randomSpot(base.getWorld(), ae) : type.endsWith("geyser") ? geyserSpot(base, c, ae) : chooseSpot(base, off, ae);   // the tornado never starts at a player
+            Location spot = type.equals("tornado") ? randomSpot(base.getWorld(), ae) : type.endsWith("geyser") ? geyserSpot(base, c, ae)
+                    : type.equals("laser_sinkhole") && ThreadLocalRandom.current().nextDouble() < c.getDouble("aim-chance", 0.7) ? base.clone() : chooseSpot(base, off, ae);   // lasers are often aimed straight at a player (the warning ring and thin beam show first)   // the tornado never starts at a player
             if (type.equals("wind_storm")) { windStorm(ae, c, alive, run); return; }
             if (type.equals("hurricane")) { hurricane(ae, c, alive, run); return; }
             if (type.equals("meteor_shower")) { meteorShower(ae, c, alive, run); return; }
             if (type.equals("thunderstorm")) { thunderstorm(ae, c, alive, run); return; }
+            if (type.equals("tnt_rain")) { tntRain(ae, c, alive, run); return; }
             pl.sched.region(spot, () -> {
                 if (!ev.isLive(ae) || stopped) return;
                 try {
@@ -666,6 +669,95 @@ final class DisasterHazards {
         return d;
     }
 
+    /** Transformation of a beam of `width` x `height` pointing along `dir` (null = straight up), pivoting on its bottom end. */
+    private Transformation beamTf(float width, float height, org.joml.Vector3f dir) {
+        org.joml.Quaternionf q = new org.joml.Quaternionf();
+        if (dir != null) q.rotationTo(0f, 1f, 0f, dir.x, dir.y, dir.z);
+        Vector3f tr = new Vector3f(-width / 2f, 0f, -width / 2f).rotate(q);                // keep the beam centred on its axis after rotating
+        return new Transformation(tr, q, new Vector3f(width, height, width), new org.joml.Quaternionf());
+    }
+
+    /** One full-bright block display stretched into a beam (the laser: red concrete core + red glass shell). */
+    private BlockDisplay beam(Location l, Material m, float width, float height, org.joml.Vector3f dir) {
+        BlockDisplay d = l.getWorld().spawn(l, BlockDisplay.class, e -> {
+            e.setBlock(m.createBlockData());
+            e.setPersistent(false);
+            e.setBrightness(new org.bukkit.entity.Display.Brightness(15, 15));        // glows even in the dark / under a storm sky
+            e.setViewRange(10f);
+            e.setDisplayWidth(Math.max(width * 2f + 8f, height * 2f));                // big culling box so the long beam never pops out of view
+            e.setDisplayHeight(Math.max(height + 4f, height * 2f));
+            e.setInterpolationDuration(3);
+            e.setTransformation(beamTf(width, height, dir));
+        });
+        spawned.add(d);
+        return d;
+    }
+
+    /** Smoothly changes the width of a beam over `ticks`. */
+    private void beamWidth(BlockDisplay d, float width, float height, int ticks, org.joml.Vector3f dir) {
+        if (d == null || !d.isValid()) return;
+        d.setInterpolationDelay(0);
+        d.setInterpolationDuration(ticks);
+        d.setTransformation(beamTf(width, height, dir));
+    }
+
+    /** One flying block of laser debris (magma / red concrete / red glass), moved client-side with display interpolation. */
+    private static final class Deb {
+        BlockDisplay d; double x, y, z, vx, vy, vz; float sc, spin, rot; int age, life;
+    }
+
+    private static final Material[] DEBRIS = {Material.MAGMA_BLOCK, Material.MAGMA_BLOCK, Material.RED_CONCRETE, Material.RED_CONCRETE, Material.RED_STAINED_GLASS};
+
+    private Transformation debTf(Deb b) {
+        org.joml.Quaternionf q = new org.joml.Quaternionf().rotateAxis(b.rot, 0.577f, 0.577f, 0.577f);
+        return new Transformation(new Vector3f((float) b.x - b.sc / 2f, (float) b.y, (float) b.z - b.sc / 2f), q, new Vector3f(b.sc), new org.joml.Quaternionf());
+    }
+
+    /** Blocks blast out of the impact point and tumble through the air. */
+    private void debrisBurst(World w, Location at, List<Deb> list, int count, double power) {
+        ThreadLocalRandom r = ThreadLocalRandom.current();
+        for (int i = 0; i < count && list.size() < 90; i++) {
+            Deb b = new Deb();
+            double a = r.nextDouble(Math.PI * 2), h = r.nextDouble(0.15, 0.55) * power;
+            b.vx = Math.cos(a) * h; b.vz = Math.sin(a) * h; b.vy = r.nextDouble(0.55, 1.1) * Math.sqrt(power);
+            b.sc = (float) r.nextDouble(0.4, 1.0); b.spin = (float) r.nextDouble(-0.5, 0.5); b.life = r.nextInt(30, 55);
+            Material m = DEBRIS[r.nextInt(DEBRIS.length)];
+            b.d = w.spawn(at, BlockDisplay.class, e -> {
+                e.setBlock(m.createBlockData());
+                e.setPersistent(false);
+                e.setBrightness(new org.bukkit.entity.Display.Brightness(15, 15));
+                e.setViewRange(6f);
+                e.setInterpolationDuration(1);
+                e.setTransformation(debTf(b));
+            });
+            spawned.add(b.d);
+            list.add(b);
+        }
+    }
+
+    /** Moves every debris block one tick (gravity), removes the ones that landed or timed out. */
+    private void debrisTick(World w, Location at, List<Deb> list) {
+        for (int i = list.size() - 1; i >= 0; i--) {
+            Deb b = list.get(i);
+            b.age++; b.x += b.vx; b.y += b.vy; b.z += b.vz; b.vy -= 0.075; b.rot += b.spin;
+            if (b.age > b.life || b.y < -1.0 || !b.d.isValid()) {
+                if (b.d.isValid()) { w.spawnParticle(Particle.LAVA, at.getX() + b.x, at.getY() + Math.max(0, b.y), at.getZ() + b.z, 1); b.d.remove(); }
+                list.remove(i);
+                continue;
+            }
+            b.d.setInterpolationDelay(0);
+            b.d.setInterpolationDuration(1);
+            b.d.setTransformation(debTf(b));
+        }
+    }
+
+    /** Distance from point (px,py,pz) to the segment a-b. */
+    private static double segDist(double px, double py, double pz, double ax, double ay, double az, double bx, double by, double bz) {
+        double dx = bx - ax, dy = by - ay, dz = bz - az, len2 = dx * dx + dy * dy + dz * dz;
+        double t = len2 <= 1e-9 ? 0 : Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy + (pz - az) * dz) / len2));
+        return Math.sqrt(Math.pow(px - (ax + dx * t), 2) + Math.pow(py - (ay + dy * t), 2) + Math.pow(pz - (az + dz * t), 2));
+    }
+
     private void ring(World w, double x, double y, double z, double r, Color col) {
         Particle.DustOptions o = new Particle.DustOptions(col, 1.4f);
         for (int i = 0; i < 16; i++) {
@@ -747,6 +839,7 @@ final class DisasterHazards {
         double x = spot.getX(), z = spot.getZ(), radius = c.getDouble("radius", 6) * sz, fall = 40;
         float s = (float) (c.getDouble("scale", 4) * sz);
         int craterTicks = (int) (c.getDouble("crater-seconds", 8) * 20), fallTicks = (int) Math.ceil(fall / 1.3);
+        if (meteorHint.compareAndSet(false, true)) say("disaster.hint-meteor", Text.ph());      // once per round: "go underground"
         BlockDisplay rock = blockDisplay(new Location(w, x, gy + fall, z), Material.MAGMA_BLOCK, s, s, s);
         rock.setInterpolationDuration(2);
         rock.setTeleportDuration(2);
@@ -773,11 +866,12 @@ final class DisasterHazards {
                 w.spawnParticle(Particle.LAVA, at, 60, radius * 0.5, 0.5, radius * 0.5, 0);
                 w.playSound(at, "entity.generic.explode", (float) Math.min(6, 3 + sz), 0.5f / (float) Math.max(0.6, sz));
                 near(at, radius + 3, radius + 3, p -> {
+                    double shelter = underground(w, p.getLocation(), c.getInt("shelter-depth", 4)) ? c.getDouble("shelter-multiplier", 0.1) : 1.0;   // underground = protected
                     double dist = Math.hypot(p.getLocation().getX() - at.getX(), p.getLocation().getZ() - at.getZ());
                     double falloff = dist <= radius * 0.5 ? 1.0 : Math.max(0.4, 1.0 - (dist - radius * 0.5) / (radius + 3));     // a direct hit hurts the most
-                    p.damage(dmg(c.getDouble("damage", 20)) * falloff * Math.sqrt(sz));
+                    p.damage(dmg(c.getDouble("damage", 20)) * falloff * Math.sqrt(sz) * shelter);
                     p.setFireTicks((int) (c.getDouble("fire-seconds", 4) * 20));
-                    p.setVelocity(p.getLocation().toVector().subtract(at.toVector()).setY(0.4).normalize().multiply(0.9).setY(0.8));
+                    if (shelter >= 1.0) p.setVelocity(p.getLocation().toVector().subtract(at.toVector()).setY(0.4).normalize().multiply(0.9).setY(0.8));
                 });
                 if (c.getBoolean("destroy-terrain", true)) {                 // real crater, then a small pit in the middle
                     int cr = (int) Math.max(2, Math.min(16, c.contains("crater-radius") ? c.getDouble("crater-radius") * sz : radius));
@@ -1195,31 +1289,54 @@ final class DisasterHazards {
     // laser sinkhole: a red orbital beam locks on, burns for a few seconds and leaves a bowl-shaped sinkhole
     // =====================================================================================================
     private void laser(ActiveEvent ae, ConfigurationSection c, Location spot) {
+        ThreadLocalRandom rnd = ThreadLocalRandom.current();
         World w = spot.getWorld();
         int gy = ground(w, spot);
-        double x = spot.getX(), z = spot.getZ(), R = c.getDouble("radius", 6), dmg = dmg(c.getDouble("damage", 12));
-        int charge = (int) (c.getDouble("charge-seconds", 4) * 20), burn = (int) (c.getDouble("burn-seconds", 4) * 20);
-        int rim = Math.max(3, c.getInt("rim-depth", 6)), coreDepth = Math.max(rim, c.getInt("core-depth", 10)), layers = layersPerTick();
-        double core = R * 0.55, beamTop = Math.min(w.getMaxHeight() - 1, gy + 60);
+        double sz = sizeRoll();                                          // small, normal or big laser (never announced)
+        boolean diag = rnd.nextDouble() < c.getDouble("diagonal-chance", 0.4);   // a long diagonal beam instead of a straight one from the sky
+        double x = spot.getX(), z = spot.getZ(), R = Math.max(2, Math.min(12, c.getDouble("radius", 6) * sz * (diag ? 0.6 : 1.0)));
+        double dmg = dmg(c.getDouble("damage", 6.0));                    // 6 = 3 hearts for anybody the beam touches
+        int charge = (int) (c.getDouble("charge-seconds", 4) * 20 * (sz < 0.8 ? 0.7 : 1.0)), burn = (int) (c.getDouble("burn-seconds", 4) * 20);
+        int rim = Math.max(3, (int) (c.getInt("rim-depth", 6) * Math.min(1.3, Math.max(0.5, sz)))), layers = layersPerTick();
+        int coreDepth = Math.max(rim, (int) (c.getInt("core-depth", 10) * Math.min(1.3, Math.max(0.5, sz))));
+        double core = R * 0.55;
+        // beam geometry: from the ground point G up along `dir` to the top end T
+        double ex, ey, ez;
+        if (diag) {
+            double len = c.getDouble("diagonal-length", 55) * rnd.nextDouble(0.8, 1.3), elev = Math.toRadians(rnd.nextDouble(25, 55)), ang = rnd.nextDouble(Math.PI * 2);
+            ex = x + Math.cos(ang) * len * Math.cos(elev); ez = z + Math.sin(ang) * len * Math.cos(elev); ey = Math.min(w.getMaxHeight() - 1, gy + len * Math.sin(elev));
+        } else { ex = x; ez = z; ey = Math.min(w.getMaxHeight() - 1, gy + 60); }
+        double bl = Math.sqrt((ex - x) * (ex - x) + (ey - gy) * (ey - gy) + (ez - z) * (ez - z));
+        org.joml.Vector3f dir = diag ? new org.joml.Vector3f((float) ((ex - x) / bl), (float) ((ey - gy) / bl), (float) ((ez - z) / bl)) : null;
+        final double tx = ex, ty = ey, tz = ez;
         Location base = new Location(w, x, gy, z);
         List<Col> cols = new ArrayList<>();
-        Particle.DustOptions thin = new Particle.DustOptions(Color.fromRGB(0xff1a1a), 1.6f), thick = new Particle.DustOptions(Color.fromRGB(0xff0000), 3.5f);
+        float beamH = (float) bl, coreW = (float) Math.max(1.0, R * 0.3), shellW = (float) Math.max(2.0, R * 0.6);
+        BlockDisplay[] beamCore = {null}, beamGlass = {null};                      // red concrete core + red stained glass shell = the laser beam
+        java.util.Set<UUID> hit = ConcurrentHashMap.newKeySet();
+        List<Deb> debris = new ArrayList<>();                                        // magma / red concrete / red glass thrown up where the beam lights the ground
+        double power = Math.max(0.6, R / 4.0);
         say("disaster.hazard-laser", Text.ph());
         every(base, ae, 1, n -> {
             if (n < charge) {                                           // lock-on: warning ring, a thin beam that gets denser
                 if (n == 0) w.playSound(base, "block.beacon.activate", 4f, 1.6f);
                 if (n % 4 == 0) ring(w, x, gy, z, R, Color.fromRGB(0xff1a1a));
                 if (n % 10 == 0) w.playSound(base, "block.beacon.ambient", 3f, 0.5f + n * 0.01f);
-                int step = n < charge / 2 ? 5 : 3;
-                if (n % 2 == 0) for (double y = gy; y < beamTop; y += step) w.spawnParticle(Particle.DUST, x, y, z, 1, 0.05, 0, 0.05, 0, thin);
+                if (n == 0) {                                           // lock-on: a thin beam
+                    beamCore[0] = beam(base, Material.RED_CONCRETE, 0.1f, beamH, dir);
+                    beamGlass[0] = beam(base, Material.RED_STAINED_GLASS, 0.35f, beamH, dir);
+                }
+                if (n == charge / 2) { beamWidth(beamCore[0], 0.25f, beamH, charge / 2, dir); beamWidth(beamGlass[0], 0.9f, beamH, charge / 2, dir); }   // it thickens while it charges
                 return true;
             }
             int k = n - charge;
-            if (k == 0) {                                               // FIRE: damage the target zone, plan the sinkhole
+            if (k == 0) {                                               // FIRE: the beam slams out, plan the sinkhole at the ground point
                 w.playSound(base, "block.beacon.power_select", 4f, 0.5f);
                 w.playSound(base, "entity.generic.explode", 4f, 0.6f);
+                beamWidth(beamCore[0], coreW, beamH, 3, dir);
+                beamWidth(beamGlass[0], shellW, beamH, 3, dir);
                 w.spawnParticle(Particle.EXPLOSION_EMITTER, base, 2);
-                near(base, R * 0.6, 4, p -> { p.damage(dmg); p.setFireTicks(120); });
+                debrisBurst(w, base.clone().add(0, 0.6, 0), debris, 32, power);      // the big blast of flying blocks
                 for (int dx = (int) -Math.ceil(R); dx <= R; dx++) for (int dz = (int) -Math.ceil(R); dz <= R; dz++) {
                     double d = Math.hypot(dx, dz);
                     if (d > R) continue;
@@ -1231,15 +1348,28 @@ final class DisasterHazards {
                 }
             }
             if (k < burn) {
-                if (k % 2 == 0) for (double y = gy; y < beamTop; y += 2) w.spawnParticle(Particle.DUST, x, y, z, 1, 0.25, 0, 0.25, 0, thick);
-                if (k % 4 == 0) for (double y = gy; y < beamTop; y += 6) w.spawnParticle(Particle.END_ROD, x, y, z, 1, 0.1, 0, 0.1, 0.01);
+                if (k % 4 == 0) beamWidth(beamGlass[0], shellW * (k % 8 == 0 ? 1.0f : 1.2f), beamH, 4, dir);   // the glass shell pulses
+                if (k % 2 == 0) {                                       // ANY player touching the beam (straight or diagonal) takes 3 hearts, once
+                    double reach = shellW / 2.0 + 0.6;
+                    for (Player p : w.getPlayers()) {
+                        if (p.getGameMode() == GameMode.SPECTATOR || !ev.isMember(p.getUniqueId()) || hit.contains(p.getUniqueId())) continue;
+                        Location l = p.getLocation();
+                        if (segDist(l.getX(), l.getY() + 0.9, l.getZ(), x, gy, z, tx, ty, tz) > reach && Math.hypot(l.getX() - x, l.getZ() - z) > R * 0.6) continue;
+                        if (!hit.add(p.getUniqueId())) continue;
+                        pl.sched.entity(p, () -> { p.damage(dmg); p.setFireTicks(100); });
+                    }
+                }
+                if (k % 4 == 0) debrisBurst(w, base.clone().add(0, 0.6, 0), debris, 6, power);   // more keep flying while the beam burns
+                if (k % 6 == 0) for (double d = 0; d < bl; d += 8) w.spawnParticle(Particle.END_ROD, x + (tx - x) * d / bl, gy + (ty - gy) * d / bl, z + (tz - z) * d / bl, 1, 0.3, 0.3, 0.3, 0.01);
                 w.spawnParticle(Particle.FLAME, x, gy + 0.5, z, 12, R * 0.4, 0.3, R * 0.4, 0.05);
                 w.spawnParticle(Particle.LAVA, x, gy + 0.5, z, 3, R * 0.4, 0.2, R * 0.4, 0);
                 if (k % 10 == 0) w.playSound(base, "block.beacon.ambient", 4f, 0.5f);
             }
+            if (k == burn) { beamWidth(beamCore[0], 0.05f, beamH, 12, dir); beamWidth(beamGlass[0], 0.05f, beamH, 12, dir); }   // the beam fades out
+            debrisTick(w, base, debris);
             boolean more = digStep(ae, w, cols, k, layers, false);      // the ground melts away from the centre outward
-            return k < burn || more;
-        }, () -> { });
+            return k < burn + 14 || more || !debris.isEmpty();
+        }, () -> { for (BlockDisplay b : new BlockDisplay[]{beamCore[0], beamGlass[0]}) if (b != null) b.remove(); for (Deb b : debris) if (b.d != null) b.d.remove(); });
     }
 
     // =====================================================================================================
@@ -1256,6 +1386,8 @@ final class DisasterHazards {
         boolean destroy = c.getBoolean("destroy-terrain", true);
         int rip = c.getInt("rip-per-tick", 4), cap = c.getInt("max-blocks-per-player", 45);
         say("disaster.hazard-hurricane", Text.ph());
+        say("disaster.hint-hurricane", Text.ph());
+        double highY = c.getDouble("high-altitude", 30), highMul = c.getDouble("high-multiplier", 3.0), highDmg = dmg(c.getDouble("high-damage", 2.0));
         for (Player p : alive) {
             if (!p.isOnline()) continue;
             int[] n = {0};
@@ -1272,6 +1404,14 @@ final class DisasterHazards {
                 Location l = p.getLocation();
                 double rx = l.getX() - sc[0], rz = l.getZ() - sc[1], d = Math.max(0.5, Math.hypot(rx, rz));
                 fly(mine, l.getWorld());
+                boolean high = l.getY() - l.getWorld().getHighestBlockYAt(l.getBlockX(), l.getBlockZ()) >= highY;   // up in the sky: hit hardest, wherever the eye is
+                if (high) {
+                    if (n[0] % 10 == 0) { p.damage(highDmg); p.sendActionBar(hint("disaster.hint-hurricane-bar")); }
+                    if (p.getGameMode() != GameMode.SPECTATOR) {
+                        Vector v = p.getVelocity();
+                        p.setVelocity(new Vector(v.getX() + (-rz / d) * strength * 0.25 * highMul, v.getY() - 0.05, v.getZ() + (rx / d) * strength * 0.25 * highMul));
+                    }
+                }
                 if (d <= sweepR) {                                         // inside the storm: shoved round the eye (spiral), not hunted
                     double f = 1.0 - 0.5 * d / sweepR;
                     double tx = -rz / d * 0.8 + rx / d * 0.4, tz = rx / d * 0.8 + rz / d * 0.4;
@@ -1358,6 +1498,47 @@ final class DisasterHazards {
     // =====================================================================================================
     // meteor shower: the sky goes dark and many meteors come down around the players
     // =====================================================================================================
+    // tnt rain: primed tnt drops at random spots across the arena (around random players, clamped inside the border)
+    private org.bukkit.NamespacedKey tntKey;
+    private org.bukkit.NamespacedKey tntTag() { if (tntKey == null) tntKey = new org.bukkit.NamespacedKey(pl, "tnt_rain_tnt"); return tntKey; }
+    boolean isRainTnt(org.bukkit.entity.TNTPrimed t) { return t.getPersistentDataContainer().has(tntTag(), org.bukkit.persistence.PersistentDataType.BYTE); }
+
+    private void tntRain(ActiveEvent ae, ConfigurationSection c, List<Player> alive, double run) {
+        double every = Math.max(0.2, c.getDouble("every-seconds", 0.5));
+        int count = Math.max(1, (int) (run / every)), perDrop = Math.min(c.getInt("max-per-drop", 4), 1 + (int) Math.floor(alive.size() * c.getDouble("per-player", 0.25)));
+        long gap = Math.max(4, (long) (every * 20));
+        float power = (float) (c.getDouble("power", 3.0) * Math.sqrt(diffD("damage-multiplier", 1.0)));
+        say("disaster.hazard-tnt-rain", Text.ph());
+        int[] n = {0};
+        active.incrementAndGet();
+        ScheduledTask task = pl.sched.globalTimer(t -> {
+            if (stopped || !ev.isLive(ae) || n[0] >= count) { t.cancel(); tasks.remove(t); active.decrementAndGet(); return; }
+            n[0]++;
+            List<Player> r = roster;
+            if (r.isEmpty()) return;
+            for (int i = 0; i < perDrop; i++) {
+                Player target = r.get(ThreadLocalRandom.current().nextInt(r.size()));
+                pl.sched.entity(target, () -> {
+                    if (!ev.isLive(ae) || stopped) return;
+                    Location sp = chooseSpot(target.getLocation(), 40, ae);                 // random spot around the player, always inside the arena
+                    pl.sched.region(sp, () -> {
+                        if (!ev.isLive(ae) || stopped) return;
+                        World w = sp.getWorld();
+                        int gy = ground(w, sp);
+                        double y = Math.min(w.getMaxHeight() - 2, gy + Math.max(10, c.getDouble("drop-height", 35)));
+                        int fuse = ThreadLocalRandom.current().nextInt(Math.max(20, c.getInt("fuse-min-ticks", 50)), Math.max(21, c.getInt("fuse-max-ticks", 90)) + 1);
+                        w.spawn(new Location(w, sp.getX(), y, sp.getZ()), org.bukkit.entity.TNTPrimed.class, tnt -> {
+                            tnt.setFuseTicks(fuse);
+                            tnt.setYield(power);
+                            tnt.getPersistentDataContainer().set(tntTag(), org.bukkit.persistence.PersistentDataType.BYTE, (byte) 1);
+                        });
+                    });
+                });
+            }
+        }, 1, gap);
+        tasks.add(task);
+    }
+
     private void meteorShower(ActiveEvent ae, ConfigurationSection c, List<Player> alive, double run) {
         double every = Math.max(0.5, c.getDouble("every-seconds", 1.5));        // a meteor this often for the whole run
         int count = Math.max(1, (int) (run / every));

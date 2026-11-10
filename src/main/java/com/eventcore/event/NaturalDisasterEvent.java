@@ -707,6 +707,11 @@ public final class NaturalDisasterEvent extends GameEvent {
     // =====================================================================================================
     // listeners
     // =====================================================================================================
+    @EventHandler
+    public void onRainTntExplode(org.bukkit.event.entity.EntityExplodeEvent e) {
+        if (e.getEntity() instanceof org.bukkit.entity.TNTPrimed t && fx.isRainTnt(t) && !settings().getBoolean("hazards.tnt_rain.break-blocks", true)) e.blockList().clear();
+    }
+
     @EventHandler(priority = EventPriority.MONITOR)
     public void onDeath(PlayerDeathEvent e) {
         if (run == null) return;

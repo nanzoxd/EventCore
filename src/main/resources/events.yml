@@ -951,7 +951,7 @@ events:
       exit:                        # where everyone goes when the event ends or they are eliminated (/disaster setexit; empty world = main spawn)
         world: ""
       border:
-        initial-radius: 80         # 80 blocks each side of the centre (160 x 160) at the start
+        initial-radius: 60         # 60 blocks each side of the centre (120 x 120) at the start
         shrink-seconds: 3000       # ONE slow, steady shrink like the vanilla border (50 min), ending exactly at the minute below
         warning-distance: 5        # blocks from the border where the red vignette appears
         warnings: []               # seconds before a reduction begins (the single shrink starts at once, so none)
@@ -1003,7 +1003,7 @@ events:
         pause-min-seconds: 45      # how long such a pause lasts (random between min and max), shown as "pause: 30s" in the action bar
         pause-max-seconds: 75
         max-damage: 20.0           # highest damage of a direct hit (20 = 10 hearts; armor still reduces it)
-        max-fall-damage: 12.0      # highest fall damage after being launched (12 = 6 hearts), so launches hurt but do not kill
+        max-fall-damage: 0         # 0 = NO cap on fall damage (launches by tornado, geyser and wind can kill); a number = highest fall damage in half-hearts
         max-depth: 12              # hard limit: no disaster ever digs deeper than this many blocks below the surface
         dig-layers-per-tick: 3     # how fast a crater crumbles (lower = slower, more visible, lighter on the server)
         # ---- performance (lower = lighter on the server) ----
@@ -1052,6 +1052,8 @@ events:
           shaft-radius: 1
           shaft-depth: 4
           destroy-terrain: true
+          shelter-multiplier: 0.1  # damage multiplier for players underground when it lands (go underground!)
+          shelter-depth: 4         # blocks below the surface that count as sheltered
           damage: 20.0
           fire-seconds: 4
           crater-seconds: 8
@@ -1091,7 +1093,7 @@ events:
         wind_storm:                # strong gust with wind streaks pushing everybody the same way
           enabled: true
           color: "#d8e2dc"
-          strength: 0.35
+          strength: 0.9            # (was 0.35) much stronger gusts
           sweep-radius: 14         # width of the gust front: it sweeps across the arena on its own and only pushes players it passes over
           sweep-speed: 8.0         # blocks per second the front travels (no player tracking)
           destroy-terrain: true    # rips random blocks out of the ground along the front
@@ -1103,7 +1105,7 @@ events:
           color: "#c2a878"
           height: 30
           radius: 7.0
-          pull: 0.45
+          pull: 1.1                # (was 0.45) the tornado drags and throws players much harder
           speed: 0.2
           chase-players: false     # false = it roams random waypoints and never hunts a player (true = uses hazards.track-chance)
           launch-height: 100       # how high the core throws players (blocks)
@@ -1143,11 +1145,18 @@ events:
           radius: 6.0
           core-depth: 10           # depth in the middle of the bowl
           rim-depth: 6             # depth towards the edge
-          damage: 20.0
+          damage: 6.0              # 6 = 3 hearts to every player the beam touches (straight or diagonal), scaled by the difficulty
+          aim-chance: 0.7          # chance the beam is aimed at a player's position (the warning ring + thin beam show first, so you can dodge)
+          diagonal-chance: 0.4     # chance it is a long diagonal beam (about diagonal-length blocks) instead of a straight one from the sky
+          diagonal-length: 55
+          # every laser also gets a random size (small / normal / big) from hazards.sizes, never announced
         hurricane:                 # night + rain + a rotating spiral of wind that shoves players around
           enabled: true
           color: "#7b6cff"
-          strength: 0.45
+          strength: 1.1            # (was 0.45)
+          high-altitude: 30        # players this many blocks above the ground are hit by the hurricane wherever the eye is
+          high-multiplier: 3.0     # ...and shoved this much harder
+          high-damage: 2.0         # ...and take this much damage about every half second (1 = half a heart)
           sweep-radius: 18         # size of the storm: its eye roams the arena on its own, players inside are shoved round it
           sweep-speed: 6.0         # blocks per second the eye travels (no player tracking)
           destroy-terrain: true    # picks up random blocks around the eye and whirls them away
@@ -1167,6 +1176,17 @@ events:
           damage: 16.0
           fire-seconds: 3
           crater-seconds: 4
+        tnt_rain:                  # primed tnt falls from the sky at random spots across the arena (the border)
+          enabled: true
+          color: "#ff5555"
+          every-seconds: 0.5       # one tnt this often while it runs (more with more players, see per-player)
+          per-player: 0.25         # extra tnt per online player each drop
+          max-per-drop: 4
+          drop-height: 35          # blocks above the ground
+          fuse-min-ticks: 50
+          fuse-max-ticks: 90
+          power: 3.0               # explosion size (4 = normal tnt), scaled by the difficulty
+          break-blocks: true       # false = the explosions only hurt players, the ground stays
         thunderstorm:              # dark storm; lightning marks a ring near each player, then strikes inside it (it does not follow the player)
           enabled: true
           color: "#9dff4a"

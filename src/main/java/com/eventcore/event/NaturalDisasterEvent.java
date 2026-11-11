@@ -65,6 +65,7 @@ public final class NaturalDisasterEvent extends GameEvent {
         volatile String name;
         volatile boolean alive = true, entered, left, settled;
         volatile int kills, outside, eliminatedAt;
+        volatile long quitAt;                       // 0 = online; otherwise when the player disconnected (they have rejoin-seconds to come back)
         volatile double health = 20, dist;
         volatile Reason reason;
         volatile String killer = "";
@@ -112,11 +113,13 @@ public final class NaturalDisasterEvent extends GameEvent {
     public boolean running() { return run != null; }
 
     /** Why a player can or cannot enter the arena right now (join menu, /tpdisaster). */
-    public enum Entry { OK, NOT_RUNNING, ALREADY_IN, USED, NOT_ELIGIBLE }
+    public enum Entry { OK, NOT_RUNNING, ALREADY_IN, USED, NOT_ELIGIBLE, CLOSED }
+    private boolean joinWarned, joinClosedTold;
 
     public Entry entryState(Player p) {
         if (run == null) return Entry.NOT_RUNNING;
         P pp = players.get(p.getUniqueId());
+        if ((pp == null || pp.left || !pp.alive) && joinClosed()) return pp == null ? Entry.CLOSED : Entry.USED;   // the tp / join menu is only open for the first N minutes
         if (pp != null) return !pp.left && pp.alive ? Entry.ALREADY_IN : Entry.USED;   // took part once (even if dead / left): never again
         return eligible(p, settings()) ? Entry.OK : Entry.NOT_ELIGIBLE;
     }
@@ -129,6 +132,7 @@ public final class NaturalDisasterEvent extends GameEvent {
                 case NOT_RUNNING -> "disaster.invite-not-running";
                 case ALREADY_IN -> "disaster.invite-already-in";
                 case USED -> "disaster.invite-used";
+                case CLOSED -> "disaster.invite-closed";
                 default -> "disaster.invite-not-eligible";
             }));
             return;
@@ -276,6 +280,7 @@ public final class NaturalDisasterEvent extends GameEvent {
     @Override
     public void onStart(ActiveEvent ae) {
         players.clear(); warned.clear(); prompted.clear();
+        joinWarned = false; joinClosedTold = false;
         fx.reset();
         result = null; winners = List.of(); lastShrink = -1; lastStrike = -1;
         run = ae;
@@ -295,6 +300,15 @@ public final class NaturalDisasterEvent extends GameEvent {
         b.setWarningTime(15);
         border = b;
         signups.clear();
+        double jm = s.getDouble("participants.join-until-minutes", 25);
+        if (jm > 0) Bukkit.getServer().sendMessage(pl.msg("disaster.join-open", "minutes", (int) jm));       // announcement: tp is only open for a while
+    }
+
+    /** /disaster tp and the join menu are only open until participants.join-until-minutes (default 25) after the event starts. */
+    private boolean joinClosed() {
+        ActiveEvent ae = run;
+        double min = settings().getDouble("participants.join-until-minutes", 25);
+        return ae != null && min > 0 && elapsed(ae) > min * 60.0;
     }
 
     private boolean eligible(Player p, ConfigurationSection s) {
@@ -447,6 +461,18 @@ public final class NaturalDisasterEvent extends GameEvent {
                 }
                 break;
             }
+        }
+
+        // the tp / join window: reminder 5 minutes before, notice when it closes
+        double joinMin = s.getDouble("participants.join-until-minutes", 25);
+        if (joinMin > 0) {
+            if (!joinWarned && t >= joinMin * 60 - 300 && t < joinMin * 60) { joinWarned = true; Bukkit.getServer().sendMessage(pl.msg("disaster.join-closing", "minutes", 5)); }
+            if (!joinClosedTold && t >= joinMin * 60) { joinClosedTold = true; Bukkit.getServer().sendMessage(pl.msg("disaster.join-closed", "minutes", (int) joinMin)); }
+        }
+        // players who disconnected and did not come back in time are out
+        long graceMs = (long) (s.getDouble("participants.rejoin-seconds", 300) * 1000);
+        for (P pp : players.values()) {
+            if (pp.quitAt > 0 && !pp.left && System.currentTimeMillis() - pp.quitAt > graceMs) { pp.quitAt = 0; pp.left = true; if (pp.alive) eliminate(pp, Reason.DISCONNECT, null, null); }
         }
 
         // players: containment, damage outside, display
@@ -746,6 +772,7 @@ public final class NaturalDisasterEvent extends GameEvent {
         prompted.remove(id);
         P pp = players.get(id);
         if (pp == null || pp.left || run == null) return;
+        if (pp.alive && pp.entered && settings().getDouble("participants.rejoin-seconds", 300) > 0) { pp.quitAt = System.currentTimeMillis(); return; }   // may come back within rejoin-seconds
         boolean wasAlive = pp.alive;
         pp.left = true;
         if (wasAlive) eliminate(pp, Reason.DISCONNECT, null, null);
@@ -754,6 +781,18 @@ public final class NaturalDisasterEvent extends GameEvent {
     @EventHandler(priority = EventPriority.NORMAL)
     public void onJoin(PlayerJoinEvent e) {
         Player p = e.getPlayer();
+        P back = players.get(p.getUniqueId());
+        if (run != null && back != null && back.quitAt > 0 && !back.left) {                 // rejoining after a disconnect
+            boolean late = System.currentTimeMillis() - back.quitAt > (long) (settings().getDouble("participants.rejoin-seconds", 300) * 1000);
+            back.quitAt = 0;
+            pl.sched.entityLater(p, () -> {
+                if (!late) { p.sendMessage(pl.msg("disaster.rejoin-welcome")); return; }
+                back.left = true;
+                if (back.alive) eliminate(back, Reason.DISCONNECT, null, null);
+                sendToExit(p, () -> p.sendMessage(pl.msg("disaster.rejoin-too-late", "minutes", (int) (settings().getDouble("participants.rejoin-seconds", 300) / 60))));   // away too long: out of the arena
+            }, 10);
+            return;
+        }
         if (run == null || isMember(p.getUniqueId()) || p.hasPermission("eventcore.bypass")) return;
         pl.sched.entityLater(p, () -> {
             if (run != null && inArena(p.getLocation())) sendToExit(p, () -> { });      // logged out inside the arena

@@ -29,7 +29,7 @@ public final class EventManager implements Listener {
     public static final class ActiveEvent {
         public final GameEvent ev;
         public final long start;
-        public final long end;
+        public volatile long end;
         public final int totalSec;
         public volatile BossBar bar;
         public volatile ScheduledTask aura;
@@ -282,7 +282,7 @@ public final class EventManager implements Listener {
             else {
                 List<String> pool = new ArrayList<>();
                 for (GameEvent e : registry.values())
-                    if (!tried.contains(e.id()) && !active.containsKey(e.id()) && e.sec().getBoolean("enabled", true)) pool.add(e.id());
+                    if (!tried.contains(e.id()) && !active.containsKey(e.id()) && e.sec().getBoolean("enabled", true) && e.sec().getBoolean("random-pool", true)) pool.add(e.id());   // random-pool: false = only started by hand
                 if (pool.isEmpty()) break;
                 id = pool.get(new Random().nextInt(pool.size()));
             }

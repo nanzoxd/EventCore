@@ -969,6 +969,8 @@ events:
         join-window-seconds: 60    # no "last player standing" win before this many seconds (people are still choosing in the menu)
         exclude-gamemodes: [SPECTATOR]
         use-exempt-permission: false # true = exclude players with eventcore.disaster.exempt
+        join-until-minutes: 25     # /disaster tp and the join menu only work until this many minutes after the event starts (0 = always open); announced to everyone
+        rejoin-seconds: 300        # a player who disconnects may come back within 5 minutes and stays in; later than that they are teleported outside and out of the event (0 = leaving = out at once)
         spread-radius: 0           # 0 = every player is placed at a random spot anywhere inside the arena (was 35 around the arena spawn); a number = random within that radius
         grace-seconds: 30          # no player-vs-player damage at the start
         entry-grace-seconds: 8     # border rules start after everyone has been teleported in
@@ -992,6 +994,7 @@ events:
         hard: {damage-multiplier: 1.5, two-at-once-chance: 0.85, pause-chance: 0.4, big-chance: 0.45}
       hazards:                     # disasters: they erode the arena slowly, in small shallow chunks (never down to bedrock)
         enabled: true
+        chat-announce: false       # false = no "tornado is coming" lines in chat (the action bar already shows what is active); hints are told once per event
         short-before-end-minutes: 10  # when only this many minutes are left, disasters only run for late-run-seconds (0 = off)
         late-run-seconds: 5           # length of a disaster in that last stretch (0 = no disasters at all then)
         start-after-seconds: 5     # the first disaster begins this long after the event starts
@@ -1005,11 +1008,11 @@ events:
         max-damage: 20.0           # highest damage of a direct hit (20 = 10 hearts; armor still reduces it)
         max-fall-damage: 0         # 0 = NO cap on fall damage (launches by tornado, geyser and wind can kill); a number = highest fall damage in half-hearts
         max-depth: 12              # hard limit: no disaster ever digs deeper than this many blocks below the surface
-        dig-layers-per-tick: 3     # how fast a crater crumbles (lower = slower, more visible, lighter on the server)
+        dig-layers-per-tick: 2     # how fast a crater crumbles (lower = slower, more visible, lighter on the server)
         # ---- performance (lower = lighter on the server) ----
         blocks-per-tick: 120       # TOTAL blocks all disasters together may remove per server tick; the rest waits for the next tick
-        particle-density: 0.5      # 0.1 - 1.0, scales the particles (fewer particles = less network + client lag)
-        max-displays: 150          # max flying block / funnel entities alive at once
+        particle-density: 0.35     # 0.1 - 1.0, scales the particles (fewer particles = less network + client lag)
+        max-displays: 80           # max flying block / funnel entities alive at once
         # Every disaster has its own action bar colour (color: "#rrggbb"), shown in small caps.
         underground-glow:          # players who stay underground (caves, mines) longer than this glow until they come up
           enabled: true
@@ -1097,9 +1100,9 @@ events:
           sweep-radius: 14         # width of the gust front: it sweeps across the arena on its own and only pushes players it passes over
           sweep-speed: 8.0         # blocks per second the front travels (no player tracking)
           destroy-terrain: true    # rips random blocks out of the ground along the front
-          rip-per-tick: 2
+          rip-per-tick: 1
           rip-radius: 22
-          max-blocks-per-player: 25
+          max-blocks-per-player: 15
         tornado:                   # roams the arena for a while, rips blocks out, scours a shallow trench, throws players ~100 blocks
           enabled: true
           color: "#c2a878"
@@ -1110,7 +1113,7 @@ events:
           chase-players: false     # false = it roams random waypoints and never hunts a player (true = uses hazards.track-chance)
           launch-height: 100       # how high the core throws players (blocks)
           launch-cooldown-seconds: 10
-          max-blocks: 32           # picked-up blocks orbiting at once
+          max-blocks: 20           # picked-up blocks orbiting at once
           pick-radius: 5.0
           picks-per-interval: 2
           pick-interval-ticks: 4
@@ -1134,7 +1137,7 @@ events:
           width: 4
           depth: 8
           columns-per-tick: 2
-          dig-layers-per-tick: 3
+          dig-layers-per-tick: 2
         laser_sinkhole:            # red orbital laser locks on, burns, leaves a bowl-shaped sinkhole
           enabled: true
           color: "#ff2bd6"
@@ -1160,9 +1163,9 @@ events:
           sweep-radius: 18         # size of the storm: its eye roams the arena on its own, players inside are shoved round it
           sweep-speed: 6.0         # blocks per second the eye travels (no player tracking)
           destroy-terrain: true    # picks up random blocks around the eye and whirls them away
-          rip-per-tick: 2
+          rip-per-tick: 1
           rip-radius: 24
-          max-blocks-per-player: 30
+          max-blocks-per-player: 18
         meteor_shower:             # the sky darkens and many small meteors rain down non-stop, each one cratering the ground
           enabled: true
           color: "#ffd23f"
@@ -1176,17 +1179,19 @@ events:
           damage: 16.0
           fire-seconds: 3
           crater-seconds: 4
-        tnt_rain:                  # primed tnt falls from the sky at random spots across the arena (the border)
+        tnt_rain:                  # primed tnt falls from the sky at random spots across the arena (the border): short and light
           enabled: true
           color: "#ff5555"
-          every-seconds: 0.5       # one tnt this often while it runs (more with more players, see per-player)
-          per-player: 0.25         # extra tnt per online player each drop
-          max-per-drop: 4
-          drop-height: 35          # blocks above the ground
+          run-seconds: 15          # tnt rain only lasts this long (it always stops by itself)
+          every-seconds: 1.0       # one drop this often while it runs
+          per-player: 0.1          # extra tnt per online player each drop
+          max-per-drop: 2          # never more than this many tnt per drop
+          max-total: 25            # hard cap of tnt dropped by one rain
+          drop-height: 30          # blocks above the ground
           fuse-min-ticks: 50
-          fuse-max-ticks: 90
-          power: 3.0               # explosion size (4 = normal tnt), scaled by the difficulty
-          break-blocks: true       # false = the explosions only hurt players, the ground stays
+          fuse-max-ticks: 80
+          power: 2.5               # explosion size (4 = normal tnt), scaled by the difficulty
+          break-blocks: false      # false = the explosions only hurt players and the ground stays (much lighter); true = they dig craters
         thunderstorm:              # dark storm; lightning marks a ring near each player, then strikes inside it (it does not follow the player)
           enabled: true
           color: "#9dff4a"

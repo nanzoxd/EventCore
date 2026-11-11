@@ -112,3 +112,4 @@ bounty:
     victory: {sound: "ui.toast.challenge_complete", volume: 0.6, pitch: 1.0}
     defeat: {sound: "entity.wither.spawn", volume: 0.3, pitch: 1.4}
     coords: {sound: "block.note_block.chime", volume: 0.5, pitch: 1.2}
+

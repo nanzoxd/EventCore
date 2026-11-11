@@ -111,7 +111,7 @@ final class DisasterHazards {
 
     DisasterHazards(EventCorePlugin pl, NaturalDisasterEvent ev) { this.pl = pl; this.ev = ev; }
 
-    void reset() { meteorHint.set(false); roundLanes = 1; nextGlow = -1; underSince.clear(); stopped = false; slots.clear(); bag.clear(); pauseUntil = 0; wasRunning = false; active.set(0); tornadoes.set(0); bar = null; flung.clear(); pending.clear(); }
+    void reset() { saidOnce.clear(); meteorHint.set(false); roundLanes = 1; nextGlow = -1; underSince.clear(); stopped = false; slots.clear(); bag.clear(); pauseUntil = 0; wasRunning = false; active.set(0); tornadoes.set(0); bar = null; flung.clear(); pending.clear(); }
 
     /** Cancels every running effect and removes every display entity. Called when the event stops. */
     void stop() {
@@ -392,7 +392,7 @@ final class DisasterHazards {
                 if (now - since < after) return;
                 boolean first = !p.hasPotionEffect(org.bukkit.potion.PotionEffectType.GLOWING);
                 p.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.GLOWING, 60, 0, false, false, false));   // refreshed every second
-                if (first) p.sendMessage(pl.msg("disaster.underground-glow", "seconds", after / 1000));
+                if (first) p.sendActionBar(pl.msg("disaster.underground-glow", "seconds", after / 1000));      // action bar, not chat
             });
         }
     }
@@ -411,7 +411,7 @@ final class DisasterHazards {
             if (!p.isOnline()) continue;
             pl.sched.entity(p, () -> {
                 p.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.GLOWING, secs * 20, 0, false, false, false));
-                p.sendMessage(pl.msg("disaster.glow", "seconds", secs));
+                p.sendActionBar(pl.msg("disaster.glow", "seconds", secs));                    // action bar, not chat
                 p.playSound(p.getLocation(), "block.beacon.power_select", 0.7f, 1.4f);
             });
         }
@@ -716,7 +716,7 @@ final class DisasterHazards {
     /** Blocks blast out of the impact point and tumble through the air. */
     private void debrisBurst(World w, Location at, List<Deb> list, int count, double power) {
         ThreadLocalRandom r = ThreadLocalRandom.current();
-        for (int i = 0; i < count && list.size() < 90; i++) {
+        for (int i = 0; i < count && list.size() < 40 && displayRoom(); i++) {
             Deb b = new Deb();
             double a = r.nextDouble(Math.PI * 2), h = r.nextDouble(0.15, 0.55) * power;
             b.vx = Math.cos(a) * h; b.vz = Math.sin(a) * h; b.vy = r.nextDouble(0.55, 1.1) * Math.sqrt(power);
@@ -741,7 +741,8 @@ final class DisasterHazards {
             Deb b = list.get(i);
             b.age++; b.x += b.vx; b.y += b.vy; b.z += b.vz; b.vy -= 0.075; b.rot += b.spin;
             if (b.age > b.life || b.y < -1.0 || !b.d.isValid()) {
-                if (b.d.isValid()) { w.spawnParticle(Particle.LAVA, at.getX() + b.x, at.getY() + Math.max(0, b.y), at.getZ() + b.z, 1); b.d.remove(); }
+                if (b.d.isValid()) w.spawnParticle(Particle.LAVA, at.getX() + b.x, at.getY() + Math.max(0, b.y), at.getZ() + b.z, 1);
+                kill(b.d, true);                                  // also frees its slot in the display budget
                 list.remove(i);
                 continue;
             }
@@ -777,7 +778,15 @@ final class DisasterHazards {
 
     private int ground(World w, Location l) { return w.getHighestBlockYAt(l.getBlockX(), l.getBlockZ(), HeightMap.MOTION_BLOCKING_NO_LEAVES) + 1; }
 
-    private void say(String path, Map<String, Object> ph) { ev.tellMembers(path, ph); }
+    private final Set<String> saidOnce = ConcurrentHashMap.newKeySet();
+
+    /** Chat is kept quiet: hazard announcements only when hazards.chat-announce is on (the action bar already shows what is active),
+     *  and every hint is told once per event instead of every time the disaster comes back. */
+    private void say(String path, Map<String, Object> ph) {
+        if (path.startsWith("disaster.hazard-") && !ev.settings().getBoolean("hazards.chat-announce", false)) return;
+        if (path.startsWith("disaster.hint-") && !saidOnce.add(path)) return;
+        ev.tellMembers(path, ph);
+    }
 
     /** A short hint line for the action bar (no prefix), straight from messages.yml. */
     private Component hint(String path) { return pl.text.render(pl.fx.msg(pl.cfg.messages(), path).tpl(), Map.of()); }
@@ -1225,7 +1234,6 @@ final class DisasterHazards {
                 if (n % 2 == 0) near(base, shakeR, 40, p -> {                         // camera-shake style jitter
                     if (underHint && n >= 10 && !told.contains(p.getUniqueId()) && underground(w, p.getLocation(), underDepth)) {
                         told.add(p.getUniqueId());
-                        p.sendMessage(pl.msg("disaster.hint-earthquake"));
                         p.sendActionBar(hint("disaster.hint-earthquake-bar"));
                         p.playSound(p.getLocation(), "block.note_block.bell", 0.8f, 0.8f);
                     }
@@ -1245,7 +1253,7 @@ final class DisasterHazards {
                         p.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.NAUSEA, 100, 0, false, false, false));
                         p.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.SLOWNESS, 100, 1, false, false, false));
                         p.getWorld().spawnParticle(Particle.BLOCK, p.getLocation().add(0, 2, 0), 20, 0.6, 0.3, 0.6, 0.1, Material.STONE.createBlockData());
-                        if (told.add(p.getUniqueId())) { p.sendMessage(pl.msg("disaster.hint-earthquake")); p.sendActionBar(hint("disaster.hint-earthquake-bar")); }
+                        if (told.add(p.getUniqueId())) { p.sendActionBar(hint("disaster.hint-earthquake-bar")); }
                     });
                 }
                 if (eject && n == shake - 1) for (Player p : new ArrayList<>(roster)) {            // the shaking ends: anybody still underground is thrown up to the surface
@@ -1257,7 +1265,7 @@ final class DisasterHazards {
                         if (!ev.inBounds(ae, up.getX(), up.getZ())) return;
                         p.teleportAsync(up);
                         w.playSound(up, "entity.generic.explode", 1.2f, 0.7f);
-                        p.sendMessage(pl.msg("disaster.earthquake-ejected"));
+                        p.sendActionBar(pl.msg("disaster.earthquake-ejected"));
                     });
                 }
                 return true;
@@ -1336,7 +1344,7 @@ final class DisasterHazards {
                 beamWidth(beamCore[0], coreW, beamH, 3, dir);
                 beamWidth(beamGlass[0], shellW, beamH, 3, dir);
                 w.spawnParticle(Particle.EXPLOSION_EMITTER, base, 2);
-                debrisBurst(w, base.clone().add(0, 0.6, 0), debris, 32, power);      // the big blast of flying blocks
+                debrisBurst(w, base.clone().add(0, 0.6, 0), debris, 18, power);      // the big blast of flying blocks
                 for (int dx = (int) -Math.ceil(R); dx <= R; dx++) for (int dz = (int) -Math.ceil(R); dz <= R; dz++) {
                     double d = Math.hypot(dx, dz);
                     if (d > R) continue;
@@ -1359,7 +1367,7 @@ final class DisasterHazards {
                         pl.sched.entity(p, () -> { p.damage(dmg); p.setFireTicks(100); });
                     }
                 }
-                if (k % 4 == 0) debrisBurst(w, base.clone().add(0, 0.6, 0), debris, 6, power);   // more keep flying while the beam burns
+                if (k % 6 == 0) debrisBurst(w, base.clone().add(0, 0.6, 0), debris, 3, power);   // more keep flying while the beam burns
                 if (k % 6 == 0) for (double d = 0; d < bl; d += 8) w.spawnParticle(Particle.END_ROD, x + (tx - x) * d / bl, gy + (ty - gy) * d / bl, z + (tz - z) * d / bl, 1, 0.3, 0.3, 0.3, 0.01);
                 w.spawnParticle(Particle.FLAME, x, gy + 0.5, z, 12, R * 0.4, 0.3, R * 0.4, 0.05);
                 w.spawnParticle(Particle.LAVA, x, gy + 0.5, z, 3, R * 0.4, 0.2, R * 0.4, 0);
@@ -1369,7 +1377,7 @@ final class DisasterHazards {
             debrisTick(w, base, debris);
             boolean more = digStep(ae, w, cols, k, layers, false);      // the ground melts away from the centre outward
             return k < burn + 14 || more || !debris.isEmpty();
-        }, () -> { for (BlockDisplay b : new BlockDisplay[]{beamCore[0], beamGlass[0]}) if (b != null) b.remove(); for (Deb b : debris) if (b.d != null) b.d.remove(); });
+        }, () -> { for (BlockDisplay b : new BlockDisplay[]{beamCore[0], beamGlass[0]}) if (b != null) kill(b, true); for (Deb b : debris) if (b.d != null) kill(b.d, true); });
     }
 
     // =====================================================================================================
@@ -1506,17 +1514,19 @@ final class DisasterHazards {
     private void tntRain(ActiveEvent ae, ConfigurationSection c, List<Player> alive, double run) {
         double every = Math.max(0.2, c.getDouble("every-seconds", 0.5));
         int count = Math.max(1, (int) (run / every)), perDrop = Math.min(c.getInt("max-per-drop", 4), 1 + (int) Math.floor(alive.size() * c.getDouble("per-player", 0.25)));
-        long gap = Math.max(4, (long) (every * 20));
+        long gap = Math.max(4, (long) (every * 20)), until = System.currentTimeMillis() + (long) (run * 1000) + 1500;   // hard stop even if something goes wrong
+        int maxTotal = Math.max(1, c.getInt("max-total", 25));
         float power = (float) (c.getDouble("power", 3.0) * Math.sqrt(diffD("damage-multiplier", 1.0)));
         say("disaster.hazard-tnt-rain", Text.ph());
-        int[] n = {0};
+        int[] n = {0}, dropped = {0};
         active.incrementAndGet();
         ScheduledTask task = pl.sched.globalTimer(t -> {
-            if (stopped || !ev.isLive(ae) || n[0] >= count) { t.cancel(); tasks.remove(t); active.decrementAndGet(); return; }
+            if (stopped || !ev.isLive(ae) || n[0] >= count || dropped[0] >= maxTotal || System.currentTimeMillis() > until) { t.cancel(); tasks.remove(t); active.decrementAndGet(); return; }
             n[0]++;
             List<Player> r = roster;
             if (r.isEmpty()) return;
-            for (int i = 0; i < perDrop; i++) {
+            for (int i = 0; i < perDrop && dropped[0] < maxTotal; i++) {
+                dropped[0]++;
                 Player target = r.get(ThreadLocalRandom.current().nextInt(r.size()));
                 pl.sched.entity(target, () -> {
                     if (!ev.isLive(ae) || stopped) return;

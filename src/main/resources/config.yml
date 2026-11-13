@@ -113,3 +113,5 @@ bounty:
     defeat: {sound: "entity.wither.spawn", volume: 0.3, pitch: 1.4}
     coords: {sound: "block.note_block.chime", volume: 0.5, pitch: 1.2}
 
+# ---- Quest Event rewards ----
+quest-require-rewards: true # /quest start needs at least one reward item in the menu

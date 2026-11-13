@@ -61,7 +61,18 @@ commands:
     aliases: [tpdisater, disastertp]
     permission: eventcore.disaster.join
 
+  quest:
+    description: Quest Event - /quest opens the quest menu for everybody
+    usage: "/<command> [top|claim|display|help | admin: start|stop|pause|resume|reload|give|reset|add|remove|leaderboard|info|admin]"
+    aliases: [quests]
+
 permissions:
+  eventcore.quest.use:
+    description: Use /quest (the quest menu, top, claim, display)
+    default: true
+  eventcore.quest.admin:
+    description: Quest Event admin commands and menus
+    default: op
   eventcore.egghunt.admin:
     description: All Egg Hunt admin commands
     default: op

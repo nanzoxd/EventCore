@@ -39,7 +39,8 @@ public final class RitualManager implements Listener {
         ItemDisplay display;
         Entity nameText, timerText;
         BossBar bar;
-        ScheduledTask spin, particles, countdown;
+        ScheduledTask spin, particles, countdown, watchdog;
+        boolean ticketed;
         float yaw;
         final String palette = currentPalette();
         String lastTimer = "";
@@ -67,7 +68,20 @@ public final class RitualManager implements Listener {
                     "z", Math.round(loc.getZ()), "time", Util.mmss(remaining), "minutes", total / 60);
         }
 
+        /** Keeps the ritual's chunk loaded: non-persistent displays vanish with their chunk, which looked like the ritual stopping. */
+        void holdChunk() {
+            if (ticketed || !rc().getBoolean("keep-chunk-loaded", true)) return;
+            try { loc.getWorld().addPluginChunkTicket(loc.getBlockX() >> 4, loc.getBlockZ() >> 4, pl); ticketed = true; } catch (Throwable ex) { pl.getLogger().warning("ritual chunk ticket: " + ex); }
+        }
+
+        void releaseChunk() {
+            if (!ticketed) return;
+            ticketed = false;
+            try { loc.getWorld().removePluginChunkTicket(loc.getBlockX() >> 4, loc.getBlockZ() >> 4, pl); } catch (Throwable ignored) { }
+        }
+
         void spawn() {
+            holdChunk();
             World w = loc.getWorld();
             ConfigurationSection e = rc().getConfigurationSection("entities");
             double dh = e.getDouble("display.height", 1.5);
@@ -79,7 +93,8 @@ public final class RitualManager implements Listener {
                 d.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.valueOf(
                         e.getString("display.transform", "NONE").toUpperCase(Locale.ROOT)));
                 float sc = (float) e.getDouble("display.scale", 1.0);
-                d.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(), new Vector3f(sc, sc, sc), new AxisAngle4f()));
+                d.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(), new Vector3f(sc, sc, sc),
+                        e.getBoolean("display.upright", true) ? ItemPose.upright(item) : new AxisAngle4f()));
                 try { d.setTeleportDuration(1); } catch (Throwable ignored) { }
                 d.getPersistentDataContainer().set(KEY, PersistentDataType.BYTE, (byte) 1);
             });
@@ -119,13 +134,34 @@ public final class RitualManager implements Listener {
         }
 
         void startTasks() {
+            startVisuals();
+            countdown = pl.sched.globalTimer(t -> {
+                if (cur != this) { t.cancel(); return; }
+                try {
+                    remaining--;
+                    updateBar(this);
+                    if (remaining > 0 && remaining % Math.max(1, rc().getInt("persistence.save-interval-seconds", 10)) == 0) save();
+                } catch (Throwable ex) { pl.getLogger().warning("ritual countdown: " + ex); }
+                if (remaining <= 0) { try { complete(); } catch (Throwable ex) { pl.getLogger().warning("ritual complete: " + ex); } }
+            }, 20, 20);
+            // watchdog: if the display / texts were removed (chunk unload, /kill, another plugin) the ritual is rebuilt in place
+            watchdog = pl.sched.regionTimer(loc, t -> {
+                if (cur != this) { t.cancel(); return; }
+                try { repair(); } catch (Throwable ex) { pl.getLogger().warning("ritual repair: " + ex); }
+            }, 20, 20);
+        }
+
+        /** The spinning item, the timer text and the sigil particles (all tied to the display entity). */
+        void startVisuals() {
             int spinIv = Math.max(1, rc().getInt("rotation.interval-ticks", 1));
             double speed = rc().getDouble("rotation.degrees-per-tick", 3.0) * spinIv;
             boolean rot = rc().getBoolean("rotation.enabled", true);
             spin = pl.sched.entityTimer(display, t -> {
-                if (rot) { yaw = (float) ((yaw + speed) % 360); display.setRotation(yaw, 0f); }
-                String ts = Util.mmss(remaining);
-                if (!ts.equals(lastTimer)) { lastTimer = ts; setText(timerText, timerComponent()); }
+                try {
+                    if (rot) { yaw = (float) ((yaw + speed) % 360); display.setRotation(yaw, 0f); }
+                    String ts = Util.mmss(remaining);
+                    if (!ts.equals(lastTimer)) { lastTimer = ts; setText(timerText, timerComponent()); }
+                } catch (Throwable ex) { pl.getLogger().warning("ritual spin: " + ex); }
             }, () -> { }, 1, spinIv);
             if (rc().getBoolean("particles.enabled", true)) {
                 // the sigil from RitualCreator.sk: layers of the palette that was active when the ritual started
@@ -133,25 +169,34 @@ public final class RitualManager implements Listener {
                 Location center = loc.clone().add(0, rc().getDouble("particles.height", 2.325), 0);
                 double view = Math.max(1.0, rc().getDouble("particles.view-distance", 32.0));
                 particles = pl.sched.entityTimer(display, t -> {
-                    // only draw while a player can see it
-                    if (center.getWorld().getNearbyPlayers(center, view).isEmpty()) return;
-                    pl.particles.playMaybeAsync(center, layers, cycle++);
+                    try {
+                        // only draw while a player can see it
+                        if (center.getWorld().getNearbyPlayers(center, view).isEmpty()) return;
+                        pl.particles.playMaybeAsync(center, layers, cycle++);
+                    } catch (Throwable ex) { pl.getLogger().warning("ritual particles: " + ex); }
                 }, () -> { }, 1, Math.max(1, rc().getInt("particles.interval-ticks", 4)));
             }
-            countdown = pl.sched.globalTimer(t -> {
-                if (cur != this) { t.cancel(); return; }
-                remaining--;
-                updateBar(this);
-                if (remaining > 0 && remaining % Math.max(1, rc().getInt("persistence.save-interval-seconds", 10)) == 0) save();
-                if (remaining <= 0) complete();
-            }, 20, 20);
         }
 
-        void cancelTasks() { Sched.cancel(spin); Sched.cancel(particles); Sched.cancel(countdown); }
+        void repair() {
+            holdChunk();
+            boolean bad = display == null || !display.isValid() || nameText == null || !nameText.isValid() || timerText == null || !timerText.isValid();
+            if (!bad) return;
+            Sched.cancel(spin); Sched.cancel(particles);
+            removeEntities();
+            lastTimer = "";
+            spawn();
+            startVisuals();
+            pl.getLogger().info("Ritual entities were missing and have been restored.");
+        }
+
+        void cancelTasks() { Sched.cancel(spin); Sched.cancel(particles); Sched.cancel(countdown); Sched.cancel(watchdog); }
 
         void removeEntities() {
             for (Entity e : new Entity[]{display, nameText, timerText}) if (e != null && e.isValid()) e.remove();
         }
+
+        void cleanup() { removeEntities(); releaseChunk(); }
     }
 
     private final EventCorePlugin pl;
@@ -273,7 +318,7 @@ public final class RitualManager implements Listener {
         Location drop = r.display != null && r.display.isValid() ? r.display.getLocation() : r.loc.clone().add(0, 1.5, 0);
         pl.sched.region(drop, () -> {
             drop.getWorld().dropItem(drop, r.item);
-            r.removeEntities();
+            r.cleanup();
         });
         pl.fx.playAll(rc().getConfigurationSection("sounds.complete"));
         pl.fx.title(Bukkit.getServer(), pl.cfg.messages().getConfigurationSection("ritual.complete-title"), r.ph());
@@ -294,7 +339,7 @@ public final class RitualManager implements Listener {
         pl.bars.hide(r.bar);
         Location at = r.loc.clone();
         boolean back = rc().getBoolean("cancel.return-item-to-admin", false);
-        pl.sched.region(at, r::removeEntities);
+        pl.sched.region(at, r::cleanup);
         if (back && admin != null) Util.give(admin, r.item);
         pl.fx.playAll(rc().getConfigurationSection("sounds.stop"));
         pl.fx.title(Bukkit.getServer(), pl.cfg.messages().getConfigurationSection("ritual.stopped-title"), r.ph());
@@ -366,7 +411,7 @@ public final class RitualManager implements Listener {
         pl.bars.hide(r.bar);
         boolean persist = rc().getBoolean("persistence.enabled", true);
         if (persist) saveBlocking(r);
-        try { r.removeEntities(); } catch (Throwable ignored) { }
+        try { r.cleanup(); } catch (Throwable ignored) { }
         if (!persist) {
             try { r.loc.getWorld().dropItem(r.loc.clone().add(0, 1, 0), r.item); } catch (Throwable ignored) { }
         }

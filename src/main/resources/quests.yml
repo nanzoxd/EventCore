@@ -1,0 +1,59 @@
+# Quest Event quests. Edit here or in /quest admin -> Manage quests. /quest reload applies changes.
+# type: KILL_PLAYER KILL_ENTITY DAMAGE_PLAYER WIN_PVP MINE_BLOCK SMELT COLLECT CRAFT TRAVEL EXPLODE_TNT OPEN_CHEST BREED FISH TRADE PLACE_BLOCK BREAK_BLOCK
+# every quest is worth exactly 1 point.
+# targets: Material / EntityType names, empty = anything.  requires: id of a quest that must be completed first (locked until then).
+settings:
+  auto-start: true        # unlocked quests become active on their own (players can still abandon / start them in the GUI)
+  allow-abandon: true     # right-click an active quest to abandon it (progress is reset)
+  ignore-creative: true   # creative / spectator players do not make progress
+  max-active: 12          # most quests that can be active at once
+
+categories:
+  combat: {name: "Combat", icon: IRON_SWORD}
+  mining: {name: "Mining", icon: DIAMOND_PICKAXE}
+  survival: {name: "Survival", icon: BREAD}
+  exploration: {name: "Exploration & Misc", icon: COMPASS}
+
+quests:
+  # ---------------- combat ----------------
+  kill_player_1: {category: combat, title: "First Blood", description: "Take down your first opponent.", icon: IRON_SWORD, type: KILL_PLAYER, amount: 1}
+  kill_player_5: {category: combat, title: "Player Hunter", description: "Hunt down five opponents.", icon: DIAMOND_SWORD, type: KILL_PLAYER, amount: 5, requires: kill_player_1}
+  kill_player_10: {category: combat, title: "Executioner", description: "Ten players have fallen to you.", icon: NETHERITE_SWORD, type: KILL_PLAYER, amount: 10, requires: kill_player_5}
+  kill_zombie_3: {category: combat, title: "Zombie Slayer", description: "Clear out a few zombies.", icon: ROTTEN_FLESH, type: KILL_ENTITY, targets: [ZOMBIE], amount: 3}
+  kill_skeleton_10: {category: combat, title: "Bone Collector", description: "Rattle some skeletons.", icon: BONE, type: KILL_ENTITY, targets: [SKELETON], amount: 10}
+  kill_creeper_5: {category: combat, title: "Quiet Defuser", description: "Take out creepers before they blow.", icon: GUNPOWDER, type: KILL_ENTITY, targets: [CREEPER], amount: 5}
+  kill_enderman_3: {category: combat, title: "Don't Look Away", description: "Defeat endermen.", icon: ENDER_EYE, type: KILL_ENTITY, targets: [ENDERMAN], amount: 3}
+  damage_500: {category: combat, title: "Heavy Hitter", description: "Deal a lot of damage to other players.", icon: BLAZE_POWDER, type: DAMAGE_PLAYER, amount: 500}
+  pvp_win_3: {category: combat, title: "Duelist", description: "Win fights against players who hit you back.", icon: SHIELD, type: WIN_PVP, amount: 3}
+  # ---------------- mining ----------------
+  mine_dirt_128: {category: mining, title: "Groundskeeper", description: "Dig up some dirt.", icon: DIRT, type: MINE_BLOCK, targets: [DIRT], amount: 128}
+  mine_stone_64: {category: mining, title: "Stone Age", description: "Quarry stone.", icon: STONE, type: MINE_BLOCK, targets: [STONE], amount: 64}
+  mine_coal_32: {category: mining, title: "Coal Rush", description: "Find and mine coal ore.", icon: COAL, type: MINE_BLOCK, targets: [COAL_ORE, DEEPSLATE_COAL_ORE], amount: 32, requires: mine_stone_64}
+  mine_iron_32: {category: mining, title: "Iron Will", description: "Mine iron ore.", icon: RAW_IRON, type: MINE_BLOCK, targets: [IRON_ORE, DEEPSLATE_IRON_ORE], amount: 32, requires: mine_stone_64}
+  mine_gold_8: {category: mining, title: "Gold Digger", description: "Mine gold ore.", icon: RAW_GOLD, type: MINE_BLOCK, targets: [GOLD_ORE, DEEPSLATE_GOLD_ORE, NETHER_GOLD_ORE], amount: 8, requires: mine_iron_32}
+  mine_lapis_16: {category: mining, title: "Blue Gems", description: "Mine lapis lazuli ore.", icon: LAPIS_LAZULI, type: MINE_BLOCK, targets: [LAPIS_ORE, DEEPSLATE_LAPIS_ORE], amount: 16, requires: mine_iron_32}
+  mine_diamond_16: {category: mining, title: "Diamonds!", description: "Mine diamond ore.", icon: DIAMOND, type: MINE_BLOCK, targets: [DIAMOND_ORE, DEEPSLATE_DIAMOND_ORE], amount: 16, requires: mine_iron_32}
+  collect_debris_10: {category: mining, title: "Netherite Dreams", description: "Collect ancient debris.", icon: ANCIENT_DEBRIS, type: COLLECT, targets: [ANCIENT_DEBRIS], amount: 10, requires: mine_diamond_16}
+  craft_diamond_pickaxe: {category: mining, title: "Shiny Tools", description: "Craft a diamond pickaxe.", icon: DIAMOND_PICKAXE, type: CRAFT, targets: [DIAMOND_PICKAXE], amount: 1}
+  # ---------------- survival ----------------
+  smelt_iron_10: {category: survival, title: "Foundry", description: "Smelt iron ingots.", icon: IRON_INGOT, type: SMELT, targets: [IRON_INGOT], amount: 10}
+  smelt_gold_16: {category: survival, title: "Gold Rush", description: "Smelt gold ingots.", icon: GOLD_INGOT, type: SMELT, targets: [GOLD_INGOT], amount: 16, requires: smelt_iron_10}
+  collect_oak_64: {category: survival, title: "Lumberjack", description: "Gather oak logs.", icon: OAK_LOG, type: COLLECT, targets: [OAK_LOG], amount: 64}
+  collect_bread_32: {category: survival, title: "Baker", description: "Collect bread.", icon: BREAD, type: COLLECT, targets: [BREAD], amount: 32}
+  craft_iron_16: {category: survival, title: "Ingot Maker", description: "Craft iron ingots.", icon: IRON_BLOCK, type: CRAFT, targets: [IRON_INGOT], amount: 16}
+  travel_1000: {category: survival, title: "Wanderer", description: "Travel on foot, by boat or by mount.", icon: LEATHER_BOOTS, type: TRAVEL, amount: 1000}
+  travel_5000: {category: survival, title: "Globetrotter", description: "Keep on moving.", icon: DIAMOND_BOOTS, type: TRAVEL, amount: 5000, requires: travel_1000}
+  collect_pearls_10: {category: survival, title: "Pearl Diver", description: "Collect ender pearls.", icon: ENDER_PEARL, type: COLLECT, targets: [ENDER_PEARL], amount: 10}
+  craft_shield: {category: survival, title: "Hold the Line", description: "Craft a shield.", icon: SHIELD, type: CRAFT, targets: [SHIELD], amount: 1}
+  # ---------------- exploration & misc ----------------
+  explode_tnt_5: {category: exploration, title: "Demolition", description: "Set off TNT you lit yourself.", icon: TNT, type: EXPLODE_TNT, amount: 5}
+  open_chests_10: {category: exploration, title: "Treasure Hunter", description: "Open different chests.", icon: CHEST, type: OPEN_CHEST, amount: 10}
+  breed_5: {category: exploration, title: "Farmer", description: "Breed animals.", icon: WHEAT, type: BREED, amount: 5}
+  fish_5: {category: exploration, title: "Angler", description: "Catch fish.", icon: FISHING_ROD, type: FISH, amount: 5}
+  trade_10: {category: exploration, title: "Merchant", description: "Trade with villagers.", icon: EMERALD, type: TRADE, amount: 10}
+  collect_emerald_5: {category: exploration, title: "Emerald Pouch", description: "Collect emeralds.", icon: EMERALD_BLOCK, type: COLLECT, targets: [EMERALD], amount: 5}
+  place_64: {category: exploration, title: "Builder", description: "Place blocks.", icon: BRICKS, type: PLACE_BLOCK, amount: 64}
+  place_256: {category: exploration, title: "Architect", description: "Keep building.", icon: SMOOTH_STONE, type: PLACE_BLOCK, amount: 256, requires: place_64}
+  break_100: {category: exploration, title: "Demolisher", description: "Break blocks.", icon: IRON_PICKAXE, type: BREAK_BLOCK, amount: 100}
+  break_500: {category: exploration, title: "Wrecking Ball", description: "Break many more blocks.", icon: NETHERITE_PICKAXE, type: BREAK_BLOCK, amount: 500, requires: break_100}
+  craft_enchanting_table: {category: exploration, title: "Arcane Study", description: "Craft an enchanting table.", icon: ENCHANTING_TABLE, type: CRAFT, targets: [ENCHANTING_TABLE], amount: 1}

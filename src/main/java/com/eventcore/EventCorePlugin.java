@@ -64,6 +64,10 @@ public final class EventCorePlugin extends JavaPlugin {
     public AltarHubGui altarHub;
     public DisasterInviteGui inviteGui;
     public DisasterDifficultyGui difficultyGui;
+    public com.eventcore.quest.QuestManager quest;
+    public com.eventcore.quest.QuestGui questGui;
+    public com.eventcore.quest.QuestAdminGui questAdmin;
+    public com.eventcore.quest.RewardSetupGui rewardGui;
     public HuntManager hunt;
     public BountyManager bounty;
     public BountyGui bountyGui;
@@ -122,14 +126,31 @@ public final class EventCorePlugin extends JavaPlugin {
         events.register(new LocatorBarEvent(this));
         events.register(new RandomTargetEvent(this));
         events.register(new ChatQuestionEvent(this));
+        events.register(new ColourItemEvent(this));
         events.register(airdrop);
         eggHunt = new EggHuntEvent(this);
         disaster = new NaturalDisasterEvent(this);
         events.register(eggHunt);
         events.register(disaster);
 
-        for (org.bukkit.event.Listener l : new org.bukkit.event.Listener[]{bars, chat, events, ritual, ritualGui, ritualScheduleGui, adminGui, lootGui, altar, altarGui, altarHub, inviteGui, difficultyGui, hunt, bounty, bountyGui})
+        // ---- Quest Event ----
+        quest = new com.eventcore.quest.QuestManager(this);
+        questGui = new com.eventcore.quest.QuestGui(this, quest);
+        questAdmin = new com.eventcore.quest.QuestAdminGui(this, quest);
+        rewardGui = new com.eventcore.quest.RewardSetupGui(this, quest);
+        events.register(new com.eventcore.quest.QuestEvent(this));
+        quest.enable();
+
+        for (org.bukkit.event.Listener l : new org.bukkit.event.Listener[]{bars, chat, events, ritual, ritualGui, ritualScheduleGui, adminGui, lootGui, altar, altarGui, altarHub, inviteGui, difficultyGui, hunt, bounty, bountyGui, questGui, questAdmin, rewardGui, new com.eventcore.quest.QuestListener(this, quest)})
             Bukkit.getPluginManager().registerEvents(l, this);
+
+        com.eventcore.quest.QuestCommand questCmd = new com.eventcore.quest.QuestCommand(this, quest);
+        getCommand("quest").setExecutor(questCmd);
+        getCommand("quest").setTabCompleter(questCmd);
+        if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {            // optional: %eventcore_quest_*%
+            try { new com.eventcore.quest.QuestPapi(this, quest).register(); getLogger().info("PlaceholderAPI found: %eventcore_quest_*% placeholders registered."); }
+            catch (Throwable t) { getLogger().warning("PlaceholderAPI hook failed: " + t); }
+        }
 
         EventCoreCommand ecCmd = new EventCoreCommand(this);
         getCommand("eventcore").setExecutor(ecCmd);
@@ -219,7 +240,9 @@ public final class EventCorePlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         if (scheduler != null) scheduler.stop();
+        if (quest != null) quest.beginShutdown();            // the quest event is only paused by a restart, never finished
         if (events != null) events.shutdown();
+        if (quest != null) quest.finishShutdown();
         if (airdrop != null) airdrop.destroyAll();
         if (ritualSchedule != null) ritualSchedule.shutdown();
         if (ritual != null) ritual.shutdown();
@@ -257,6 +280,7 @@ public final class EventCorePlugin extends JavaPlugin {
         scheduler.rebuild();
         who.sendMessage(msg("command.reloaded"));
         altar.reload();
+        quest.reload();
         ritual.warnReload(who);
     }
 }

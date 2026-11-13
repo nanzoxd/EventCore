@@ -26,6 +26,7 @@ display:                         # the rotating output item above the altar
   cycle-seconds: 4               # an altar with several recipes switches the shown item every N seconds
   height: 1.5
   scale: 1.0
+  upright: true                  # swords, axes, pickaxes... stand straight (not tilted 45 degrees) while spinning
 hologram:
   max-recipes: 6                 # how many recipes the hologram lists
   enabled: true

@@ -27,8 +27,8 @@ import java.util.function.Consumer;
 
 /**
  * Admin menu (/eventcore gui), peach + gold theme from config.yml theme.*:
- *   main -> Events | Airdrop | Loot tables | Ritual creator | Ritual settings | Altar recipes
- *           | Player hunt | Bounty | Reload
+ *   one menu: every mini event, a black glass separator row (empty slots below it are gray glass), then Airdrop | Loot tables | Altar recipes | Quests | Ritual creator
+ *   | Player hunt | Bounty, and Event display | Close | Reload
  * Every control line in a tooltip uses the mouse icons (see util/Mouse).
  * Events: left = on/off, right = start/stop, shift = duration +-5m.
  * Airdrop: every number is a stepper (left +, right -, shift x5). Everything else lives in the yml files.
@@ -102,7 +102,10 @@ public final class AdminGui implements Listener {
         return it;
     }
 
-    void open(Player p, String title, int rows, Consumer<Page> filler) {
+    void open(Player p, String title, int rows, Consumer<Page> filler) { open(p, title, rows, true, filler); }
+
+    /** fill = false: no border or filler glass at all (the page places only what it wants). */
+    void open(Player p, String title, int rows, boolean fill, Consumer<Page> filler) {
         Page pg = new Page();
         String grad = title.equals("EventCore") ? String.join(":", pl.cfg.config().getStringList("eventcore-gradient").isEmpty()
                 ? java.util.List.of("#808080", "#C4C4C4", "#808080") : pl.cfg.config().getStringList("eventcore-gradient")) : String.join(":", nameGrad());
@@ -110,10 +113,12 @@ public final class AdminGui implements Listener {
         pg.fill = () -> {
             pg.inv.clear();
             pg.acts.clear();
-            ItemStack inner = icon(Material.GRAY_STAINED_GLASS_PANE, " "), edge = icon(Material.BLACK_STAINED_GLASS_PANE, " ");
-            for (int i = 0; i < pg.inv.getSize(); i++) {
-                int row = i / 9, col = i % 9;
-                pg.inv.setItem(i, row == 0 || row == rows - 1 || col == 0 || col == 8 ? edge : inner);
+            if (fill) {
+                ItemStack inner = icon(Material.GRAY_STAINED_GLASS_PANE, " "), edge = icon(Material.BLACK_STAINED_GLASS_PANE, " ");
+                for (int i = 0; i < pg.inv.getSize(); i++) {
+                    int row = i / 9, col = i % 9;
+                    pg.inv.setItem(i, row == 0 || row == rows - 1 || col == 0 || col == 8 ? edge : inner);
+                }
             }
             filler.accept(pg);
         };
@@ -131,36 +136,38 @@ public final class AdminGui implements Listener {
     }
 
     // ---------- pages ----------
-    /** Main menu laid out like SMPCore: every event as a feature tile, a divider, then the other features. */
+    /**
+     * ONE menu: every mini event on top (9 per row), a glass separator row, then the main settings and the controls.
+     * No border glass; the menu is only as tall as the events need. The quest event is started from the Quests tile.
+     */
     public void openMain(Player p) {
-        open(p, "EventCore", 6, pg -> {
+        List<GameEvent> list = new ArrayList<>();
+        for (GameEvent ev : pl.events.registry().values()) if (!ev.id().equals("quest")) list.add(ev);
+        int evRows = Math.max(1, Math.min(3, (list.size() + 8) / 9));
+        int rows = evRows + 3;                                  // events + separator + settings + controls
+        int sep = evRows * 9, set = sep + 9, ctl = set + 9;
+        open(p, "EventCore", rows, false, pg -> {
             String go = Mouse.left(pl, "open");
-            int running = 0;
-            for (GameEvent ev : pl.events.registry().values()) if (pl.events.active(ev.id()) != null) running++;
+            for (int i = 0; i < Math.min(list.size(), 27); i++) placeEvent(pg, i, list.get(i));
+            // the only glass: separates the events from the settings
             ItemStack bar = icon(Material.BLACK_STAINED_GLASS_PANE, " ");
-            // events
-            set(pg, 4, icon(Material.LIGHT_GRAY_STAINED_GLASS_PANE, "Events", "Running: <color:%white%>" + running, "Click an event to manage it"), null);
-            int slot = 10;
-            for (GameEvent ev : pl.events.registry().values()) {
-                if (slot == 17) slot = 19;
-                if (slot > 25) break;
-                placeEvent(pg, slot++, ev);
-            }
-            // divider
-            for (int i = 28; i <= 34; i++) set(pg, i, bar, null);
-            set(pg, 31, icon(Material.LIGHT_GRAY_STAINED_GLASS_PANE, "Features", "Game systems and tools"), null);
-            // features, two groups split by a vertical divider
-            set(pg, 37, icon(Material.SHULKER_BOX, "Airdrop", "Fall time, spawn area, crate health.", "", go), (pl2, c) -> openAirdrop(pl2));
-            set(pg, 38, icon(Material.CHEST, "Loot tables", "Edit what the crates drop.", "", go), (pl2, c) -> pl.lootGui.openTiers(pl2));
-            set(pg, 39, icon(Material.ENCHANTING_TABLE, "Altar recipes", "Create and edit altar recipes.", "", go), (pl2, c) -> pl.altarGui.openList(pl2, 0));
-            set(pg, 40, bar, null);
-            set(pg, 41, icon(Material.ENDER_EYE, "Ritual creator", "Open the ritual menu.", "", go), (pl2, c) -> pl.ritualGui.openMain(pl2));
-            set(pg, 42, icon(Material.COMPASS, "Player hunt", "Live coordinates in the bossbar.", "Hunted players: <color:%white%>" + pl.hunt.count(), "", go), (pl2, c) -> pl.huntGui.openHunt(pl2));
-            set(pg, 43, icon(Material.GOLDEN_SWORD, "Bounty", "Reward, timer, survive or get killed.", "Active bounties: <color:%white%>" + pl.bounty.count(), "", go), (pl2, c) -> pl.huntGui.openBounty(pl2));
+            for (int i = sep; i < sep + 9; i++) pg.inv.setItem(i, bar);
+            // main settings
+            set(pg, set + 1, icon(Material.SHULKER_BOX, "Airdrop", "Fall time, spawn area, crate health.", "", go), (pl2, c) -> openAirdrop(pl2));
+            set(pg, set + 2, icon(Material.CHEST, "Loot tables", "Edit what the crates drop.", "", go), (pl2, c) -> pl.lootGui.openTiers(pl2));
+            set(pg, set + 3, icon(Material.ENCHANTING_TABLE, "Altar recipes", "Create and edit altar recipes.", "", go), (pl2, c) -> pl.altarGui.openList(pl2, 0));
+            set(pg, set + 4, icon(Material.WRITABLE_BOOK, "Quests", "Quest event menu.", "Event: <color:%white%>" + (pl.quest.running ? (pl.quest.paused ? "Paused" : "Running " + pl.quest.timeLeft()) : "Off"), "", Mouse.left(pl, "open quests"), Mouse.right(pl, "quest admin")),
+                    (pl2, c) -> { if (c.isRightClick()) pl.questAdmin.open(pl2); else pl.questGui.open(pl2); });
+            set(pg, set + 5, icon(Material.ENDER_EYE, "Ritual creator", "Open the ritual menu.", "", go), (pl2, c) -> pl.ritualGui.openMain(pl2));
+            set(pg, set + 6, icon(Material.COMPASS, "Player hunt", "Live coordinates in the bossbar.", "Hunted players: <color:%white%>" + pl.hunt.count(), "", go), (pl2, c) -> pl.huntGui.openHunt(pl2));
+            set(pg, set + 7, icon(Material.GOLDEN_SWORD, "Bounty", "Reward, timer, survive or get killed.", "Active bounties: <color:%white%>" + pl.bounty.count(), "", go), (pl2, c) -> pl.huntGui.openBounty(pl2));
             // controls
-            placeDisplay(pg, 46);
-            set(pg, 49, icon(Material.BARRIER, "Close", "", Mouse.left(pl, "close")), (pl2, c) -> pl2.closeInventory());
-            set(pg, 52, icon(Material.LIME_DYE, "Reload config", "Re-reads every config file after manual edits.", "", Mouse.left(pl, "reload")), (pl2, c) -> { pl.reloadAll(pl2); pl2.closeInventory(); });
+            placeDisplay(pg, ctl + 2);
+            set(pg, ctl + 4, icon(Material.BARRIER, "Close", "", Mouse.left(pl, "close")), (pl2, c) -> pl2.closeInventory());
+            set(pg, ctl + 6, icon(Material.LIME_DYE, "Reload config", "Re-reads every config file after manual edits.", "", Mouse.left(pl, "reload")), (pl2, c) -> { pl.reloadAll(pl2); pl2.closeInventory(); });
+            // empty slots below the separator (settings and last row) are gray glass; the event rows on top stay glass-free
+            ItemStack gray = icon(Material.GRAY_STAINED_GLASS_PANE, " ");
+            for (int i = sep; i < pg.inv.getSize(); i++) if (pg.inv.getItem(i) == null) pg.inv.setItem(i, gray);
         });
     }
 
@@ -180,6 +187,8 @@ public final class AdminGui implements Listener {
             case "egg_hunt" -> Material.TURTLE_EGG;
             case "natural_disaster" -> Material.LIGHTNING_ROD;
             case "chat_question" -> Material.WRITABLE_BOOK;
+            case "quest" -> Material.ENCHANTED_BOOK;
+            case "colour_item" -> Material.MAGENTA_DYE;
             default -> Material.PAPER;
         };
     }
@@ -228,18 +237,8 @@ public final class AdminGui implements Listener {
         });
     }
 
-    public void openEvents(Player p) {
-        open(p, "Events", 5, pg -> {
-            int slot = 10;
-            for (GameEvent ev : pl.events.registry().values()) {
-                if (slot == 17 || slot == 26) slot += 2;       // skip the border columns: rows of 7 (10-16, 19-25, 28-34)
-                if (slot > 34) break;
-                placeEvent(pg, slot++, ev);
-            }
-            placeDisplay(pg, 38);
-            back(pg, 40);
-        });
-    }
+    /** The events live in the main menu now. */
+    public void openEvents(Player p) { openMain(p); }
 
     public void openAirdrop(Player p) {
         open(p, "Airdrop", 4, pg -> {

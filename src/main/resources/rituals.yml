@@ -3,6 +3,7 @@ time:
   minutes: 15      # current value (changed by the clock in the GUI)
   min: 1
   max: 60
+keep-chunk-loaded: true   # keeps the ritual chunk loaded so the item never vanishes when nobody is near
 rotation:
   enabled: true
   degrees-per-tick: 3.0
@@ -14,6 +15,7 @@ entities:
     glowing: true
     transform: NONE        # ItemDisplay transform: NONE, GROUND, FIXED, GUI, HEAD ...
     scale: 1.0
+    upright: true          # swords, axes, pickaxes... stand straight (not tilted 45 degrees) while spinning
     glow-color: ""         # optional hex outline colour
   item-name:
     height: 2.275

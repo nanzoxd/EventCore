@@ -37,6 +37,7 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.Transformation;
+import com.eventcore.util.ItemPose;
 import org.joml.AxisAngle4f;
 import org.joml.Vector3f;
 
@@ -803,6 +804,11 @@ public final class AltarManager implements Listener {
         return l.get((a.tick / every) % l.size());
     }
 
+    /** Straight (not tilted) weapons and tools: the display.upright setting, on by default. */
+    private AxisAngle4f pose(ItemStack out) {
+        return cfg.getBoolean("display.upright", true) ? ItemPose.upright(out) : new AxisAngle4f();
+    }
+
     private void updateFloating(Altar a) {
         Recipe rec = showcase(a);
         ItemDisplay d = a.floating;
@@ -825,7 +831,7 @@ public final class AltarManager implements Listener {
                         e.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.GROUND);
                         e.setBillboard(Display.Billboard.FIXED);
                         e.setPersistent(false);
-                        e.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(), new Vector3f(sc, sc, sc), new AxisAngle4f()));
+                        e.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(), new Vector3f(sc, sc, sc), pose(out)));
                         e.getPersistentDataContainer().set(KEY, PersistentDataType.BYTE, (byte) 1);
                     });
                     a.floatSource = out;
@@ -844,7 +850,7 @@ public final class AltarManager implements Listener {
             if (swap) d.setItemStack(out.clone());
             d.setInterpolationDelay(0);
             d.setInterpolationDuration(20);
-            d.setTransformation(new Transformation(new Vector3f(0, bob, 0), new AxisAngle4f(spin, 0, 1, 0), new Vector3f(sc, sc, sc), new AxisAngle4f()));
+            d.setTransformation(new Transformation(new Vector3f(0, bob, 0), new AxisAngle4f(spin, 0, 1, 0), new Vector3f(sc, sc, sc), pose(out)));
         });
     }
 

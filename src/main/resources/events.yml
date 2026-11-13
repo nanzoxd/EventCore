@@ -1215,6 +1215,41 @@ events:
           items: ["NETHERITE_INGOT:2", "DIAMOND:32"]
           commands: []
           message: "<g>you survived the natural disaster!</g>"
+  quest:
+    enabled: true
+    display-name: "quest event"
+    description: "complete quests, earn points and reach the top 5"
+    color: "#FFD54A"
+    gradient: ["#D9A520", "#FFF0B0", "#D9A520"]   # title gradient (dark, light, dark)
+    aliases: [quests, questevent]
+    random-pool: false         # never picked by the random scheduler: start it with /quest start (reward setup first)
+    duration-minutes: 60       # default length (/quest start [minutes] overrides it)
+    cooldown-minutes: 0
+    bossbar:
+      enabled: true
+      text: "{event} : {time}"
+      color: YELLOW
+      style: NOTCHED_10
+      gradient: ["#D9A520", "#FFF0B0", "#D9A520"]
+      countdown: true
+    sounds:
+      start: {sound: "ui.toast.challenge_complete", volume: 1.0, pitch: 1.0}
+      end: {sound: "entity.player.levelup", volume: 1.0, pitch: 1.0}
+    titles:
+      start: {title: "<#FFD54A>{event}", subtitle: "<#AAAAAA>{description}"}
+      end: {title: "<#FFD54A>{event} ended", subtitle: "<#AAAAAA>check the final standings in chat"}
+    messages:
+      join:
+        - "complete quests to earn points, the top 5 players win the rewards"
+        - "open the quest menu with /quest"
+      start:
+        text: "<#E3948F>{event} <#FFFFFF>started for <#FFFFFF>{minutes}m<#AAAAAA>: {description}. <#FFFFFF>/quest"
+        sound: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
+      end:
+        text: "<#E3948F>{event} <#FFFFFF>has ended."
+        sound: {sound: "block.note_block.bass", volume: 0.6, pitch: 1.0}
+    settings: {}
+
   chat_question:
     enabled: true
     display-name: "chat games"
@@ -1374,3 +1409,54 @@ events:
         - { q: "How many events are in a decathlon?", a: "10" }
         - { q: "What is the most abundant metal in Earth's crust?", a: "aluminum" }
         - { q: "How many gold medals did Usain Bolt win at one Olympics?", a: "3" }
+
+  colour_item:
+    enabled: true
+    display-name: "colour item"
+    display-mode: ACTIONBAR   # the colour item name is shown on the action bar, no bossbar
+    description: "pick up or take any item of the announced colour first and win golden apples"
+    color: "#ff8fd8"
+    gradient: ["#FF5FA2", "#FFD1E8", "#FF5FA2"]   # title gradient (dark, light, dark)
+    aliases: [colouritem, coloritem, colour, color]
+    duration-minutes: 10
+    cooldown-minutes: 0
+    bossbar:
+      enabled: false
+      text: "{event} : {time}"
+      color: PINK
+      style: PROGRESS
+      gradient: ["#FF5FA2", "#FFD1E8", "#FF5FA2"]   # this event's own bar + GUI name colours (dark, light, dark)
+      countdown: true
+    sounds:
+      start: {sound: "block.note_block.bell", volume: 0.8, pitch: 1.3}
+      end: {sound: "ui.toast.challenge_complete", volume: 0.8, pitch: 1.0}
+    titles:
+      winner: {title: "<#FF8FD8>{event}", subtitle: "<#FFFFFF>{player} <#00FF55>won", stay: 60}   # the ONLY title of this event (event name + who won)
+    messages:
+      join:
+        - "the colour is shown on your action bar"
+        - "pick up or take ANY item of that colour first"
+        - "the winner gets golden apples and the event ends"
+      start:
+        text: "<#E3948F>{event} <#FFFFFF>started for <#FFFFFF>{minutes}m<#AAAAAA>: {description}"
+        sound: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
+      end:
+        text: "<#E3948F>{event} <#FFFFFF>has ended."
+        sound: {sound: "block.note_block.bass", volume: 0.6, pitch: 1.0}
+      announce:                  # the colour, sent in chat once. {colour} {colour_raw}
+        text: "<#FF8FD8>Colour<#AAAAAA>: <{colour_raw}>{colour} <#AAAAAA>- <#FFFFFF>be the first to pick up or take any <{colour_raw}>{colour} <#FFFFFF>item!"
+        sound: {sound: "block.note_block.pling", volume: 1.0, pitch: 1.6}
+      winner:
+        text: "<#FFFFFF>{player} <#00FF55>got <{colour_raw}>{item} <#FFFFFF>and won <#FFD54A>{amount} golden apples<#FFFFFF>!"
+        sound: {sound: "entity.player.levelup", volume: 0.8, pitch: 1.2}
+    start-animation:
+      enabled: false
+    aura:
+      enabled: false
+    settings:
+      actionbar: "<#A5B8FF>pick up any <{colour_raw}>{colour} <#A5B8FF>item"   # shown every second, the colour name is in its own colour
+      reward: {item: GOLDEN_APPLE, min: 1, max: 64}         # a random amount from min to max (a stack holds 64)
+      # the colours that can be picked (any item whose name starts with the colour counts: wool, dye, concrete, banners, beds...)
+      colours: [WHITE, ORANGE, MAGENTA, LIGHT_BLUE, YELLOW, LIME, PINK, GRAY, LIGHT_GRAY, CYAN, PURPLE, BLUE, BROWN, GREEN, RED, BLACK]
+    schedule:
+      mode: off            # off | times | interval

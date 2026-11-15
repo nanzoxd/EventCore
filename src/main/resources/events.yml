@@ -663,8 +663,8 @@ events:
         easing: LINEAR         # LINEAR or EASE_IN
         sound: {sound: "item.elytra.flying", volume: 0.35, pitch: 0.5}
         sound-interval-ticks: 20
-        trail: {shape: scatter, particle: CLOUD, count: 6, radius-min: 0.0, radius-max: 0.5, y-min: 0.0, y-max: 0.8, particles-min: 1, particles-max: 1}
-        hologram-offset: 2.0
+        trail: {shape: scatter, particle: END_ROD, count: 10, radius-min: 0.1, radius-max: 0.6, y-min: 0.2, y-max: 3.0, particles-min: 1, particles-max: 2}   # sparkling column above the falling crate
+        hologram-offset: 1.6
         announce:                 # sent the moment a crate starts to fall: where it is coming down
           show-title: true
           chat:
@@ -672,8 +672,19 @@ events:
             sound: {sound: "entity.firework_rocket.launch", volume: 0.3, pitch: 0.8}
           title: {title: "<g>{tier_plain} lootdrop falling</g>", subtitle: "<g>{x} {y} {z}</g>"}
         flare: {shape: spiral, particle: END_ROD, count: 30, radius: 0.3, height: 0.0, rise: 25.0, turns: 6.0, spin: 12.0, particles-min: 1, particles-max: 1}
-      parachute:                 # chickens leashed to the crate (shulker)
-        enabled: true
+      crate:                     # the crate you see is a block display; the shulker is only its invisible hitbox
+        enabled: true            # false = the old visible shulker
+        block: CHISELED_COPPER   # default block (every tier can set its own crate-block)
+        scale: 1.0               # keep near 1.0: it must match the hitbox
+        glow: true               # tier coloured outline, visible from far away (like a supply drop marker)
+        view-range: 2.0          # 1.0 = 64 blocks; 2.0 = seen from twice as far
+        spin: true               # slow tumble while it falls
+        spin-degrees-per-second: 90
+        tilt-degrees: 22         # the crate falls tilted
+        shake: true              # every hit shakes the crate
+        teleport-duration: 2     # ticks of smoothing between movement steps
+      parachute:                 # chickens leashed to the crate (shulker). Off by default: the crate tumbles down.
+        enabled: false
         chickens: 5
         height: 3.2
         radius: 1.4
@@ -706,10 +717,17 @@ events:
         top-count: 3               # chat ranking when the crate opens: 1-2-3
         top-header: "<g>top hitters of the {tier_plain} lootdrop:</g>"
         top-line: "<g>#{rank} {player} - {damage} hits</g>"
-        sound: {sound: "block.anvil.hit", volume: 0.35, pitch: 1.2}
+        sound: {sound: "block.copper.hit", volume: 0.9, pitch: 1.0}          # tiers override this with their own pitch
+        extra-sounds:                                                       # layered on every hit, pitch is randomised a little
+          chain: {sound: "block.chain.hit", volume: 0.6, pitch: 1.0}
+          clang: {sound: "item.shield.block", volume: 0.35, pitch: 1.3}
+          ping: {sound: "block.copper_bulb.hit", volume: 0.5, pitch: 1.2}
         actionbar: "<n>{bar} <color:#fffbf0>{hp}</color><color:#ffd7ca>/{max}</color></n>"
       open:
         sound: {sound: "block.shulker_box.open", volume: 0.6, pitch: 1.0}
+        extra-sounds:
+          clang: {sound: "block.copper.break", volume: 0.8, pitch: 0.9}
+          latch: {sound: "block.chain.break", volume: 0.6, pitch: 1.0}
         chat:
           text: "<g>{player} opened a {tier_plain} lootdrop</g>"
           sound: {sound: "entity.player.levelup", volume: 0.3, pitch: 1.0}
@@ -721,67 +739,71 @@ events:
         locked: "<color:#ffcfca>this crate is locked for {seconds}s</color>"
       hologram:
         enabled: true
-        offset: 1.9
+        offset: 1.6
         scale: 1.1
-        falling: "<n>{tier} <color:#fffbf0>Crate</color><newline><color:#ffd7ca>Landing in <color:#fffbf0>{time_fmt}</color></color></n>"
-        locked: "<n>{tier} <color:#fffbf0>Crate</color><newline><color:#ffcfca>Locked <color:#fffbf0>{seconds}s</color></color></n>"
-        ready: "<n>{tier} <color:#fffbf0>Crate</color><newline>{bar}<newline><color:#fffbf0>{hp}</color><color:#ffd7ca>/{max} HP</color><newline><color:#f1d58f>Punch to open</color></n>"
+        falling: "<n>{tier} <color:#fffbf0>Supply Drop</color><newline><color:#ffd7ca>Landing in <color:#fffbf0>{time_fmt}</color></color></n>"
+        locked: "<n>{tier} <color:#fffbf0>Supply Drop</color> <color:#ffd7ca>- Locked <color:#fffbf0>{seconds}s</color></color></n>"
+        ready: "<n>{tier} <color:#fffbf0>Supply Drop</color> <color:#ffd7ca>- <color:#fffbf0>{pct}%</color></color><newline>{bar}<newline><color:#f1d58f>Punch to open</color></n>"
       tiers:
         iron:
           display-name: "iron"
+          crate-block: CHISELED_COPPER      # block display of this tier's crate
           rarity: "common"
           weight: 55.0
           health: 40
           shulker-color: YELLOW
           gradient: ["#ffe4d5", "#ffcfca"]
-          trail: {shape: scatter, particle: DUST, color: "#ffd7ca", size: 1.0, count: 8, radius-min: 0.0, radius-max: 0.6, y-min: 0.0, y-max: 0.8, particles-min: 1, particles-max: 2}
+          trail: {shape: scatter, particle: DUST, color: "#ffd7ca", size: 1.0, count: 12, radius-min: 0.1, radius-max: 0.6, y-min: 0.2, y-max: 3.0, particles-min: 1, particles-max: 2}
           land-particles:
             ring: {shape: ring, particle: DUST, color: "#ffd7ca", size: 1.2, count: 30, radius: 2.0, height: 0.3, particles-min: 1, particles-max: 1}
           sounds:
             land: {sound: "entity.generic.explode", volume: 0.5, pitch: 0.7}
-            hit: {sound: "block.anvil.hit", volume: 0.35, pitch: 1.8}
+            hit: {sound: "block.copper.hit", volume: 0.9, pitch: 1.4}
             open: {sound: "block.shulker_box.open", volume: 0.6, pitch: 1.0}
         gold:
           display-name: "gold"
+          crate-block: RAW_GOLD_BLOCK      # block display of this tier's crate
           rarity: "uncommon"
           weight: 28.0
           health: 60
           shulker-color: ORANGE
           gradient: ["#f1d58f", "#d8b04a"]
-          trail: {shape: scatter, particle: DUST, color: "#e8c670", size: 1.0, count: 8, radius-min: 0.0, radius-max: 0.6, y-min: 0.0, y-max: 0.8, particles-min: 1, particles-max: 2}
+          trail: {shape: scatter, particle: DUST, color: "#e8c670", size: 1.0, count: 12, radius-min: 0.1, radius-max: 0.6, y-min: 0.2, y-max: 3.0, particles-min: 1, particles-max: 2}
           land-particles:
             ring: {shape: ring, particle: DUST, color: "#e8c670", size: 1.2, count: 30, radius: 2.0, height: 0.3, particles-min: 1, particles-max: 1}
           sounds:
             land: {sound: "entity.generic.explode", volume: 0.5, pitch: 0.65}
-            hit: {sound: "block.anvil.hit", volume: 0.35, pitch: 1.5}
+            hit: {sound: "block.copper.hit", volume: 0.9, pitch: 1.2}
             open: {sound: "block.shulker_box.open", volume: 0.6, pitch: 1.0}
         diamond:
           display-name: "diamond"
+          crate-block: OXIDIZED_CHISELED_COPPER      # block display of this tier's crate
           rarity: "rare"
           weight: 13.0
           health: 90
           shulker-color: RED
           gradient: ["#fff0cc", "#f7e2ad"]
-          trail: {shape: scatter, particle: DUST, color: "#fff0cc", size: 1.0, count: 8, radius-min: 0.0, radius-max: 0.6, y-min: 0.0, y-max: 0.8, particles-min: 1, particles-max: 2}
+          trail: {shape: scatter, particle: DUST, color: "#fff0cc", size: 1.0, count: 12, radius-min: 0.1, radius-max: 0.6, y-min: 0.2, y-max: 3.0, particles-min: 1, particles-max: 2}
           land-particles:
             ring: {shape: ring, particle: DUST, color: "#fff0cc", size: 1.2, count: 30, radius: 2.0, height: 0.3, particles-min: 1, particles-max: 1}
           sounds:
             land: {sound: "entity.generic.explode", volume: 0.5, pitch: 0.6}
-            hit: {sound: "block.anvil.hit", volume: 0.35, pitch: 1.2}
+            hit: {sound: "block.copper.hit", volume: 0.9, pitch: 1.0}
             open: {sound: "block.shulker_box.open", volume: 0.6, pitch: 1.0}
         netherite:
           display-name: "netherite"
+          crate-block: CHISELED_NETHER_BRICKS      # block display of this tier's crate
           rarity: "legendary"
           weight: 4.0
           health: 140
           shulker-color: BLACK
           gradient: ["#ffcfca", "#d8b04a"]
-          trail: {shape: scatter, particle: DUST, color: "#ffcfca", size: 1.0, count: 8, radius-min: 0.0, radius-max: 0.6, y-min: 0.0, y-max: 0.8, particles-min: 1, particles-max: 2}
+          trail: {shape: scatter, particle: DUST, color: "#ffcfca", size: 1.0, count: 12, radius-min: 0.1, radius-max: 0.6, y-min: 0.2, y-max: 3.0, particles-min: 1, particles-max: 2}
           land-particles:
             ring: {shape: ring, particle: DUST, color: "#ffcfca", size: 1.2, count: 30, radius: 2.0, height: 0.3, particles-min: 1, particles-max: 1}
           sounds:
             land: {sound: "entity.generic.explode", volume: 0.5, pitch: 0.5}
-            hit: {sound: "block.anvil.hit", volume: 0.35, pitch: 0.9}
+            hit: {sound: "block.copper.hit", volume: 0.9, pitch: 0.75}
             open: {sound: "block.shulker_box.open", volume: 0.6, pitch: 1.0}
   egg_hunt:
     enabled: true
@@ -1254,6 +1276,7 @@ events:
     enabled: true
     display-name: "chat games"
     display-mode: NONE        # no bossbar and no action bar for this event
+    announce: false           # no start / end announcement (sound, title, chat line, discord): only the question and the winner are sent
     description: "answer the question in chat first and win golden apples"
     color: "#f1d58f"
     gradient: ["#2E9BFF", "#D4ECFF", "#2E9BFF"]   # title gradient (dark, light, dark)
@@ -1302,10 +1325,9 @@ events:
       days: [ALL]          # ALL or MONDAY, TUESDAY ...
       interval-minutes: 180
     settings:
-      first-question-after-seconds: 5   # the first question comes this long after the event starts
-      question-interval-seconds: 45     # pause between the end of one question and the next one
+      first-question-after-seconds: 2   # the first question comes this long after the event starts
+      question-interval-seconds: 3      # an unanswered question is followed by a new one after this pause (never two at once)
       answer-timeout-seconds: 30        # a question with no correct answer expires after this long
-      end-on-answer: true               # the event ends by itself as soon as a player answers correctly
       hide-correct-answer: true         # the winning message is not shown in chat (so nobody else can copy it)
       reward:
         item: GOLDEN_APPLE

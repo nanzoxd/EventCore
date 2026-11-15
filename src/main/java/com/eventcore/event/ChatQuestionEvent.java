@@ -21,8 +21,9 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Chat Question: a question is sent in chat (chat only, no bossbar, no action bar).
- * The event ends as soon as somebody answers correctly; the only title is the winner title.
+ * Chat Question: ONE question is sent in chat (chat only, no bossbar, no action bar, no start or end announcement).
+ * If nobody answers in time another question is sent; as soon as somebody answers correctly the event ends and nothing more is sent.
+ * The only title is the winner title.
  * The first player to type a correct answer wins half a stack or a full stack of golden apples.
  * Questions and answers live in events.yml (events.chat_question.settings.questions).
  */
@@ -40,6 +41,7 @@ public final class ChatQuestionEvent extends GameEvent {
     private final AtomicReference<Live> live = new AtomicReference<>();
     private final List<Integer> bag = new ArrayList<>();       // shuffled order: every question comes once before any repeats
     private volatile int wait, number;
+    private volatile boolean done;                             // somebody answered: no question is ever sent again
 
     public ChatQuestionEvent(EventCorePlugin pl) { super(pl, "chat_question"); }
 
@@ -77,8 +79,9 @@ public final class ChatQuestionEvent extends GameEvent {
     @Override
     public void onStart(ActiveEvent ae) {
         live.set(null);
+        done = false;
         number = 0;
-        wait = Math.max(1, settings().getInt("first-question-after-seconds", 5));
+        wait = Math.max(1, settings().getInt("first-question-after-seconds", 2));
     }
 
     @Override
@@ -86,12 +89,13 @@ public final class ChatQuestionEvent extends GameEvent {
 
     @Override
     public void onSecond(ActiveEvent ae, int secondsLeft) {
+        if (done) return;
         ConfigurationSection s = settings();
         Live l = live.get();
         if (l != null) {                                                   // a question is open: wait for an answer or let it expire
             long timeout = Math.max(5, s.getInt("answer-timeout-seconds", 30)) * 1000L;
             if (System.currentTimeMillis() - l.at >= timeout && live.compareAndSet(l, null)) {
-                wait = Math.max(1, s.getInt("question-interval-seconds", 45));
+                wait = Math.max(1, s.getInt("question-interval-seconds", 3));
                 pl.fx.broadcast(sec(), "messages.expired", Text.ph("answer", l.q.shown(), "number", l.number), prefix());
             }
             return;
@@ -127,8 +131,8 @@ public final class ChatQuestionEvent extends GameEvent {
     }
 
     private void win(Player p, Live l) {
+        done = true;                                                       // one question at a time, and none after an answer
         ConfigurationSection s = settings();
-        wait = Math.max(1, s.getInt("question-interval-seconds", 45));
         Material mat = Material.matchMaterial(s.getString("reward.item", "GOLDEN_APPLE"));
         if (mat == null || !mat.isItem()) mat = Material.GOLDEN_APPLE;
         List<Integer> amounts = s.getIntegerList("reward.amounts");
@@ -140,6 +144,6 @@ public final class ChatQuestionEvent extends GameEvent {
                 "number", l.number, "event", pl.text.sc(displayName()), "gradient_raw", gradientRaw());
         pl.fx.title(org.bukkit.Bukkit.getServer(), sec().getConfigurationSection("titles.winner"), ph);   // the only title: event name + who won
         pl.fx.broadcast(sec(), "messages.winner", ph, prefix());
-        if (settings().getBoolean("end-on-answer", true)) pl.events.stop(id(), false);   // first correct answer ends the whole event
+        pl.events.stop(id(), false);                                       // the first correct answer ends the event
     }
 }

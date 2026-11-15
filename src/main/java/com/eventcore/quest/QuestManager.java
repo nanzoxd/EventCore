@@ -236,30 +236,16 @@ public final class QuestManager {
     // quest states
     // =====================================================================================================
     public boolean locked(PlayerQuestData d, Quest q) {
-        return !q.requires.isEmpty() && reg.get(q.requires) != null && d.state(q.requires) != PlayerQuestData.DONE;
+        return false;                                                          // no quest is ever locked: players complete whichever they want
     }
 
     public Status status(PlayerQuestData d, Quest q) {
         if (d.state(q.id) == PlayerQuestData.DONE) return Status.COMPLETED;
-        if (locked(d, q)) return Status.LOCKED;
-        return d.state(q.id) == PlayerQuestData.ACTIVE ? Status.ACTIVE : Status.AVAILABLE;
+        return Status.ACTIVE;                                                  // every unfinished quest is open and counts progress
     }
 
-    /** Unlocked quests become active on their own (quests.yml settings.auto-start). */
-    public void autoStart(Player p, PlayerQuestData d, boolean silent) {
-        if (!reg.autoStart) return;
-        int active = d.activeCount();
-        List<Quest> started = new ArrayList<>();
-        synchronized (d) {
-            for (Quest q : reg.all()) {
-                if (active >= reg.maxActive) break;
-                if (d.state(q.id) == PlayerQuestData.AVAILABLE && !locked(d, q)) { d.state.put(q.id, PlayerQuestData.ACTIVE); active++; started.add(q); }
-            }
-        }
-        if (started.isEmpty()) return;
-        d.dirty = true;
-        if (!silent) for (Quest q : started) toastStart(p, q);
-    }
+    /** Nothing to start any more: every quest always counts (kept so the callers stay the same). */
+    public void autoStart(Player p, PlayerQuestData d, boolean silent) { }
 
     /** error message key, or null when started */
     public String startQuest(Player p, Quest q) {
@@ -306,7 +292,7 @@ public final class QuestManager {
         List<Quest> done = null;
         synchronized (d) {
             for (Quest q : list) {
-                if (!q.matches(key) || d.state(q.id) != PlayerQuestData.ACTIVE) continue;
+                if (!q.matches(key) || d.state(q.id) == PlayerQuestData.DONE) continue;      // started or not, every unfinished quest counts
                 int cur = Math.min(q.amount, d.progress(q.id) + amount);
                 d.progress.put(q.id, cur);
                 d.dirty = true;

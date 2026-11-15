@@ -21,6 +21,6 @@ public final class ItemPose {
         try {
             if (item.hasItemMeta() && item.getItemMeta().hasItemModel()) return new AxisAngle4f();   // resource pack model: unknown orientation
         } catch (Throwable ignored) { }
-        return new AxisAngle4f((float) (Math.PI / 4), 0f, 0f, 1f);
+        return new AxisAngle4f((float) (-Math.PI / 4), 0f, 0f, 1f);   // the display shows the sprite from its back side, so the tilt is the other way round
     }
 }

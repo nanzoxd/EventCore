@@ -142,10 +142,12 @@ public final class EventManager implements Listener {
 
         ConfigurationSection bb = s.getConfigurationSection("bossbar");
         if (ev.forceBar() || (bb != null && bb.getBoolean("enabled", true) && wantsBar(ev))) ae.bar = createBar(ae, bb);
-        pl.fx.playAll(s.getConfigurationSection("sounds.start"));
-        pl.fx.title(Bukkit.getServer(), s.getConfigurationSection("titles.start"), ph);
-        pl.fx.broadcast(s, "messages.start", ph, pl.cfg.messages().getString("prefix", ""));
-        if (!ev.id().equals("airdrop")) pl.discord.eventStarted(Util.title(ev.displayName()), s.getString("description", ""), minutes);
+        if (s.getBoolean("announce", true)) {                                  // announce: false = no start sound, title, chat line or discord post
+            pl.fx.playAll(s.getConfigurationSection("sounds.start"));
+            pl.fx.title(Bukkit.getServer(), s.getConfigurationSection("titles.start"), ph);
+            pl.fx.broadcast(s, "messages.start", ph, pl.cfg.messages().getString("prefix", ""));
+            if (!ev.id().equals("airdrop")) pl.discord.eventStarted(Util.title(ev.displayName()), s.getString("description", ""), minutes);
+        }
 
         ConfigurationSection anim = s.getConfigurationSection("start-animation");
         if (anim != null && anim.getBoolean("enabled", true))
@@ -209,7 +211,7 @@ public final class EventManager implements Listener {
         }
         int cd = s.getInt("cooldown-minutes", 0);
         if (cd > 0) cooldowns.put(id, System.currentTimeMillis() + cd * 60_000L);
-        if (announce) {
+        if (announce && s.getBoolean("announce", true)) {
             Map<String, Object> ph = Text.ph("event", pl.text.sc(ev.displayName()), "description", pl.text.sc(s.getString("description", "")),
                     "color_raw", s.getString("color", "#ffffff"), "gradient_raw", ev.gradientRaw(), "minutes", ae.totalSec / 60, "time", "00:00");
             pl.fx.playAll(s.getConfigurationSection("sounds.end"));
@@ -315,6 +317,7 @@ public final class EventManager implements Listener {
 
     /** Explains the effects and rules of a running event to a player who joined late. */
     private void sendJoinInfo(Player p, ActiveEvent ae) {
+        if (!ae.ev.sec().getBoolean("announce", true)) return;                     // quiet events send nothing to late joiners either
         pl.sched.entityLater(p, () -> {
             if (active.get(ae.ev.id()) != ae) return;
             Map<String, Object> ph = placeholders(ae);

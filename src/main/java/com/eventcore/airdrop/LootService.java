@@ -11,13 +11,15 @@ import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.PotionMeta;
+import org.bukkit.potion.PotionType;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Loot tables from loot.yml:  tiers.&lt;tier&gt;.entries.&lt;id&gt; { material, name, lore, enchants, item-data (base64 stack),
- * amount-min, amount-max, chance (0-100), commands }. Each entry is rolled independently.
+ * potion (PotionType key, e.g. LONG_STRENGTH), amount-min, amount-max, chance (0-100), commands }. Each entry is rolled independently.
  */
 public final class LootService {
     public record Result(List<ItemStack> items, List<String> commands) { }
@@ -87,6 +89,10 @@ public final class LootService {
             if (ench == null) continue;
             if (meta instanceof EnchantmentStorageMeta sm) sm.addStoredEnchant(ench, en.getInt(k), true);
             else meta.addEnchant(ench, en.getInt(k), true);
+        }
+        if (meta instanceof PotionMeta pm && e.contains("potion")) {                 // potion: LONG_STRENGTH = the 8 minute strength potion
+            PotionType type = Registry.POTION.get(NamespacedKey.minecraft(e.getString("potion", "water").toLowerCase(Locale.ROOT)));
+            if (type != null) pm.setBasePotionType(type);
         }
         if (e.getBoolean("hide-flags", false)) meta.addItemFlags(ItemFlag.values());
         it.setItemMeta(meta);

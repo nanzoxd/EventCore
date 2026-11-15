@@ -17,6 +17,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.Transformation;
 import org.joml.AxisAngle4f;
+import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 import java.util.ArrayList;
@@ -26,6 +27,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
+ * The crate you see is a BlockDisplay (copper by default) that spins, tilted, while it falls; the invisible shulker is only its
+ * hitbox. Hits ring like metal (copper, chain, shield) and shake the crate.
  * One crate. FALLING (timed descent under a chicken parachute, locked, invulnerable) -> LOCKED (optional grace) ->
  * READY (virtual HP, spam-hit to open) -> OPENED (loot straight into the opener's inventory).
  * The fall always takes exactly fall.duration-minutes, whatever the height. Parachute idea taken from Airdrop 4.x:
@@ -41,6 +44,9 @@ public final class AirdropCrate {
     private final String tier, code;
     private final Location ground;
     private Shulker shulker;
+    private BlockDisplay crate;                // the visible crate (entity display)
+    private double crateScale = 1.0;
+    private float spin;                        // degrees, grows while falling
     private TextDisplay holo;
     private final List<Chicken> chickens = new ArrayList<>();
     private ScheduledTask task;
@@ -79,7 +85,7 @@ public final class AirdropCrate {
     private Map<String, Object> ph() {
         return Text.ph("tier", owner.tierName(tier), "tier_plain", Util.title(tier), "code", code, "world", ground.getWorld().getName(),
                 "x", ground.getBlockX(), "y", ground.getBlockY(), "z", ground.getBlockZ(),
-                "hp", hp, "max", maxHp, "bar", hpBar(),
+                "hp", hp, "max", maxHp, "pct", maxHp == 0 ? 0 : (int) Math.round(100.0 * hp / maxHp), "bar", hpBar(),
                 "time", secondsLeft(), "time_fmt", AirdropEvent.fmtTime(secondsLeft()),
                 "seconds", Math.max(0, (lockUntil - System.currentTimeMillis()) / 1000));
     }
@@ -105,8 +111,10 @@ public final class AirdropCrate {
         shulker = w.spawn(start, Shulker.class, sh -> {
             sh.setAI(false); sh.setGravity(false); sh.setInvulnerable(true); sh.setSilent(true);
             sh.setPersistent(false); sh.setRemoveWhenFarAway(false); sh.setColor(dye); sh.setPeek(0f);
+            sh.setInvisible(s().getBoolean("crate.enabled", true));        // only the hitbox: the block display is the crate
             sh.getPersistentDataContainer().set(CHUTE, PersistentDataType.BYTE, (byte) 2);
         });
+        spawnCrate(w, start);
         spawnParachute(w, start);
         if (s().getBoolean("hologram.enabled", true)) {
             holo = w.spawn(start.clone().add(0, hologramOffset(), 0), TextDisplay.class, d -> {
@@ -166,6 +174,55 @@ public final class AirdropCrate {
     }
 
     private double hologramOffset() { return s().getDouble("hologram.offset", 1.9); }
+
+    // ---------- crate (block display) ----------
+    private Color glowColor() {
+        List<String> g = t().getStringList("gradient");
+        try { if (!g.isEmpty()) return Color.fromRGB(Integer.parseInt(g.get(g.size() - 1).replace("#", ""), 16)); } catch (Exception ignored) { }
+        return Color.fromRGB(0xFFB27A);
+    }
+
+    private void spawnCrate(World w, Location start) {
+        if (!s().getBoolean("crate.enabled", true)) return;
+        Material m = Material.matchMaterial(t().getString("crate-block", s().getString("crate.block", "CHISELED_COPPER")));
+        if (m == null || !m.isBlock()) m = Material.matchMaterial("CHISELED_COPPER") != null ? Material.matchMaterial("CHISELED_COPPER") : Material.IRON_BLOCK;
+        crateScale = Math.max(0.3, s().getDouble("crate.scale", 1.0));
+        final Material fm = m;
+        crate = w.spawn(start, BlockDisplay.class, d -> {
+            d.setBlock(fm.createBlockData());
+            d.setPersistent(false);
+            d.setTeleportDuration(Math.max(0, Math.min(59, s().getInt("crate.teleport-duration", 2))));   // smooth movement between teleports
+            d.setBrightness(new Display.Brightness(15, 15));
+            d.setViewRange((float) s().getDouble("crate.view-range", 2.0));                              // visible from far away
+            if (s().getBoolean("crate.glow", true)) { d.setGlowing(true); d.setGlowColorOverride(glowColor()); }
+            d.getPersistentDataContainer().set(CHUTE, PersistentDataType.BYTE, (byte) 3);
+        });
+        pose(0f, (float) s().getDouble("crate.tilt-degrees", 22.0), 0, 1.0);
+    }
+
+    /** Rotates the block around its own centre (yaw + tilt), with a smooth interpolation of `duration` ticks. */
+    private void pose(float yawDeg, float tiltDeg, int duration, double scaleMul) {
+        if (crate == null || !crate.isValid()) return;
+        float sc = (float) (crateScale * scaleMul), half = sc / 2f;
+        Quaternionf q = new Quaternionf().rotateY((float) Math.toRadians(yawDeg)).rotateX((float) Math.toRadians(tiltDeg)).rotateZ((float) Math.toRadians(tiltDeg * 0.6));
+        org.joml.Vector3f centre = new org.joml.Vector3f(half, half, half);
+        q.transform(centre);
+        org.joml.Vector3f tr = new org.joml.Vector3f(0f, (float) crateScale / 2f, 0f).sub(centre);       // keep the centre in the same spot
+        crate.setInterpolationDelay(0);
+        crate.setInterpolationDuration(Math.max(0, duration));
+        crate.setTransformation(new Transformation(tr, q, new org.joml.Vector3f(sc, sc, sc), new Quaternionf()));
+    }
+
+    /** Plays every sound spec under `parent` once, each with a slightly random pitch (metal never rings the same twice). */
+    private void playExtras(ConfigurationSection parent) {
+        if (parent == null) return;
+        for (String k : parent.getKeys(false)) {
+            var so = pl.fx.sound(parent.getConfigurationSection(k));
+            if (so == null) continue;
+            float jitter = 0.9f + (float) Math.random() * 0.25f;
+            ground.getWorld().playSound(net.kyori.adventure.sound.Sound.sound(so.name(), so.source(), so.volume(), so.pitch() * jitter), ground.getX(), ground.getY(), ground.getZ());
+        }
+    }
 
     // ---------- parachute ----------
     private int chuteCount() { return Math.max(0, Math.min(16, s().getInt("parachute.chickens", 5))); }
@@ -227,6 +284,13 @@ public final class AirdropCrate {
             double top = ground.getY() + fallHeight;
             Location l = new Location(ground.getWorld(), ground.getX(), top - (top - ground.getY()) * f, ground.getZ());
             shulker.teleportAsync(l);
+            if (crate != null && crate.isValid()) {
+                crate.teleportAsync(l);
+                if (s().getBoolean("crate.spin", true) && tick % 10 == 0) {          // slow tumble: 10 ticks per step, always less than 180 degrees
+                    spin += (float) Math.min(150.0, s().getDouble("crate.spin-degrees-per-second", 90.0)) / 2f;
+                    pose(spin, (float) s().getDouble("crate.tilt-degrees", 22.0), 10, 1.0);
+                }
+            }
             if (holo != null) holo.teleportAsync(l.clone().add(0, hologramOffset() + (chuteCount() > 0 ? chuteHeight() : 0), 0));
             moveParachute(l);
             ConfigurationSection trail = owner.resolve(tier, "trail", "fall.trail");
@@ -261,6 +325,7 @@ public final class AirdropCrate {
         int exp = s().getInt("land.expire-seconds", 600);
         expireAt = exp > 0 ? System.currentTimeMillis() + exp * 1000L : 0;
         shulker.teleportAsync(ground);
+        if (crate != null && crate.isValid()) { crate.teleportAsync(ground); pose(0f, 0f, 6, 1.0); }      // lands upright
         if (holo != null) holo.teleportAsync(ground.clone().add(0, hologramOffset(), 0));
         releaseParachute();
         World w = ground.getWorld();
@@ -331,6 +396,13 @@ public final class AirdropCrate {
                 }
                 var so = pl.fx.sound(owner.resolve(tier, "sounds.hit", "hit.sound"));
                 if (so != null) ground.getWorld().playSound(so, ground.getX(), ground.getY(), ground.getZ());
+                playExtras(s().getConfigurationSection("hit.extra-sounds"));                                      // chain / shield clang on top
+                ground.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, ground.clone().add(0, crateScale / 2, 0), 8, 0.4, 0.4, 0.4, 0.05);
+                if (crate != null && crate.isValid() && s().getBoolean("crate.shake", true)) {
+                    float t = (Math.random() < 0.5 ? -1 : 1) * (4f + (float) Math.random() * 4f);
+                    pose(0f, t, 1, 1.04);
+                    pl.sched.regionLater(ground, () -> pose(0f, 0f, 3, 1.0), 2);
+                }
                 if (hp <= 0) { hp = 0; open(p); return; }
                 updateHolo();
                 p.sendActionBar(pl.text.render(s().getString("hit.actionbar", "{bar} {hp}/{max}"), ph()));
@@ -351,6 +423,8 @@ public final class AirdropCrate {
         pl.sched.region(ground, () -> {
             if (so != null) ground.getWorld().playSound(so, ground.getX(), ground.getY(), ground.getZ());
             if (shulker != null && shulker.isValid()) shulker.setPeek(1f);
+            pose(0f, 0f, 5, 1.25);
+            playExtras(s().getConfigurationSection("open.extra-sounds"));
             ConfigurationSection op = s().getConfigurationSection("open.particles");
             if (op != null) pl.particles.play(ground.clone(), pl.particles.read(op), 0);
         });
@@ -386,6 +460,7 @@ public final class AirdropCrate {
         Runnable rm = () -> {
             releaseParachute();
             if (shulker != null) shulker.remove();
+            if (crate != null) crate.remove();
             if (holo != null) holo.remove();
             try { ground.getWorld().removePluginChunkTicket(ground.getBlockX() >> 4, ground.getBlockZ() >> 4, pl); } catch (Throwable ignored) { }
         };

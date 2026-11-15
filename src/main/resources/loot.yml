@@ -1,28 +1,119 @@
 # Loot per crate tier. Edit in-game with /eventcore gui > loot tables.
-# Entry: material, name, lore, enchants, item-data (base64 stack, set by the GUI), amount-min/max, chance (0-100), commands ({player}).
+# Every entry is rolled on its own (chance 0-100), so a crate can give many things. Better tiers give more and better loot.
+# Entry: material, name, lore, enchants, potion (a PotionType: LONG_STRENGTH, LONG_SWIFTNESS, LONG_FIRE_RESISTANCE... = the 8 minute potions),
+#        item-data (base64 stack, set by the GUI), amount-min/max, chance (0-100), commands ({player}).
 tiers:
   iron:
     entries:
-      coal: {material: COAL, amount-min: 8, amount-max: 24, chance: 80.0}
-      iron: {material: IRON_INGOT, amount-min: 4, amount-max: 12, chance: 70.0}
-      bread: {material: BREAD, amount-min: 6, amount-max: 16, chance: 60.0}
-      arrows: {material: ARROW, amount-min: 16, amount-max: 32, chance: 40.0}
+      iron_ingot: {material: IRON_INGOT, amount-min: 8, amount-max: 24, chance: 80.0}
+      iron_block: {material: IRON_BLOCK, amount-min: 1, amount-max: 3, chance: 40.0}
+      gold_ingot: {material: GOLD_INGOT, amount-min: 4, amount-max: 12, chance: 50.0}
+      gold_block: {material: GOLD_BLOCK, amount-min: 1, amount-max: 2, chance: 15.0}
+      diamond: {material: DIAMOND, amount-min: 1, amount-max: 3, chance: 25.0}
+      coal: {material: COAL, amount-min: 8, amount-max: 24, chance: 60.0}
+      bread: {material: COOKED_BEEF, amount-min: 12, amount-max: 24, chance: 60.0}
+      arrows: {material: ARROW, amount-min: 24, amount-max: 48, chance: 40.0}
+      xp: {material: EXPERIENCE_BOTTLE, amount-min: 8, amount-max: 16, chance: 50.0}
+      gapple: {material: GOLDEN_APPLE, amount-min: 1, amount-max: 2, chance: 25.0}
+      pearls: {material: ENDER_PEARL, amount-min: 2, amount-max: 4, chance: 25.0}
+      breeze_rod: {material: BREEZE_ROD, amount-min: 2, amount-max: 5, chance: 20.0}
+      enchanting_table: {material: ENCHANTING_TABLE, amount-min: 1, amount-max: 1, chance: 20.0}
+      shield: {material: SHIELD, enchants: {unbreaking: 2}, amount-min: 1, amount-max: 1, chance: 15.0}
+      iron_sword: {material: IRON_SWORD, enchants: {sharpness: 3, unbreaking: 2}, amount-min: 1, amount-max: 1, chance: 20.0}
+      iron_pickaxe: {material: IRON_PICKAXE, enchants: {efficiency: 3, unbreaking: 2}, amount-min: 1, amount-max: 1, chance: 20.0}
+      iron_axe: {material: IRON_AXE, enchants: {sharpness: 3, efficiency: 3}, amount-min: 1, amount-max: 1, chance: 15.0}
+      speed_potion: {material: POTION, potion: LONG_SWIFTNESS, amount-min: 1, amount-max: 1, chance: 30.0}
+      fire_potion: {material: POTION, potion: LONG_FIRE_RESISTANCE, amount-min: 1, amount-max: 1, chance: 25.0}
   gold:
     entries:
-      gold: {material: GOLD_INGOT, amount-min: 6, amount-max: 16, chance: 80.0}
-      apples: {material: GOLDEN_APPLE, amount-min: 1, amount-max: 3, chance: 50.0}
-      xp: {material: EXPERIENCE_BOTTLE, amount-min: 8, amount-max: 24, chance: 60.0}
-      sword: {material: IRON_SWORD, name: "<g>drop blade</g>", enchants: {sharpness: 3, unbreaking: 2}, amount-min: 1, amount-max: 1, chance: 20.0}
+      gold_ingot: {material: GOLD_INGOT, amount-min: 12, amount-max: 32, chance: 80.0}
+      gold_block: {material: GOLD_BLOCK, amount-min: 2, amount-max: 5, chance: 50.0}
+      iron_block: {material: IRON_BLOCK, amount-min: 3, amount-max: 8, chance: 50.0}
+      iron_ingot: {material: IRON_INGOT, amount-min: 16, amount-max: 32, chance: 60.0}
+      diamond: {material: DIAMOND, amount-min: 3, amount-max: 8, chance: 60.0}
+      diamond_block: {material: DIAMOND_BLOCK, amount-min: 1, amount-max: 2, chance: 25.0}
+      enchanting_table: {material: ENCHANTING_TABLE, amount-min: 1, amount-max: 1, chance: 35.0}
+      xp: {material: EXPERIENCE_BOTTLE, amount-min: 16, amount-max: 32, chance: 70.0}
+      gapple: {material: GOLDEN_APPLE, amount-min: 3, amount-max: 6, chance: 60.0}
+      egap: {material: ENCHANTED_GOLDEN_APPLE, amount-min: 1, amount-max: 1, chance: 8.0}
+      breeze_rod: {material: BREEZE_ROD, amount-min: 3, amount-max: 8, chance: 40.0}
+      pearls: {material: ENDER_PEARL, amount-min: 3, amount-max: 6, chance: 40.0}
+      shield: {material: SHIELD, enchants: {unbreaking: 3}, amount-min: 1, amount-max: 1, chance: 35.0}
+      template: {material: NETHERITE_UPGRADE_SMITHING_TEMPLATE, amount-min: 1, amount-max: 1, chance: 10.0}
+      totem: {material: TOTEM_OF_UNDYING, amount-min: 1, amount-max: 1, chance: 8.0}
+      strength_potion: {material: POTION, potion: LONG_STRENGTH, amount-min: 1, amount-max: 1, chance: 40.0}
+      speed_potion: {material: POTION, potion: LONG_SWIFTNESS, amount-min: 1, amount-max: 1, chance: 40.0}
+      fire_potion: {material: POTION, potion: LONG_FIRE_RESISTANCE, amount-min: 1, amount-max: 1, chance: 40.0}
+      diamond_sword: {material: DIAMOND_SWORD, enchants: {sharpness: 3, unbreaking: 2}, amount-min: 1, amount-max: 1, chance: 20.0}
+      diamond_pickaxe: {material: DIAMOND_PICKAXE, enchants: {efficiency: 3, unbreaking: 3}, amount-min: 1, amount-max: 1, chance: 20.0}
+      diamond_axe: {material: DIAMOND_AXE, enchants: {sharpness: 3, efficiency: 3, unbreaking: 2}, amount-min: 1, amount-max: 1, chance: 15.0}
+      diamond_helmet: {material: DIAMOND_HELMET, enchants: {protection: 3, unbreaking: 3}, amount-min: 1, amount-max: 1, chance: 10.0}
+      diamond_chestplate: {material: DIAMOND_CHESTPLATE, enchants: {protection: 3, unbreaking: 3}, amount-min: 1, amount-max: 1, chance: 10.0}
+      diamond_leggings: {material: DIAMOND_LEGGINGS, enchants: {protection: 3, unbreaking: 3}, amount-min: 1, amount-max: 1, chance: 10.0}
+      diamond_boots: {material: DIAMOND_BOOTS, enchants: {protection: 3, unbreaking: 3}, amount-min: 1, amount-max: 1, chance: 10.0}
   diamond:
     entries:
-      diamond: {material: DIAMOND, amount-min: 3, amount-max: 8, chance: 80.0}
-      gapple: {material: GOLDEN_APPLE, amount-min: 3, amount-max: 6, chance: 60.0}
-      pearls: {material: ENDER_PEARL, amount-min: 2, amount-max: 6, chance: 50.0}
-      chest: {material: DIAMOND_CHESTPLATE, enchants: {protection: 3, unbreaking: 3}, amount-min: 1, amount-max: 1, chance: 15.0}
+      diamond: {material: DIAMOND, amount-min: 8, amount-max: 20, chance: 80.0}
+      diamond_block: {material: DIAMOND_BLOCK, amount-min: 2, amount-max: 5, chance: 55.0}
+      gold_block: {material: GOLD_BLOCK, amount-min: 4, amount-max: 10, chance: 50.0}
+      iron_block: {material: IRON_BLOCK, amount-min: 6, amount-max: 12, chance: 50.0}
+      gold_ingot: {material: GOLD_INGOT, amount-min: 16, amount-max: 40, chance: 60.0}
+      scrap: {material: NETHERITE_SCRAP, amount-min: 1, amount-max: 3, chance: 35.0}
+      template: {material: NETHERITE_UPGRADE_SMITHING_TEMPLATE, amount-min: 1, amount-max: 2, chance: 25.0}
+      gapple: {material: GOLDEN_APPLE, amount-min: 6, amount-max: 12, chance: 60.0}
+      egap: {material: ENCHANTED_GOLDEN_APPLE, amount-min: 1, amount-max: 3, chance: 35.0}
+      xp: {material: EXPERIENCE_BOTTLE, amount-min: 32, amount-max: 64, chance: 70.0}
+      breeze_rod: {material: BREEZE_ROD, amount-min: 5, amount-max: 12, chance: 50.0}
+      pearls: {material: ENDER_PEARL, amount-min: 4, amount-max: 10, chance: 50.0}
+      enchanting_table: {material: ENCHANTING_TABLE, amount-min: 1, amount-max: 1, chance: 40.0}
+      totem: {material: TOTEM_OF_UNDYING, amount-min: 1, amount-max: 1, chance: 20.0}
+      shield: {material: SHIELD, enchants: {unbreaking: 3, mending: 1}, amount-min: 1, amount-max: 1, chance: 45.0}
+      strength_potion: {material: POTION, potion: LONG_STRENGTH, amount-min: 1, amount-max: 2, chance: 50.0}
+      speed_potion: {material: POTION, potion: LONG_SWIFTNESS, amount-min: 1, amount-max: 2, chance: 50.0}
+      fire_potion: {material: POTION, potion: LONG_FIRE_RESISTANCE, amount-min: 1, amount-max: 2, chance: 50.0}
+      water_potion: {material: POTION, potion: LONG_WATER_BREATHING, amount-min: 1, amount-max: 1, chance: 30.0}
+      night_potion: {material: POTION, potion: LONG_NIGHT_VISION, amount-min: 1, amount-max: 1, chance: 30.0}
+      diamond_helmet: {material: DIAMOND_HELMET, enchants: {protection: 4, unbreaking: 3, mending: 1, respiration: 3, aqua_affinity: 1}, amount-min: 1, amount-max: 1, chance: 12.0}
+      diamond_chestplate: {material: DIAMOND_CHESTPLATE, enchants: {protection: 4, unbreaking: 3, mending: 1}, amount-min: 1, amount-max: 1, chance: 12.0}
+      diamond_leggings: {material: DIAMOND_LEGGINGS, enchants: {protection: 4, unbreaking: 3, mending: 1}, amount-min: 1, amount-max: 1, chance: 12.0}
+      diamond_boots: {material: DIAMOND_BOOTS, enchants: {protection: 4, unbreaking: 3, mending: 1, feather_falling: 4, depth_strider: 3}, amount-min: 1, amount-max: 1, chance: 12.0}
+      diamond_sword: {material: DIAMOND_SWORD, enchants: {sharpness: 5, unbreaking: 3, mending: 1, fire_aspect: 2, looting: 3, sweeping_edge: 3}, amount-min: 1, amount-max: 1, chance: 12.0}
+      diamond_pickaxe: {material: DIAMOND_PICKAXE, enchants: {efficiency: 5, unbreaking: 3, mending: 1, fortune: 3}, amount-min: 1, amount-max: 1, chance: 12.0}
+      diamond_axe: {material: DIAMOND_AXE, enchants: {sharpness: 5, efficiency: 5, unbreaking: 3, mending: 1}, amount-min: 1, amount-max: 1, chance: 12.0}
+      diamond_shovel: {material: DIAMOND_SHOVEL, enchants: {efficiency: 5, unbreaking: 3, mending: 1}, amount-min: 1, amount-max: 1, chance: 10.0}
   netherite:
     entries:
-      scrap: {material: NETHERITE_SCRAP, amount-min: 2, amount-max: 5, chance: 80.0}
-      ingot: {material: NETHERITE_INGOT, amount-min: 1, amount-max: 2, chance: 40.0}
-      egap: {material: ENCHANTED_GOLDEN_APPLE, amount-min: 1, amount-max: 2, chance: 35.0}
-      totem: {material: TOTEM_OF_UNDYING, amount-min: 1, amount-max: 1, chance: 25.0}
-      bonus-command: {chance: 10.0, commands: ["say {player} found a rare reward!"]}
+      netherite_ingot: {material: NETHERITE_INGOT, amount-min: 2, amount-max: 5, chance: 70.0}
+      scrap: {material: NETHERITE_SCRAP, amount-min: 4, amount-max: 10, chance: 70.0}
+      template: {material: NETHERITE_UPGRADE_SMITHING_TEMPLATE, amount-min: 2, amount-max: 3, chance: 60.0}
+      egap: {material: ENCHANTED_GOLDEN_APPLE, amount-min: 2, amount-max: 3, chance: 70.0}
+      diamond_block: {material: DIAMOND_BLOCK, amount-min: 3, amount-max: 8, chance: 60.0}
+      gold_block: {material: GOLD_BLOCK, amount-min: 6, amount-max: 12, chance: 50.0}
+      iron_block: {material: IRON_BLOCK, amount-min: 8, amount-max: 16, chance: 50.0}
+      gapple: {material: GOLDEN_APPLE, amount-min: 8, amount-max: 16, chance: 60.0}
+      xp: {material: EXPERIENCE_BOTTLE, amount-min: 48, amount-max: 64, chance: 80.0}
+      breeze_rod: {material: BREEZE_ROD, amount-min: 8, amount-max: 16, chance: 60.0}
+      pearls: {material: ENDER_PEARL, amount-min: 8, amount-max: 16, chance: 50.0}
+      enchanting_table: {material: ENCHANTING_TABLE, amount-min: 1, amount-max: 2, chance: 40.0}
+      totem: {material: TOTEM_OF_UNDYING, amount-min: 1, amount-max: 2, chance: 40.0}
+      shield: {material: SHIELD, enchants: {unbreaking: 3, mending: 1}, amount-min: 1, amount-max: 1, chance: 50.0}
+      elytra: {material: ELYTRA, enchants: {unbreaking: 3, mending: 1}, amount-min: 1, amount-max: 1, chance: 8.0}
+      mace: {material: MACE, enchants: {density: 5, breach: 4, unbreaking: 3, mending: 1}, amount-min: 1, amount-max: 1, chance: 8.0}
+      strength_potion: {material: POTION, potion: LONG_STRENGTH, amount-min: 2, amount-max: 3, chance: 60.0}
+      speed_potion: {material: POTION, potion: LONG_SWIFTNESS, amount-min: 2, amount-max: 3, chance: 60.0}
+      fire_potion: {material: POTION, potion: LONG_FIRE_RESISTANCE, amount-min: 2, amount-max: 3, chance: 60.0}
+      water_potion: {material: POTION, potion: LONG_WATER_BREATHING, amount-min: 1, amount-max: 2, chance: 40.0}
+      night_potion: {material: POTION, potion: LONG_NIGHT_VISION, amount-min: 1, amount-max: 2, chance: 40.0}
+      netherite_helmet: {material: NETHERITE_HELMET, enchants: {protection: 4, unbreaking: 3, mending: 1, respiration: 3, aqua_affinity: 1}, amount-min: 1, amount-max: 1, chance: 25.0}
+      netherite_chestplate: {material: NETHERITE_CHESTPLATE, enchants: {protection: 4, unbreaking: 3, mending: 1}, amount-min: 1, amount-max: 1, chance: 25.0}
+      netherite_leggings: {material: NETHERITE_LEGGINGS, enchants: {protection: 4, unbreaking: 3, mending: 1}, amount-min: 1, amount-max: 1, chance: 25.0}
+      netherite_boots: {material: NETHERITE_BOOTS, enchants: {protection: 4, unbreaking: 3, mending: 1, feather_falling: 4, depth_strider: 3}, amount-min: 1, amount-max: 1, chance: 25.0}
+      netherite_sword: {material: NETHERITE_SWORD, enchants: {sharpness: 5, unbreaking: 3, mending: 1, fire_aspect: 2, looting: 3, sweeping_edge: 3}, amount-min: 1, amount-max: 1, chance: 25.0}
+      netherite_pickaxe: {material: NETHERITE_PICKAXE, enchants: {efficiency: 5, unbreaking: 3, mending: 1, fortune: 3}, amount-min: 1, amount-max: 1, chance: 25.0}
+      netherite_axe: {material: NETHERITE_AXE, enchants: {sharpness: 5, efficiency: 5, unbreaking: 3, mending: 1}, amount-min: 1, amount-max: 1, chance: 20.0}
+      netherite_shovel: {material: NETHERITE_SHOVEL, enchants: {efficiency: 5, unbreaking: 3, mending: 1}, amount-min: 1, amount-max: 1, chance: 15.0}
+      diamond_helmet: {material: DIAMOND_HELMET, enchants: {protection: 4, unbreaking: 3, mending: 1, respiration: 3, aqua_affinity: 1}, amount-min: 1, amount-max: 1, chance: 10.0}
+      diamond_chestplate: {material: DIAMOND_CHESTPLATE, enchants: {protection: 4, unbreaking: 3, mending: 1}, amount-min: 1, amount-max: 1, chance: 10.0}
+      diamond_leggings: {material: DIAMOND_LEGGINGS, enchants: {protection: 4, unbreaking: 3, mending: 1}, amount-min: 1, amount-max: 1, chance: 10.0}
+      diamond_boots: {material: DIAMOND_BOOTS, enchants: {protection: 4, unbreaking: 3, mending: 1, feather_falling: 4, depth_strider: 3}, amount-min: 1, amount-max: 1, chance: 10.0}
+      diamond_sword: {material: DIAMOND_SWORD, enchants: {sharpness: 5, unbreaking: 3, mending: 1, fire_aspect: 2, looting: 3, sweeping_edge: 3}, amount-min: 1, amount-max: 1, chance: 10.0}

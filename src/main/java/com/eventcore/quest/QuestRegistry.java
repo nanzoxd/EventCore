@@ -65,7 +65,7 @@ public final class QuestRegistry {
             q.icon = m == null ? Material.PAPER : m;
             for (String x : s.getStringList("targets")) q.targets.add(x.toUpperCase(Locale.ROOT));
             q.amount = Math.max(1, s.getInt("amount", 1));
-            q.requires = s.getString("requires", "").toLowerCase(Locale.ROOT);
+            q.requires = "";                                                      // quests are never locked
             q.order = order++;
             quests.put(q.id, q);
         }
@@ -94,7 +94,7 @@ public final class QuestRegistry {
             String p = "quests." + q.id + ".";
             y.set(p + "category", q.category); y.set(p + "title", q.title); y.set(p + "description", q.description);
             y.set(p + "icon", q.icon.name()); y.set(p + "type", q.type.name()); y.set(p + "targets", new ArrayList<>(q.targets));
-            y.set(p + "amount", q.amount); y.set(p + "requires", q.requires);
+            y.set(p + "amount", q.amount);
         }
         try { y.save(file); } catch (Exception e) { pl.getLogger().warning("quests.yml could not be saved: " + e); }
     }

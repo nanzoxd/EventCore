@@ -26,7 +26,7 @@ import java.util.function.BiConsumer;
 
 /**
  * /quest: ONE single menu with the quests (max 45, no pages), only as tall as the quests need: one row per 9 quests plus the glass row. Last row is glass with the scoreboard and a red close pane
- * in the middle. Left-click starts a quest, right-click abandons it.
+ * in the middle. Every quest counts on its own: nothing to start, nothing locked.
  */
 public final class QuestGui implements Listener {
     static final class Holder implements InventoryHolder {
@@ -96,7 +96,7 @@ public final class QuestGui implements Listener {
         all.sort(Comparator.comparingInt(q -> switch (qm.status(d, q)) { case ACTIVE -> 0; case AVAILABLE -> 1; case COMPLETED -> 2; default -> 3; }));
         for (int i = 0; i < Math.min(Math.min(MAX, h.base), all.size()); i++) {
             Quest q = all.get(i);
-            set(h, i, questItem(d, q), (pp, c) -> clickQuest(h, pp, q, c));
+            set(h, i, questItem(d, q), null);
         }
 
         // last row: glass
@@ -124,23 +124,11 @@ public final class QuestGui implements Listener {
         return item(pl, Material.NETHER_STAR, NAME + "scoreboard" + END, lore, ph, false);
     }
 
-    private void clickQuest(Holder h, Player p, Quest q, ClickType c) {
-        Status s = qm.status(qm.dataFor(p), q);
-        if (c.isRightClick() && s == Status.ACTIVE) {
-            String err = qm.abandon(p, q);
-            p.sendMessage(err == null ? qm.msg("abandoned", "title", q.title) : qm.msg(err));
-        } else if (c.isLeftClick() && s == Status.AVAILABLE) {
-            String err = qm.startQuest(p, q);
-            p.sendMessage(err == null ? qm.msg("started", "title", q.title) : qm.msg(err));
-        } else return;
-        render(h, p);
-    }
-
     /** One quest: title, objective, progress and reward. Nothing else. */
     private ItemStack questItem(PlayerQuestData d, Quest q) {
         Status s = qm.status(d, q);
         int cur = d.state(q.id) == PlayerQuestData.DONE ? q.amount : d.progress(q.id);
-        String col = switch (s) { case ACTIVE -> "<#FFD54A>"; case COMPLETED -> "<#00FF55>"; case LOCKED -> "<#7F7F7F>"; default -> "<#FFFFFF>"; };
+        String col = s == Status.COMPLETED ? "<#00FF55>" : cur > 0 ? "<#FFD54A>" : "<#FFFFFF>";
         Map<String, Object> ph = new HashMap<>();
         ph.put("title", q.title);
         ph.put("obj", q.objective());
@@ -155,8 +143,6 @@ public final class QuestGui implements Listener {
             default -> lore.add("<#A5B8FF>Progress: <#FFFFFF>" + cur + "<#AAAAAA>/" + q.amount);
         }
         lore.add("<#A5B8FF>Reward: <#00FF55>1 point");
-        if (s == Status.AVAILABLE) { lore.add(""); lore.add("<#7F7F7F>left-click to start"); }
-        else if (s == Status.ACTIVE && qm.reg.allowAbandon) { lore.add(""); lore.add("<#7F7F7F>right-click to abandon"); }
 
         Material icon = s == Status.LOCKED ? Material.BARRIER : q.icon;
         return item(pl, icon, col + "{title}", lore, ph, s == Status.COMPLETED);   // only completed quests are enchanted

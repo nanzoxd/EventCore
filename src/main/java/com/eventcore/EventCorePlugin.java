@@ -69,6 +69,7 @@ public final class EventCorePlugin extends JavaPlugin {
     public com.eventcore.quest.QuestAdminGui questAdmin;
     public com.eventcore.quest.RewardSetupGui rewardGui;
     public HuntManager hunt;
+    public com.eventcore.koth.KothEvent koth;
     public BountyManager bounty;
     public BountyGui bountyGui;
     public ConfigGui configGui;
@@ -152,6 +153,11 @@ public final class EventCorePlugin extends JavaPlugin {
             catch (Throwable t) { getLogger().warning("PlaceholderAPI hook failed: " + t); }
         }
 
+        com.eventcore.gui.dialog.Ui.bind(this);                          // dialog framework
+        com.eventcore.gui.dialog.DialogSupport.reloadTheme(this);
+        koth = new com.eventcore.koth.KothEvent(this);                   // King of the Hill
+        events.register(koth);
+        getServer().getPluginManager().registerEvents(new com.eventcore.koth.KothCommands(this, koth), this);
         EventCoreCommand ecCmd = new EventCoreCommand(this);
         getCommand("eventcore").setExecutor(ecCmd);
         getCommand("eventcore").setTabCompleter(ecCmd);
@@ -247,6 +253,7 @@ public final class EventCorePlugin extends JavaPlugin {
         if (ritualSchedule != null) ritualSchedule.shutdown();
         if (ritual != null) ritual.shutdown();
         if (altar != null) altar.shutdown();
+        if (koth != null) koth.shutdown();
         if (hunt != null) hunt.shutdown();
         if (bounty != null) bounty.shutdown();
         if (teams != null) teams.shutdown();
@@ -277,6 +284,7 @@ public final class EventCorePlugin extends JavaPlugin {
     /** /eventcore reload and the GUI reload button. Active events and the ritual keep running. */
     public void reloadAll(CommandSender who) {
         cfg.reload();
+        com.eventcore.gui.dialog.DialogSupport.reloadTheme(this);
         scheduler.rebuild();
         who.sendMessage(msg("command.reloaded"));
         altar.reload();

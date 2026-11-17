@@ -674,15 +674,21 @@ events:
         flare: {shape: spiral, particle: END_ROD, count: 30, radius: 0.3, height: 0.0, rise: 25.0, turns: 6.0, spin: 12.0, particles-min: 1, particles-max: 1}
       crate:                     # the crate you see is a block display; the shulker is only its invisible hitbox
         enabled: true            # false = the old visible shulker
-        block: CHISELED_COPPER   # default block (every tier can set its own crate-block)
-        scale: 1.0               # keep near 1.0: it must match the hitbox
+        size: 2.0                # edge length in blocks: 2 = a 2x2x2 crate (the shulker hitbox is scaled to match)
+        model: balloon           # balloon = plain-block hot-air balloon + lead ropes + burner flame, NO resource pack needed (tier coloured) | pack = same with the EventCore-SupplyDrop-Pack models | legacy = old crate + chicken parachute
+        body: DARK_OAK_PLANKS    # wooden supply crate, same for every tier: plank body ...
+        frame: DARK_OAK_LOG      # ... a frame of 12 beams (none of the parts overlap, so nothing flickers) ...
+        cross: SPRUCE_PLANKS     # ... and one diagonal board on each side face (crate.single-diagonal: false = X on all 6 faces)
+        beams: true              # false = no frame
+        cross-bars: true         # false = no X
         glow: true               # tier coloured outline, visible from far away (like a supply drop marker)
         view-range: 2.0          # 1.0 = 64 blocks; 2.0 = seen from twice as far
         spin: true               # slow tumble while it falls
         spin-degrees-per-second: 90
         tilt-degrees: 22         # the crate falls tilted
         shake: true              # every hit shakes the crate
-        teleport-duration: 2     # ticks of smoothing between movement steps
+        teleport-duration: 4     # ticks of smoothing between movement steps (keep equal to move-interval-ticks)
+        move-interval-ticks: 4   # how often the crate parts are moved while it falls (less = smoother, more entity work)
       parachute:                 # chickens leashed to the crate (shulker). Off by default: the crate tumbles down.
         enabled: false
         chickens: 5
@@ -702,6 +708,10 @@ events:
           text: "<g>{tier_plain} lootdrop landed at {world} {x} {y} {z}</g>"
           sound: {sound: "block.note_block.bell", volume: 0.3, pitch: 0.8}
         broadcast-title: true
+        blast:                   # right after the fall: explosion, flames, debris, smoke cloud and sound
+          enabled: true
+          smoke: 60
+        smoke-column: true       # a thin smoke column keeps showing where the landed crate is
         lock-seconds: 3
         expire-seconds: 600
         ambient-sound: {sound: "item.elytra.flying", volume: 0.3, pitch: 0.5}   # low-pitched elytra wind next to the landed crate
@@ -725,6 +735,13 @@ events:
         actionbar: "<n>{bar} <color:#fffbf0>{hp}</color><color:#ffd7ca>/{max}</color></n>"
       open:
         sound: {sound: "block.shulker_box.open", volume: 0.6, pitch: 1.0}
+        scatter:                 # the loot bursts out and lands on the ground around the crate (nothing goes straight into an inventory)
+          enabled: true          # false = give it to the player who opened the crate
+          horizontal-min: 0.12   # how far the items fly
+          horizontal-max: 0.38
+          up: 0.42               # how high they pop
+          pickup-delay-ticks: 15
+          glow: false            # white outline on the dropped items
         extra-sounds:
           clang: {sound: "block.copper.break", volume: 0.8, pitch: 0.9}
           latch: {sound: "block.chain.break", volume: 0.6, pitch: 1.0}
@@ -739,15 +756,14 @@ events:
         locked: "<color:#ffcfca>this crate is locked for {seconds}s</color>"
       hologram:
         enabled: true
-        offset: 1.6
+        offset: 0.45          # gap above the crate top
         scale: 1.1
         falling: "<n>{tier} <color:#fffbf0>Supply Drop</color><newline><color:#ffd7ca>Landing in <color:#fffbf0>{time_fmt}</color></color></n>"
         locked: "<n>{tier} <color:#fffbf0>Supply Drop</color> <color:#ffd7ca>- Locked <color:#fffbf0>{seconds}s</color></color></n>"
-        ready: "<n>{tier} <color:#fffbf0>Supply Drop</color> <color:#ffd7ca>- <color:#fffbf0>{pct}%</color></color><newline>{bar}<newline><color:#f1d58f>Punch to open</color></n>"
+        ready: "<n>{tier} <color:#fffbf0>Supply Drop</color> <color:#ffd7ca>- <color:#fffbf0>{pct}%</color></color><newline>{bar}</n>"
       tiers:
         iron:
           display-name: "iron"
-          crate-block: CHISELED_COPPER      # block display of this tier's crate
           rarity: "common"
           weight: 55.0
           health: 40
@@ -762,7 +778,6 @@ events:
             open: {sound: "block.shulker_box.open", volume: 0.6, pitch: 1.0}
         gold:
           display-name: "gold"
-          crate-block: RAW_GOLD_BLOCK      # block display of this tier's crate
           rarity: "uncommon"
           weight: 28.0
           health: 60
@@ -777,7 +792,6 @@ events:
             open: {sound: "block.shulker_box.open", volume: 0.6, pitch: 1.0}
         diamond:
           display-name: "diamond"
-          crate-block: OXIDIZED_CHISELED_COPPER      # block display of this tier's crate
           rarity: "rare"
           weight: 13.0
           health: 90
@@ -792,7 +806,6 @@ events:
             open: {sound: "block.shulker_box.open", volume: 0.6, pitch: 1.0}
         netherite:
           display-name: "netherite"
-          crate-block: CHISELED_NETHER_BRICKS      # block display of this tier's crate
           rarity: "legendary"
           weight: 4.0
           health: 140
@@ -917,6 +930,83 @@ events:
       anti-exploit:
         click-cooldown-ms: 250
         max-distance: 6.5          # blocks; clicks from further away are ignored
+  koth:
+    enabled: true
+    display-name: "king of the hill"
+    description: "hold the capture area alone and fill the bar"
+    color: "#F1D58F"
+    gradient: ["#F1D58F", "#FFF0CC", "#F1D58F"]
+    aliases: [koth, hill]
+    duration-minutes: 20
+    cooldown-minutes: 0
+    random-pool: false         # never picked by the random scheduler: an admin needs to place a build and set the capture area first
+    bossbar:
+      enabled: false           # KoTH shows its own capture bar (boss bar + action bar)
+      text: "{event} : {time}"
+      color: YELLOW
+      style: PROGRESS
+      gradient: ["#F1D58F", "#FFF0CC", "#F1D58F"]
+      countdown: true
+    sounds:
+      start: {sound: "block.note_block.bell", volume: 0.8, pitch: 1.3}
+      end: {sound: "ui.toast.challenge_complete", volume: 0.8, pitch: 1.0}
+    titles:
+      winner: {title: "<#F1D58F>{event}", subtitle: "<#FFFFFF>{player} <#00FF55>captured the hill", stay: 60}
+    messages:
+      join:
+        - "a menu asks if you want to go to the arena, /tpkoth opens it again"
+        - "stand in the capture area ALONE to fill the capture bar, the first to 100% wins"
+        - "the player holding the hill glows"
+      start:
+        text: "<#E3948F>{event} <#FFFFFF>started for <#FFFFFF>{minutes}m<#AAAAAA>: {description}"
+        sound: {sound: "block.note_block.chime", volume: 0.6, pitch: 1.4}
+      end:
+        text: "<#E3948F>{event} <#FFFFFF>has ended."
+        sound: {sound: "block.note_block.bass", volume: 0.6, pitch: 1.0}
+      invite:
+        text: "<#F1D58F>{event} <#FFFFFF>is open: a menu asks if you want to join, /tpkoth opens it again."
+        sound: {sound: "block.note_block.pling", volume: 1.0, pitch: 1.6}
+      winner:
+        text: "<#FFFFFF>{player} <#00FF55>captured the hill</#00FF55> <#AAAAAA>({points} seconds)</#AAAAAA>"
+        sound: {sound: "entity.player.levelup", volume: 0.8, pitch: 1.2}
+    start-animation:
+      enabled: false
+    aura:
+      enabled: false
+    schedule:
+      mode: off
+      times: ["20:00"]
+      days: [ALL]
+      interval-minutes: 360
+    settings:
+      # Everything below can also be changed in-game: /eventcore koth menu (saved in koth-data.yml, which overrides these values)
+      points-to-win: 120               # seconds the player must hold the hill alone (the capture bar = points / points-to-win)
+      points-per-second: 1
+      contested-gives-points: false
+      timeout-winner: true             # when the time runs out the best score wins
+      grace-seconds: 30                # no PvP at the start
+      entry-grace-seconds: 8           # a player who just joined cannot be hurt by players for this long
+      join-until-minutes: 10           # /tpkoth and the join menu close after this long (0 = always open)
+      spread-radius: 4                 # players are dropped within this radius of the arena spawn
+      heal-on-start: true
+      zone-margin: 30                  # the gameplay flags apply this many blocks around the pasted build
+      colors: ["#FF8FD8", "#5490FF", "#80ED26", "#FADE55", "#FF7A3D", "#B07CFF", "#3DE0D0", "#FF5555"]   # one per player, used for the bar, title and particles
+      flags:                           # defaults; the dialog overrides them. The pasted build itself is ALWAYS protected.
+        place-blocks: false            # placing around the build (never inside it)
+        break-mode: PLACED_ONLY        # NONE | PLACED_ONLY (only blocks players placed) | ALL (anything outside the build)
+        pvp: true
+        explosions: false
+        mob-spawning: false
+        fire-spread: false
+        fluid-flow: false
+        ender-pearls: true
+        item-drop: true
+        respawn-at-spawn: true
+      builds:                          # optional names / height offsets; every .schem in plugins/EventCore/koth-builds/ is a build
+        eventcorekoth: {name: "Eventcore KoTH", y-offset: 0}
+      reward:                          # same format as the other events
+        items: ["DIAMOND:16", "GOLDEN_APPLE:8"]
+        commands: []                   # {player} = the winner
   natural_disaster:
     enabled: true
     display-name: "natural disaster"

@@ -19,6 +19,17 @@ theme:
   white: "#FFFFFF"     # values
   name-gradient: ["#9babc7", "#E7E7E7", "#E7E7E7"]   # item names and GUI titles (dark to light)
   label-gradient: ["#9babc7", "#6981ab"]             # "Value:" style labels in lore
+  # Dialog (Paper 1.21.6+) gold-and-cream palette: applied on enable, /reload and /eventcore reload
+  text: "#FFF0CC"
+  secondary: "#F7E2AD"
+  gold: "#F1D58F"
+  enabled: "#80ED26"
+  disabled: "#FF1717"
+  info: "#5490FF"
+  admin-info: "#91B8FF"
+  special: "#FADE55"
+gui:
+  dialogs: true        # false = never open dialogs (menus fall back to chat / inventory GUIs)
 style:
   flatten-colors: false  # keep every hex colour exactly as written in the messages (theme)
   text-color: "#FFFFFF"

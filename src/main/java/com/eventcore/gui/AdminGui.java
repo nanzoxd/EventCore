@@ -186,6 +186,7 @@ public final class AdminGui implements Listener {
             case "airdrop" -> Material.BEACON;
             case "egg_hunt" -> Material.TURTLE_EGG;
             case "natural_disaster" -> Material.LIGHTNING_ROD;
+            case "koth" -> Material.GOLDEN_HELMET;
             case "chat_question" -> Material.WRITABLE_BOOK;
             case "quest" -> Material.ENCHANTED_BOOK;
             case "colour_item" -> Material.MAGENTA_DYE;
